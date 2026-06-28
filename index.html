@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#185FA5"/>
+<title>Abonados — Internacional Huesca</title>
+<link rel="manifest" href="manifest.json"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#1a1a1a;background:#f5f5f4;min-height:100vh}
+  #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+  .login-card{background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:360px;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
+  .login-logo{text-align:center;margin-bottom:1.5rem}
+  .login-logo .club{font-size:22px;font-weight:600;color:#185FA5}
+  .login-logo .sub{font-size:13px;color:#888;margin-top:2px}
+  #app-screen{display:none;max-width:900px;margin:0 auto;padding:0.5rem}
+  .topbar{background:#185FA5;color:#fff;padding:12px 16px;border-radius:12px;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between}
+  .topbar-title{font-weight:600;font-size:15px}
+  .topbar-user{font-size:12px;opacity:0.85}
+  .tab-bar{display:flex;gap:4px;margin-bottom:1rem;background:#fff;border-radius:10px;padding:4px;border:1px solid #e5e5e3}
+  .tab{flex:1;padding:8px 4px;border:none;background:none;cursor:pointer;font-size:13px;color:#888;border-radius:7px;font-family:inherit}
+  .tab.active{background:#185FA5;color:#fff;font-weight:500}
+  .panel{display:none}.panel.active{display:block}
+  .card{background:#fff;border-radius:12px;border:1px solid #e5e5e3;padding:1.25rem;margin-bottom:1rem}
+  .card-title{font-size:15px;font-weight:600;margin-bottom:1rem;color:#1a1a1a}
+  label{display:block;font-size:12px;color:#666;margin-bottom:4px;margin-top:10px}
+  label:first-child{margin-top:0}
+  input,select{width:100%;padding:8px 10px;border:1px solid #d5d5d3;border-radius:8px;background:#fff;color:#1a1a1a;font-size:14px;font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:#185FA5;box-shadow:0 0 0 3px rgba(24,95,165,0.1)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  @media(max-width:600px){.grid2,.grid3{grid-template-columns:1fr}}
+  .btn{padding:9px 18px;border:1px solid #d5d5d3;border-radius:8px;background:#fff;color:#1a1a1a;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+  .btn:hover{background:#f5f5f4}.btn:active{transform:scale(0.98)}
+  .btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}.btn-primary:hover{background:#0c447c}
+  .btn-danger{color:#a32d2d;border-color:#f09595}.btn-danger:hover{background:#fcebeb}
+  .actions{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap;align-items:center}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:8px 10px;border-bottom:1px solid #e5e5e3;color:#666;font-weight:500;font-size:12px}
+  td{padding:8px 10px;border-bottom:1px solid #f0f0ee;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500}
+  .badge-ok{background:#eaf3de;color:#3B6D11}
+  .badge-warn{background:#faeeda;color:#854F0B}
+  .badge-no{background:#fcebeb;color:#a32d2d}
+  .scanner-box{border:2px dashed #d5d5d3;border-radius:12px;padding:2rem;text-align:center;background:#f9f9f8;margin:1rem 0}
+  .scanner-result{padding:1rem;border-radius:10px;margin-top:1rem;font-size:15px;font-weight:500;text-align:center;line-height:1.5}
+  .result-ok{background:#eaf3de;color:#27500A}
+  .result-dup{background:#faeeda;color:#633806}
+  .result-no{background:#fcebeb;color:#791F1F}
+  .stat{background:#f5f5f4;border-radius:10px;padding:1rem;text-align:center}
+  .stat-n{font-size:28px;font-weight:600;color:#185FA5}
+  .stat-l{font-size:12px;color:#888;margin-top:2px}
+  .msg{font-size:12px;margin-top:8px;padding:6px 10px;border-radius:6px}
+  .msg-ok{background:#eaf3de;color:#3B6D11}
+  .msg-err{background:#fcebeb;color:#a32d2d}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid #e5e5e3;border-top-color:#185FA5;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .sync-badge{font-size:11px;background:rgba(255,255,255,0.2);border-radius:99px;padding:2px 8px}
+  #video-container{display:none;margin:1rem 0;border-radius:10px;overflow:hidden;background:#000}
+  #video-container video{width:100%;display:block;max-height:300px;object-fit:cover}
+  .overflow-x{overflow-x:auto}
+  .empty{color:#bbb;font-size:13px;text-align:center;padding:2rem}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="club">⚽ Internacional Huesca</div>
+      <div class="sub">Gestión de abonados — Temporada 2024/25</div>
+    </div>
+    <label>Correo electrónico</label>
+    <input type="email" id="l-email" placeholder="nombre@club.es" autocomplete="email"/>
+    <label>Contraseña</label>
+    <input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"/>
+    <div class="actions" style="margin-top:1rem">
+      <button class="btn btn-primary" style="flex:1" onclick="doLogin()">Entrar</button>
+    </div>
+    <div id="login-msg"></div>
+  </div>
+</div>
+
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-title">⚽ Internacional Huesca — Abonados</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sync-badge" id="sync-indicator">● En línea</span>
+      <span class="topbar-user" id="user-label"></span>
+      <button class="btn" style="padding:4px 10px;font-size:12px;background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:#fff" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('socios')">👥 Socios</button>
+    <button class="tab" onclick="switchTab('qr')">📲 QRs</button>
+    <button class="tab" onclick="switchTab('scanner')">🔍 Escáner</button>
+    <button class="tab" onclick="switchTab('stats')">📊 Stats</button>
+  </div>
+
+  <div id="panel-socios" class="panel active">
+    <div class="card">
+      <div class="card-title">Añadir nuevo socio</div>
+      <div class="grid3">
+        <div><label>Nombre *</label><input id="f-nombre" placeholder="Antonio"/></div>
+        <div><label>Primer apellido *</label><input id="f-ap1" placeholder="García"/></div>
+        <div><label>Segundo apellido</label><input id="f-ap2" placeholder="López"/></div>
+      </div>
+      <div class="grid3">
+        <div><label>DNI / NIE *</label><input id="f-dni" placeholder="12345678A"/></div>
+        <div><label>Fecha de nacimiento</label><input id="f-fnac" type="date"/></div>
+        <div><label>Teléfono</label><input id="f-tel" placeholder="600 000 000"/></div>
+      </div>
+      <div class="grid2">
+        <div><label>Email</label><input id="f-email" placeholder="socio@email.com"/></div>
+        <div><label>Tipo de abono</label>
+          <select id="f-tipo">
+            <option>General</option>
+            <option>Juvenil (sub-18)</option>
+            <option>Pensionista</option>
+            <option>Familia numerosa</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="addSocio()">+ Añadir socio</button>
+        <button class="btn" onclick="clearForm()">Limpiar</button>
+        <span id="add-spinner" style="display:none"><span class="spinner"></span>Guardando...</span>
+      </div>
+      <div id="form-msg"></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+        <div class="card-title" style="margin-bottom:0">Lista de socios (<span id="total-socios">0</span>)</div>
+        <button class="btn" style="font-size:12px" onclick="exportCSV()">⬇ Exportar CSV</button>
+      </div>
+      <input placeholder="Buscar por nombre, apellido o DNI..." id="buscador" oninput="renderTabla()" style="margin-bottom:1rem"/>
+      <div class="overflow-x">
+        <table>
+          <thead><tr><th>ID</th><th>Nombre completo</th><th>DNI</th><th>Tipo</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-socios"></tbody>
+        </table>
+      </div>
+      <div id="tabla-empty" class="empty" style="display:none">No hay socios aún. Añade el primero arriba.</div>
+    </div>
+  </div>
+
+  <div id="panel-qr" class="panel">
+    <div class="card">
+      <div class="card-title">Generar QR por socio</div>
+      <label>Selecciona socio</label>
+      <select id="qr-socio" onchange="previewQR()" style="max-width:360px"></select>
+      <div style="margin-top:1.5rem;text-align:center" id="qr-area">
+        <div class="empty">Selecciona un socio para ver su QR</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Descargar todos los QRs</div>
+      <p style="font-size:13px;color:#666;margin-bottom:1rem">Genera un ZIP con un PNG por cada socio, nombrado como su ID (HUE-001.png, HUE-002.png...).</p>
+      <button class="btn btn-primary" onclick="downloadAllQRs()">⬇ Descargar ZIP con todos los QRs</button>
+      <div id="zip-progress" style="margin-top:8px;font-size:12px;color:#666"></div>
+    </div>
+  </div>
+
+  <div id="panel-scanner" class="panel">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
+        <div class="card-title" style="margin-bottom:0">Jornada activa:</div>
+        <select id="partido-sel" onchange="cambiarPartido()" style="max-width:240px">
+          <option value="">— Selecciona jornada —</option>
+        </select>
+      </div>
+      <div class="scanner-box">
+        <div style="font-size:48px;color:#bbb;margin-bottom:8px">📷</div>
+        <p style="color:#666;font-size:13px">Pulsa el botón para abrir la cámara del móvil</p>
+        <div class="actions" style="justify-content:center">
+          <button class="btn btn-primary" onclick="toggleCamara()">📷 Abrir cámara</button>
+        </div>
+        <div id="video-container">
+          <video id="scanner-video" playsinline autoplay muted></video>
+        </div>
+        <div style="margin-top:1.5rem;border-top:1px solid #e5e5e3;padding-top:1rem">
+          <p style="font-size:12px;color:#888;margin-bottom:8px">O introduce el ID del socio manualmente:</p>
+          <div style="display:flex;gap:8px;max-width:320px;margin:0 auto">
+            <input id="manual-id" placeholder="HUE-001" style="flex:1" onkeydown="if(event.key==='Enter')escanearManual()"/>
+            <button class="btn btn-primary" onclick="escanearManual()">Verificar</button>
+          </div>
+        </div>
+      </div>
+      <div id="scan-result"></div>
+      <div id="log-entradas" style="margin-top:1rem"></div>
+    </div>
+  </div>
+
+  <div id="panel-stats" class="panel">
+    <div class="card">
+      <div class="card-title">Resumen general</div>
+      <div class="grid3" id="stats-cards"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Asistencia por jornada</div>
+      <div class="overflow-x">
+        <table>
+          <thead><tr><th>Jornada</th><th>Socios entrados</th><th>% asistencia</th></tr></thead>
+          <tbody id="stats-tabla"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Socios por tipo de abono</div>
+      <table>
+        <thead><tr><th>Tipo</th><th>Cantidad</th></tr></thead>
+        <tbody id="stats-tipos"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+const firebaseConfig = {
+  apiKey: "AIzaSyBz5iW_Xxtx7kP-_6C3fA_DL3l2M7FQsAo",
+  authDomain: "internacional-huesca.firebaseapp.com",
+  projectId: "internacional-huesca",
+  storageBucket: "internacional-huesca.firebasestorage.app",
+  messagingSenderId: "403874724172",
+  appId: "1:403874724172:web:d21b7b35cbc84b40aef7e9"
+};
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc,
+         onSnapshot, query, orderBy, getDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+window.doLogin = async () => {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const msg   = document.getElementById('login-msg');
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    msg.className='msg msg-err';
+    msg.textContent='Correo o contraseña incorrectos.';
+  }
+};
+
+window.doLogout = () => signOut(auth);
+
+onAuthStateChanged(auth, user => {
+  document.getElementById('login-screen').style.display = user ? 'none' : 'flex';
+  document.getElementById('app-screen').style.display   = user ? 'block' : 'none';
+  if (user) {
+    document.getElementById('user-label').textContent = user.email;
+    suscribirSocios();
+    suscribirEntradas();
+    fillPartidos();
+  }
+});
+
+let socios = [];
+let entradas = {};
+let partidoActual = '';
+const PARTIDOS = Array.from({length:17}, (_,i) => `Jornada ${String(i+1).padStart(2,'0')}`);
+
+function suscribirSocios() {
+  const q = query(collection(db,'socios'), orderBy('numerico'));
+  onSnapshot(q, snap => {
+    socios = snap.docs.map(d => ({...d.data(), id: d.id}));
+    renderTabla();
+    document.getElementById('total-socios').textContent = socios.length;
+    fillQrSelect();
+  });
+}
+
+function suscribirEntradas() {
+  onSnapshot(collection(db,'entradas'), snap => {
+    entradas = {};
+    snap.docs.forEach(d => { entradas[d.id] = d.data(); });
+    renderLog();
+    if(document.getElementById('panel-stats').classList.contains('active')) renderStats();
+  });
+}
+
+function nextNumerico() {
+  if (!socios.length) return 1;
+  return Math.max(...socios.map(s => s.numerico || 0)) + 1;
+}
+
+window.addSocio = async () => {
+  const n    = document.getElementById('f-nombre').value.trim();
+  const a1   = document.getElementById('f-ap1').value.trim();
+  const a2   = document.getElementById('f-ap2').value.trim();
+  const dni  = document.getElementById('f-dni').value.trim().toUpperCase();
+  const fnac = document.getElementById('f-fnac').value;
+  const tel  = document.getElementById('f-tel').value.trim();
+  const email= document.getElementById('f-email').value.trim();
+  const tipo = document.getElementById('f-tipo').value;
+  const msg  = document.getElementById('form-msg');
+  if (!n || !a1 || !dni) { msg.className='msg msg-err'; msg.textContent='Nombre, primer apellido y DNI son obligatorios.'; return; }
+  if (socios.find(s => s.dni === dni)) { msg.className='msg msg-err'; msg.textContent='Ya existe un socio con ese DNI.'; return; }
+  document.getElementById('add-spinner').style.display='inline-flex';
+  const num = nextNumerico();
+  const id  = 'HUE-' + String(num).padStart(3,'0');
+  try {
+    await setDoc(doc(db,'socios',id), {nombre:n,ap1:a1,ap2:a2,dni,fnac,tel,email,tipo,numerico:num,alta:new Date().toISOString()});
+    msg.className='msg msg-ok'; msg.textContent=`Socio ${id} añadido correctamente.`;
+    clearForm();
+  } catch(e) {
+    msg.className='msg msg-err'; msg.textContent='Error al guardar. Comprueba la conexión.';
+  }
+  document.getElementById('add-spinner').style.display='none';
+};
+
+window.deleteSocio = async (id) => {
+  if (!confirm(`¿Borrar al socio ${id}? Esta acción no se puede deshacer.`)) return;
+  await deleteDoc(doc(db,'socios',id));
+};
+
+window.cambiarPartido = () => {
+  partidoActual = document.getElementById('partido-sel').value;
+  document.getElementById('scan-result').innerHTML = '';
+  renderLog();
+};
+
+window.escanearManual = () => {
+  const raw = document.getElementById('manual-id').value.trim().toUpperCase();
+  const id  = raw.startsWith('HUESCA:') ? raw.replace('HUESCA:','') : raw;
+  procesarScan(id);
+  document.getElementById('manual-id').value = '';
+};
+
+async function procesarScan(rawId) {
+  const id  = rawId.startsWith('HUESCA:') ? rawId.replace('HUESCA:','') : rawId;
+  const res = document.getElementById('scan-result');
+  if (!partidoActual) { res.innerHTML='<div class="scanner-result result-no">Selecciona una jornada antes de escanear.</div>'; return; }
+  const s = socios.find(x => x.id === id);
+  if (!s) { res.innerHTML=`<div class="scanner-result result-no">❌ QR no reconocido: ${id}</div>`; return; }
+  const entradaRef = doc(db,'entradas',partidoActual);
+  const snap = await getDoc(entradaRef);
+  const data = snap.exists() ? snap.data() : {};
+  if (data[id]) {
+    res.innerHTML=`<div class="scanner-result result-dup">⚠️ ¡Ya entró! — ${s.nombre} ${s.ap1} (${id})<br><small>Primera entrada: ${new Date(data[id]).toLocaleTimeString('es-ES')}</small></div>`;
+    return;
+  }
+  data[id] = new Date().toISOString();
+  await setDoc(entradaRef, data);
+  res.innerHTML=`<div class="scanner-result result-ok">✅ Acceso válido — ${s.nombre} ${s.ap1} ${s.ap2||''}<br><small>${s.tipo} · ${id}</small></div>`;
+}
+
+let streamActivo = false;
+let scanInterval = null;
+
+window.toggleCamara = async () => {
+  const container = document.getElementById('video-container');
+  const video     = document.getElementById('scanner-video');
+  if (streamActivo) {
+    video.srcObject?.getTracks().forEach(t => t.stop());
+    container.style.display = 'none';
+    streamActivo = false;
+    clearInterval(scanInterval);
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    video.srcObject = stream;
+    container.style.display = 'block';
+    streamActivo = true;
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({formats:['qr_code']});
+      scanInterval = setInterval(async () => {
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length) {
+            procesarScan(codes[0].rawValue);
+            clearInterval(scanInterval);
+            stream.getTracks().forEach(t => t.stop());
+            container.style.display = 'none';
+            streamActivo = false;
+          }
+        } catch(_){}
+      }, 500);
+    } else {
+      document.getElementById('scan-result').innerHTML='<div class="scanner-result result-dup">Tu navegador no soporta escáner automático. Usa entrada manual o Chrome en Android.</div>';
+    }
+  } catch(e) {
+    alert('No se pudo acceder a la cámara. Acepta los permisos o usa entrada manual.');
+  }
+};
+
+window.renderTabla = () => {
+  const q     = (document.getElementById('buscador').value || '').toLowerCase();
+  const tbody = document.getElementById('tabla-socios');
+  const empty = document.getElementById('tabla-empty');
+  const filt  = socios.filter(s => `${s.nombre} ${s.ap1} ${s.ap2} ${s.dni}`.toLowerCase().includes(q));
+  if (!filt.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = filt.map(s => `<tr>
+    <td><code style="font-family:monospace;font-size:12px">${s.id}</code></td>
+    <td>${s.nombre} ${s.ap1} ${s.ap2||''}</td>
+    <td>${s.dni}</td>
+    <td>${s.tipo}</td>
+    <td>
+      <button class="btn" style="font-size:12px;padding:4px 10px" onclick="quickQR('${s.id}')">Ver QR</button>
+      <button class="btn btn-danger" style="font-size:12px;padding:4px 10px;margin-left:4px" onclick="deleteSocio('${s.id}')">Borrar</button>
+    </td>
+  </tr>`).join('');
+};
+
+function fillPartidos() {
+  const sel = document.getElementById('partido-sel');
+  sel.innerHTML = '<option value="">— Selecciona jornada —</option>' +
+    PARTIDOS.map(p => `<option value="${p}">${p}</option>`).join('');
+}
+
+function fillQrSelect() {
+  const sel = document.getElementById('qr-socio');
+  sel.innerHTML = '<option value="">— Selecciona socio —</option>' +
+    socios.map(s => `<option value="${s.id}">${s.id} — ${s.nombre} ${s.ap1}</option>`).join('');
+}
+
+function renderLog() {
+  const log = document.getElementById('log-entradas');
+  if (!partidoActual || !entradas[partidoActual]) { log.innerHTML=''; return; }
+  const e    = entradas[partidoActual];
+  const keys = Object.keys(e).sort((a,b) => new Date(e[b]) - new Date(e[a]));
+  if (!keys.length) { log.innerHTML='<p class="empty">Sin entradas registradas aún.</p>'; return; }
+  log.innerHTML = `<div style="font-size:13px;font-weight:600;margin-bottom:8px">${keys.length} entradas en ${partidoActual}</div>
+  <div class="overflow-x"><table><thead><tr><th>ID</th><th>Socio</th><th>Hora</th></tr></thead><tbody>${
+    keys.map(id => {
+      const s = socios.find(x => x.id === id) || {nombre:id,ap1:'',ap2:''};
+      return `<tr><td style="font-family:monospace;font-size:12px">${id}</td><td>${s.nombre} ${s.ap1}</td><td>${new Date(e[id]).toLocaleTimeString('es-ES')}</td></tr>`;
+    }).join('')
+  }</tbody></table></div>`;
+}
+
+window.renderStats = () => {
+  const total = socios.length;
+  const tipos = {};
+  socios.forEach(s => { tipos[s.tipo] = (tipos[s.tipo]||0) + 1; });
+  const totalEntradas = Object.values(entradas).reduce((acc,e) => acc + Object.keys(e).length, 0);
+  document.getElementById('stats-cards').innerHTML = `
+    <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Socios totales</div></div>
+    <div class="stat"><div class="stat-n">${Object.keys(entradas).length}</div><div class="stat-l">Jornadas con datos</div></div>
+    <div class="stat"><div class="stat-n">${totalEntradas}</div><div class="stat-l">Entradas acumuladas</div></div>`;
+  document.getElementById('stats-tabla').innerHTML = PARTIDOS.map(p => {
+    const n   = entradas[p] ? Object.keys(entradas[p]).length : 0;
+    const pct = total ? Math.round(n/total*100) : 0;
+    const cls = pct>70?'badge-ok':pct>30?'badge-warn':'badge-no';
+    return `<tr><td>${p}</td><td>${n}</td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
+  }).join('');
+  document.getElementById('stats-tipos').innerHTML = Object.entries(tipos)
+    .map(([t,n]) => `<tr><td>${t}</td><td>${n}</td></tr>`).join('') ||
+    '<tr><td colspan="2" style="color:#bbb">Sin datos</td></tr>';
+};
+
+window.clearForm = () => {
+  ['f-nombre','f-ap1','f-ap2','f-dni','f-tel','f-email','f-fnac'].forEach(id => { document.getElementById(id).value=''; });
+  document.getElementById('f-tipo').value = 'General';
+  document.getElementById('form-msg').textContent = '';
+};
+
+window.switchTab = (t) => {
+  const names = ['socios','qr','scanner','stats'];
+  document.querySelectorAll('.tab').forEach((b,i) => {
+    b.classList.toggle('active', names[i]===t);
+    document.getElementById('panel-'+names[i]).classList.toggle('active', names[i]===t);
+  });
+  if(t==='stats') renderStats();
+};
+
+window.quickQR = (id) => {
+  switchTab('qr');
+  setTimeout(() => { document.getElementById('qr-socio').value=id; previewQR(); }, 100);
+};
+
+window.exportCSV = () => {
+  const h = ['ID','Nombre','Apellido 1','Apellido 2','DNI','Fecha nac.','Teléfono','Email','Tipo','Alta'];
+  const r = socios.map(s => [s.id,s.nombre,s.ap1,s.ap2,s.dni,s.fnac,s.tel,s.email,s.tipo,s.alta]);
+  const csv = [h,...r].map(row => row.map(c => `"${c||''}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  a.download = 'Socios_InternacionalHuesca.csv';
+  a.click();
+};
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script>
+function makeQRDataUrl(id) {
+  return new Promise(res => {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:absolute;left:-9999px';
+    document.body.appendChild(div);
+    new QRCode(div, {text:`HUESCA:${id}`,width:300,height:300,correctLevel:QRCode.CorrectLevel.H});
+    setTimeout(() => {
+      const el = div.querySelector('img') || div.querySelector('canvas');
+      const url = el.tagName==='IMG' ? el.src : el.toDataURL();
+      document.body.removeChild(div);
+      res(url);
+    }, 200);
+  });
+}
+
+window.previewQR = async () => {
+  const id   = document.getElementById('qr-socio').value;
+  const area = document.getElementById('qr-area');
+  if (!id) { area.innerHTML='<div class="empty">Selecciona un socio para ver su QR</div>'; return; }
+  area.innerHTML='<p style="color:#888;font-size:13px">Generando QR...</p>';
+  const url = await makeQRDataUrl(id);
+  const nombre = document.getElementById('qr-socio').selectedOptions[0]?.text.split(' — ')[1] || id;
+  area.innerHTML=`<img src="${url}" width="200" height="200" style="border:1px solid #e5e5e3;border-radius:8px;display:block;margin:0 auto"/>
+    <p style="margin-top:0.75rem;font-weight:600">${nombre}</p>
+    <p style="font-size:12px;color:#888;margin-top:2px;font-family:monospace">${id}</p>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:1rem">
+      <a href="${url}" download="${id}.png" class="btn btn-primary">⬇ Descargar PNG</a>
+    </div>`;
+};
+
+window.downloadAllQRs = async () => {
+  const ids = Array.from(document.querySelectorAll('#tabla-socios td:first-child code')).map(el=>el.textContent.trim());
+  if (!ids.length) { alert('No hay socios aún.'); return; }
+  const prog = document.getElementById('zip-progress');
+  const zip  = new JSZip();
+  for (let i=0; i<ids.length; i++) {
+    prog.textContent = `Generando ${i+1} de ${ids.length}...`;
+    const url = await makeQRDataUrl(ids[i]);
+    zip.file(`${ids[i]}.png`, url.split(',')[1], {base64:true});
+  }
+  prog.textContent = 'Empaquetando ZIP...';
+  const blob = await zip.generateAsync({type:'blob'});
+  saveAs(blob,'QRs_InternacionalHuesca.zip');
+  prog.textContent = `Listo. ${ids.length} QRs descargados.`;
+};
+</script>
+</body>
+</html>
