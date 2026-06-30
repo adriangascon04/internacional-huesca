@@ -259,9 +259,30 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Asistencia: socios vs. taquilla</div>
+      <div class="card-title">Asistencia: socios vs. taquilla (con tendencia)</div>
       <div class="grid3" id="stats-taquilla-cards" style="margin-bottom:1rem"></div>
       <div style="position:relative;height:280px"><canvas id="chart-taquilla"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Asistencia media por tipo de abono</div>
+      <p style="font-size:12px;color:#666;margin-bottom:1rem">Porcentaje medio de jornadas a las que asiste cada tipo de socio (sobre las jornadas con datos registrados).</p>
+      <div class="overflow-x">
+        <table><thead><tr><th>Tipo de abono</th><th>Nº socios</th><th>% asistencia media</th></tr></thead><tbody id="stats-tipo-asistencia"></tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Socios con menor asistencia</div>
+      <p style="font-size:12px;color:#666;margin-bottom:1rem">Los 10 socios con menos jornadas asistidas (sobre las jornadas con datos registrados). Útil para detectar abonos poco utilizados.</p>
+      <div class="overflow-x">
+        <table><thead><tr><th>Socio</th><th>Tipo</th><th>Jornadas asistidas</th><th>% asistencia</th></tr></thead><tbody id="stats-peor-asistencia"></tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Ingresos por jornada (taquilla)</div>
+      <div class="grid3" id="stats-ingresos-cards" style="margin-bottom:1rem"></div>
+      <div class="overflow-x">
+        <table><thead><tr><th>Jornada</th><th>Entradas vendidas</th><th>Recaudación</th></tr></thead><tbody id="stats-ingresos-tabla"></tbody></table>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">Socios por tipo de abono</div>
@@ -890,13 +911,22 @@ window.renderStats=()=>{
   const ctx=document.getElementById('chart-taquilla');
   if(ctx){
     if(window._chartTaquilla)window._chartTaquilla.destroy();
+    // Línea de tendencia: media móvil simple de 3 jornadas sobre el total de asistentes
+    const totales=datosPorJornada.map(j=>j.totalAsistentes);
+    const tendencia=totales.map((_,i)=>{
+      const conDatos=datosPorJornada.slice(Math.max(0,i-2),i+1).filter(j=>j.totalAsistentes>0||entradas[j.jornada]);
+      if(!conDatos.length)return null;
+      const suma=conDatos.reduce((a,j)=>a+j.totalAsistentes,0);
+      return Math.round(suma/conDatos.length);
+    });
     window._chartTaquilla=new Chart(ctx,{
       type:'bar',
       data:{
         labels:datosPorJornada.map(j=>j.jornada.replace('Jornada ','J')),
         datasets:[
           {label:'Socios',data:datosPorJornada.map(j=>j.nSocios),backgroundColor:'#C8102E',borderRadius:4},
-          {label:'Taquilla (no socios)',data:datosPorJornada.map(j=>j.nTaquilla),backgroundColor:'#888',borderRadius:4}
+          {label:'Taquilla (no socios)',data:datosPorJornada.map(j=>j.nTaquilla),backgroundColor:'#888',borderRadius:4},
+          {label:'Tendencia (media 3 jornadas)',data:tendencia,type:'line',borderColor:'#eab308',backgroundColor:'#eab308',tension:0.35,pointRadius:3,borderWidth:2,fill:false,spanGaps:true}
         ]
       },
       options:{
@@ -904,12 +934,65 @@ window.renderStats=()=>{
         interaction:{mode:'index',intersect:false},
         scales:{
           x:{ticks:{color:'#999',font:{size:11}},grid:{color:'#1E1E1E'}},
-          y:{stacked:true,beginAtZero:true,ticks:{color:'#999',font:{size:11},precision:0},grid:{color:'#1E1E1E'},title:{display:true,text:'Personas',color:'#666',font:{size:11}}}
+          y:{stacked:false,beginAtZero:true,ticks:{color:'#999',font:{size:11},precision:0},grid:{color:'#1E1E1E'},title:{display:true,text:'Personas',color:'#666',font:{size:11}}}
         },
         plugins:{legend:{labels:{color:'#CCC',font:{size:11},boxWidth:12}}}
       }
     });
   }
+
+  // Jornadas que ya tienen datos registrados (para calcular % de asistencia real)
+  const jornadasConDatosReg=PARTIDOS.filter(p=>entradas[p]);
+  const nJornadasReg=jornadasConDatosReg.length;
+
+  // Punto 3: asistencia media por tipo de abono
+  const tiposUnicos=[...new Set(sociosConAsistencia.map(s=>s.tipo))];
+  const filasTipo=tiposUnicos.map(tipo=>{
+    const sociosDeTipo=sociosConAsistencia.filter(s=>s.tipo===tipo);
+    if(!nJornadasReg||!sociosDeTipo.length)return{tipo,n:sociosDeTipo.length,pct:0};
+    let sumaPct=0;
+    sociosDeTipo.forEach(s=>{
+      const asistidas=jornadasConDatosReg.filter(p=>entradas[p][s.id]).length;
+      sumaPct+=asistidas/nJornadasReg;
+    });
+    const pct=Math.round((sumaPct/sociosDeTipo.length)*100);
+    return{tipo,n:sociosDeTipo.length,pct};
+  }).sort((a,b)=>b.pct-a.pct);
+
+  document.getElementById('stats-tipo-asistencia').innerHTML=filasTipo.length?filasTipo.map(f=>{
+    const cls=f.pct>70?'badge-ok':f.pct>30?'badge-warn':'badge-no';
+    return `<tr><td style="color:#fff">${f.tipo}</td><td>${f.n}</td><td><span class="badge ${cls}">${f.pct}%</span></td></tr>`;
+  }).join(''):'<tr><td colspan="3" style="color:#444">Sin jornadas registradas aún</td></tr>';
+
+  // Punto 2: top 10 socios con menor asistencia
+  const rankingSocios=sociosConAsistencia.map(s=>{
+    const asistidas=jornadasConDatosReg.filter(p=>entradas[p][s.id]).length;
+    const pct=nJornadasReg?Math.round(asistidas/nJornadasReg*100):0;
+    return{id:s.id,nombre:`${s.nombre} ${s.ap1}`,tipo:s.tipo,asistidas,pct};
+  }).sort((a,b)=>a.pct-b.pct||a.asistidas-b.asistidas).slice(0,10);
+
+  document.getElementById('stats-peor-asistencia').innerHTML=(nJornadasReg&&rankingSocios.length)?rankingSocios.map(r=>{
+    const cls=r.pct>70?'badge-ok':r.pct>30?'badge-warn':'badge-no';
+    return `<tr><td style="color:#fff">${r.nombre}</td><td>${r.tipo}</td><td>${r.asistidas} / ${nJornadasReg}</td><td><span class="badge ${cls}">${r.pct}%</span></td></tr>`;
+  }).join(''):'<tr><td colspan="4" style="color:#444">Sin jornadas registradas aún</td></tr>';
+
+  // Punto 5: ingresos por jornada (taquilla)
+  const ingresosPorJornada=PARTIDOS.map(p=>{
+    const d=taquilla[p]||{general:0,menor:0};
+    const n=(d.general||0)+(d.menor||0);
+    const recaudacion=(d.general||0)*PRECIOS.general+(d.menor||0)*PRECIOS.menor;
+    return{jornada:p,n,recaudacion};
+  });
+  const totalRecaudacion=ingresosPorJornada.reduce((a,j)=>a+j.recaudacion,0);
+  const jornadasConIngresos=ingresosPorJornada.filter(j=>j.n>0).length;
+  const mediaPorJornada=jornadasConIngresos?Math.round(totalRecaudacion/jornadasConIngresos):0;
+  document.getElementById('stats-ingresos-cards').innerHTML=`
+    <div class="stat"><div class="stat-n">${totalRecaudacion.toLocaleString('es-ES')} €</div><div class="stat-l">Recaudación total taquilla</div></div>
+    <div class="stat"><div class="stat-n">${mediaPorJornada.toLocaleString('es-ES')} €</div><div class="stat-l">Media por jornada</div></div>
+    <div class="stat"><div class="stat-n">${jornadasConIngresos}</div><div class="stat-l">Jornadas con venta</div></div>`;
+  document.getElementById('stats-ingresos-tabla').innerHTML=ingresosPorJornada.map(j=>
+    `<tr><td>${j.jornada}</td><td>${j.n}</td><td style="color:#fff">${j.recaudacion.toLocaleString('es-ES')} €</td></tr>`
+  ).join('');
 };
 window.clearForm=()=>{['f-nombre','f-ap1','f-ap2','f-dni','f-tel','f-email','f-fnac'].forEach(id=>{document.getElementById(id).value='';});document.getElementById('f-tipo').value='';document.getElementById('form-msg').textContent='';};
 window.switchTab=(t)=>{const names=['socios','qr','scanner','taquilla','stats','import','backup'];document.querySelectorAll('.tab').forEach((b,i)=>{b.classList.toggle('active',names[i]===t);document.getElementById('panel-'+names[i]).classList.toggle('active',names[i]===t);});if(t==='stats')renderStats();if(t==='taquilla')renderTaquilla();if(t==='taquilla'||t==='scanner')actualizarUIBloqueo();if(t==='backup')renderBackups();};
