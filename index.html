@@ -9,21 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --rojo:#C8102E;--rojo-oscuro:#9B0B22;--rojo-claro:#E8354A;
-  --negro:#0A0A0A;--negro-card:#141414;--negro-card2:#1C1C1C;
-  --gris:#2A2A2A;--gris-borde:#333;--gris-texto:#999;
-  --blanco:#FFF;--blanco-apagado:#CCC;
-}
-body{
-  font-family:'Inter',system-ui,sans-serif;font-size:14px;
-  color:var(--blanco);background:var(--negro);min-height:100vh;
-  background-image:
-    radial-gradient(ellipse at 20% 50%,rgba(200,16,46,0.07) 0%,transparent 60%),
-    radial-gradient(ellipse at 80% 20%,rgba(200,16,46,0.05) 0%,transparent 50%),
-    repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(255,255,255,0.012) 40px,rgba(255,255,255,0.012) 41px),
-    repeating-linear-gradient(90deg,transparent,transparent 40px,rgba(255,255,255,0.012) 40px,rgba(255,255,255,0.012) 41px);
-}
+:root{--rojo:#C8102E;--rojo-claro:#E8354A;--negro:#0A0A0A;--negro-card:#141414;--negro-card2:#1C1C1C;--gris:#2A2A2A;--gris-borde:#333;--gris-texto:#999;--blanco:#FFF;--blanco-apagado:#CCC;}
+body{font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--blanco);background:var(--negro);min-height:100vh;
+background-image:radial-gradient(ellipse at 20% 50%,rgba(200,16,46,0.07) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(200,16,46,0.05) 0%,transparent 50%),repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(255,255,255,0.012) 40px,rgba(255,255,255,0.012) 41px),repeating-linear-gradient(90deg,transparent,transparent 40px,rgba(255,255,255,0.012) 40px,rgba(255,255,255,0.012) 41px);}
 #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
 .login-card{background:var(--negro-card);border:1px solid var(--gris-borde);border-top:3px solid var(--rojo);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:380px;}
 .login-logo{text-align:center;margin-bottom:2rem}
@@ -48,7 +36,7 @@ body{
 .btn-logout{padding:5px 12px;border:1px solid var(--gris-borde);border-radius:6px;background:transparent;color:var(--gris-texto);cursor:pointer;font-size:12px;font-family:inherit;}
 .btn-logout:hover{border-color:var(--rojo);color:var(--rojo)}
 .tab-bar{display:flex;gap:4px;margin-bottom:1rem;background:var(--negro-card);border:1px solid var(--gris-borde);border-radius:10px;padding:4px;}
-.tab{flex:1;padding:9px 4px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--gris-texto);border-radius:7px;font-family:'Inter',sans-serif;font-weight:500;letter-spacing:0.3px;transition:all 0.2s;}
+.tab{flex:1;padding:9px 4px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--gris-texto);border-radius:7px;font-family:'Inter',sans-serif;font-weight:500;transition:all 0.2s;}
 .tab:hover{color:var(--blanco-apagado)}.tab.active{background:var(--rojo);color:var(--blanco)}
 .panel{display:none}.panel.active{display:block}
 .card{background:var(--negro-card);border:1px solid var(--gris-borde);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
@@ -76,10 +64,11 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,0.02
 .badge-ok{background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)}
 .badge-warn{background:rgba(234,179,8,0.15);color:#eab308;border:1px solid rgba(234,179,8,0.3)}
 .badge-no{background:rgba(200,16,46,0.15);color:#E8354A;border:1px solid rgba(200,16,46,0.3)}
+.badge-salida{background:rgba(168,85,247,0.15);color:#a855f7;border:1px solid rgba(168,85,247,0.3)}
 .scanner-box{border:1px dashed var(--gris-borde);border-radius:12px;padding:1.5rem;text-align:center;background:rgba(20,20,20,0.5);margin:1rem 0;}
-.scanner-result{padding:1rem;border-radius:10px;margin-top:1rem;font-size:15px;font-weight:600;text-align:center;line-height:1.5;}
-.result-ok{background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.3)}
-.result-dup{background:rgba(234,179,8,0.1);color:#eab308;border:1px solid rgba(234,179,8,0.3)}
+.scanner-result{padding:1.25rem;border-radius:10px;margin-top:1rem;font-size:16px;font-weight:700;text-align:center;line-height:1.5;}
+.result-entrada{background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.3)}
+.result-salida{background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)}
 .result-no{background:rgba(200,16,46,0.1);color:#E8354A;border:1px solid rgba(200,16,46,0.3)}
 .stat{background:var(--negro-card2);border:1px solid var(--gris-borde);border-radius:10px;padding:1.25rem;text-align:center;}
 .stat-n{font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--rojo);letter-spacing:1px}
@@ -96,6 +85,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,0.02
 .scan-status{font-size:12px;color:var(--gris-texto);margin-top:6px;min-height:18px}
 .overflow-x{overflow-x:auto}.empty{color:#444;font-size:13px;text-align:center;padding:2rem}
 code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
+.mov-entrada{color:#22c55e}.mov-salida{color:#a855f7}
 ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--negro)}
 ::-webkit-scrollbar-thumb{background:var(--gris-borde);border-radius:2px}::-webkit-scrollbar-thumb:hover{background:var(--rojo)}
 </style>
@@ -134,26 +124,37 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
     <button class="tab active" onclick="switchTab('socios')">👥 Socios</button>
     <button class="tab" onclick="switchTab('qr')">📲 QRs</button>
     <button class="tab" onclick="switchTab('scanner')">🔍 Escáner</button>
+    <button class="tab" onclick="switchTab('taquilla')">🎟️ Taquilla</button>
     <button class="tab" onclick="switchTab('stats')">📊 Stats</button>
+    <button class="tab" onclick="switchTab('import')">📥 Importar</button>
   </div>
 
   <div id="panel-socios" class="panel active">
     <div class="card">
       <div class="card-title">Añadir nuevo socio</div>
+      <p style="font-size:12px;color:#666;margin-bottom:0.5rem">Todos los campos son obligatorios.</p>
       <div class="grid3">
-        <div><label>Nombre *</label><input id="f-nombre" placeholder="Antonio"/></div>
-        <div><label>Primer apellido *</label><input id="f-ap1" placeholder="García"/></div>
-        <div><label>Segundo apellido</label><input id="f-ap2" placeholder="López"/></div>
+        <div><label>Nombre *</label><input id="f-nombre" placeholder="Antonio" required/></div>
+        <div><label>Primer apellido *</label><input id="f-ap1" placeholder="García" required/></div>
+        <div><label>Segundo apellido *</label><input id="f-ap2" placeholder="López" required/></div>
       </div>
       <div class="grid3">
-        <div><label>DNI / NIE *</label><input id="f-dni" placeholder="12345678A"/></div>
-        <div><label>Fecha de nacimiento</label><input id="f-fnac" type="date"/></div>
-        <div><label>Teléfono</label><input id="f-tel" placeholder="600 000 000"/></div>
+        <div><label>DNI / NIE *</label><input id="f-dni" placeholder="12345678A" required/></div>
+        <div><label>Fecha de nacimiento *</label><input id="f-fnac" type="date" required/></div>
+        <div><label>Teléfono *</label><input id="f-tel" placeholder="600 000 000" required/></div>
       </div>
       <div class="grid2">
-        <div><label>Email</label><input id="f-email" placeholder="socio@email.com"/></div>
-        <div><label>Tipo de abono</label>
-          <select id="f-tipo"><option>General</option><option>Juvenil (sub-18)</option><option>Pensionista</option><option>Familia numerosa</option></select>
+        <div><label>Email *</label><input id="f-email" placeholder="socio@email.com" required/></div>
+        <div><label>Tipo de abono *</label>
+          <select id="f-tipo">
+            <option value="">— Selecciona —</option>
+            <option>Abono Familiar</option>
+            <option>Abono Normal</option>
+            <option>Abono Internacional</option>
+            <option>Abono Academia</option>
+            <option>Abono Jubilado</option>
+            <option>Abono -16 años</option>
+          </select>
         </div>
       </div>
       <div class="actions">
@@ -170,10 +171,7 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
       </div>
       <input placeholder="Buscar por nombre, apellido o DNI..." id="buscador" oninput="renderTabla()" style="margin-bottom:1rem"/>
       <div class="overflow-x">
-        <table>
-          <thead><tr><th>ID</th><th>Nombre completo</th><th>DNI</th><th>Tipo</th><th>Acciones</th></tr></thead>
-          <tbody id="tabla-socios"></tbody>
-        </table>
+        <table><thead><tr><th>ID</th><th>Nombre completo</th><th>DNI</th><th>Tipo</th><th>Acciones</th></tr></thead><tbody id="tabla-socios"></tbody></table>
       </div>
       <div id="tabla-empty" class="empty" style="display:none">No hay socios aún. Añade el primero arriba.</div>
     </div>
@@ -199,6 +197,9 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
         <div class="card-title" style="margin-bottom:0">Jornada activa</div>
         <select id="partido-sel" onchange="cambiarPartido()" style="max-width:240px"><option value="">— Selecciona jornada —</option></select>
+      </div>
+      <div style="font-size:12px;color:#666;margin-bottom:1rem;padding:8px 12px;background:#1A1A1A;border-radius:8px;border-left:3px solid var(--rojo)">
+        Cada QR solo se puede usar <strong style="color:#fff">una vez por jornada</strong>. Si el socio sale del recinto, su QR queda bloqueado y no podrá volver a entrar hasta el siguiente partido.
       </div>
       <div class="scanner-box">
         <div style="font-size:40px;margin-bottom:8px">📷</div>
@@ -231,53 +232,283 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
     <div class="card">
       <div class="card-title">Asistencia por jornada</div>
       <div class="overflow-x">
-        <table><thead><tr><th>Jornada</th><th>Socios entrados</th><th>% asistencia</th></tr></thead><tbody id="stats-tabla"></tbody></table>
+        <table><thead><tr><th>Jornada</th><th>Socios entraron</th><th>% asistencia</th></tr></thead><tbody id="stats-tabla"></tbody></table>
       </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Entradas de taquilla (no socios)</div>
+      <div class="grid3" id="stats-taquilla-cards" style="margin-bottom:1rem"></div>
+      <div style="position:relative;height:280px"><canvas id="chart-taquilla"></canvas></div>
     </div>
     <div class="card">
       <div class="card-title">Socios por tipo de abono</div>
       <table><thead><tr><th>Tipo</th><th>Cantidad</th></tr></thead><tbody id="stats-tipos"></tbody></table>
     </div>
   </div>
+
+  <div id="panel-taquilla" class="panel">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
+        <div class="card-title" style="margin-bottom:0">Jornada activa</div>
+        <select id="taquilla-partido-sel" onchange="cambiarPartidoTaquilla()" style="max-width:240px"><option value="">— Selecciona jornada —</option></select>
+      </div>
+      <p style="font-size:12px;color:#666;margin-bottom:1rem">Pulsa el botón cada vez que se venda una entrada en taquilla. Cada pulsación suma 1 al contador de esa jornada.</p>
+      <div class="grid2" id="taquilla-botones" style="opacity:0.4;pointer-events:none">
+        <div style="background:#0F0F0F;border:1px solid var(--gris-borde);border-radius:12px;padding:1.5rem;text-align:center">
+          <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Entrada General</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--rojo)">10 €</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:#fff;margin:8px 0" id="contador-general">0</div>
+          <button class="btn btn-primary" style="width:100%;font-size:15px;padding:14px" onclick="venderEntrada('general')">+ Vender entrada</button>
+        </div>
+        <div style="background:#0F0F0F;border:1px solid var(--gris-borde);border-radius:12px;padding:1.5rem;text-align:center">
+          <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Menor de 16 años</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--rojo)">5 €</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:#fff;margin:8px 0" id="contador-menor">0</div>
+          <button class="btn btn-primary" style="width:100%;font-size:15px;padding:14px" onclick="venderEntrada('menor')">+ Vender entrada</button>
+        </div>
+      </div>
+      <div id="taquilla-resumen" style="margin-top:1.25rem"></div>
+      <div class="actions" style="margin-top:1rem">
+        <button class="btn btn-danger" id="btn-deshacer-venta" style="display:none" onclick="deshacerVenta()">↩ Deshacer última venta</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-import" class="panel">
+    <div class="card">
+      <div class="card-title">Importar socios desde Excel</div>
+      <p style="font-size:13px;color:#888;margin-bottom:1rem;line-height:1.6">
+        Sube un archivo Excel (.xlsx) con los datos de los jugadores de la academia. 
+        Se crearán automáticamente como socios con tipo <strong style="color:#fff">Academia</strong> 
+        y se les asignará un ID y QR únicos.<br>
+        <span style="color:#666;font-size:12px">Columnas necesarias: Nombre, Apellido1 (o Apellidos), DNI, Fecha de nacimiento</span>
+      </p>
+      <div id="drop-zone" style="border:2px dashed #333;border-radius:12px;padding:2.5rem;text-align:center;cursor:pointer;transition:border-color 0.2s;background:#0F0F0F"
+        onclick="document.getElementById('excel-input').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--rojo)'"
+        ondragleave="this.style.borderColor='#333'"
+        ondrop="handleDrop(event)">
+        <div style="font-size:36px;margin-bottom:8px">📊</div>
+        <div style="font-size:14px;color:#888">Pulsa aquí o arrastra tu archivo Excel</div>
+        <div style="font-size:12px;color:#555;margin-top:4px">Formatos: .xlsx, .xls</div>
+        <input type="file" id="excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])"/>
+      </div>
+      <div id="import-preview" style="margin-top:1rem"></div>
+    </div>
+    <div class="card" id="card-mapeado" style="display:none">
+      <div class="card-title">Mapear columnas</div>
+      <p style="font-size:13px;color:#888;margin-bottom:1rem">Indica qué columna del Excel corresponde a cada campo:</p>
+      <div class="grid2">
+        <div><label>Nombre</label><select id="map-nombre"></select></div>
+        <div><label>Primer apellido</label><select id="map-ap1"></select></div>
+        <div><label>Segundo apellido (opcional)</label><select id="map-ap2"></select></div>
+        <div><label>DNI / NIE</label><select id="map-dni"></select></div>
+        <div><label>Fecha de nacimiento (opcional)</label><select id="map-fnac"></select></div>
+        <div><label>Teléfono (opcional)</label><select id="map-tel"></select></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="importarSocios()">⚡ Importar todos los socios</button>
+        <button class="btn" onclick="resetImport()">Cancelar</button>
+      </div>
+      <div id="import-msg"></div>
+      <div id="import-progress" style="margin-top:1rem"></div>
+    </div>
+  </div>
+
 </div>
 
 <script type="module">
 const firebaseConfig={apiKey:"AIzaSyBz5iW_Xxtx7kP-_6C3fA_DL3l2M7FQsAo",authDomain:"internacional-huesca.firebaseapp.com",projectId:"internacional-huesca",storageBucket:"internacional-huesca.firebasestorage.app",messagingSenderId:"403874724172",appId:"1:403874724172:web:d21b7b35cbc84b40aef7e9"};
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import{getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot,query,orderBy,getDoc}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot,query,orderBy,getDoc,updateDoc,arrayUnion}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+
 window.doLogin=async()=>{const e=document.getElementById('l-email').value.trim(),p=document.getElementById('l-pass').value,m=document.getElementById('login-msg');try{await signInWithEmailAndPassword(auth,e,p);}catch(e){m.textContent='Correo o contraseña incorrectos.';}};
 window.doLogout=()=>signOut(auth);
-onAuthStateChanged(auth,u=>{document.getElementById('login-screen').style.display=u?'none':'flex';document.getElementById('app-screen').style.display=u?'block':'none';if(u){document.getElementById('user-label').textContent=u.email;suscribirSocios();suscribirEntradas();fillPartidos();}});
-let socios=[],entradas={},partidoActual='';
+onAuthStateChanged(auth,u=>{
+  document.getElementById('login-screen').style.display=u?'none':'flex';
+  document.getElementById('app-screen').style.display=u?'block':'none';
+  if(u){document.getElementById('user-label').textContent=u.email;suscribirSocios();suscribirEntradas();suscribirTaquilla();fillPartidos();}
+});
+
+let socios=[],entradas={},partidoActual='',partidoActualTaquilla='';
+let taquilla={}; // {jornada: {general:N, menor:N}}
 const PARTIDOS=Array.from({length:17},(_,i)=>`Jornada ${String(i+1).padStart(2,'0')}`);
-function suscribirSocios(){onSnapshot(query(collection(db,'socios'),orderBy('numerico')),s=>{socios=s.docs.map(d=>({...d.data(),id:d.id}));renderTabla();document.getElementById('total-socios').textContent=socios.length;fillQrSelect();});}
-function suscribirEntradas(){onSnapshot(collection(db,'entradas'),s=>{entradas={};s.docs.forEach(d=>{entradas[d.id]=d.data();});renderLog();if(document.getElementById('panel-stats').classList.contains('active'))renderStats();});}
+const PRECIOS={general:10,menor:5};
+
+// suscribirSocios reemplazada
+function _suscribirSociosOLD(){
+  onSnapshot(query(collection(db,'socios'),orderBy('numerico')),s=>{
+    socios=s.docs.map(d=>({...d.data(),id:d.id}));
+    renderTabla();document.getElementById('total-socios').textContent=socios.length;fillQrSelect();
+  });
+}
+
+// Exponer función para importador
+window._sociosActuales=[];
+function suscribirSocios(){
+  onSnapshot(query(collection(db,'socios'),orderBy('numerico')),s=>{
+    socios=s.docs.map(d=>({...d.data(),id:d.id}));
+    window._sociosActuales=socios.map(s=>s.dni);
+    renderTabla();document.getElementById('total-socios').textContent=socios.length;fillQrSelect();
+  });
+}
+window._addSocioDirecto=async(datos)=>{
+  const num=nextNum();const id='HUE-'+String(num).padStart(3,'0');
+  await setDoc(doc(db,'socios',id),{...datos,numerico:num,alta:new Date().toISOString()});
+  socios.push({...datos,id,numerico:num});
+};
+
+function suscribirEntradas(){
+  onSnapshot(collection(db,'entradas'),s=>{
+    entradas={};s.docs.forEach(d=>{entradas[d.id]=d.data();});
+    renderLog();
+    if(document.getElementById('panel-stats').classList.contains('active'))renderStats();
+  });
+}
+
+function suscribirTaquilla(){
+  onSnapshot(collection(db,'taquilla'),s=>{
+    taquilla={};s.docs.forEach(d=>{taquilla[d.id]=d.data();});
+    renderTaquilla();
+    if(document.getElementById('panel-stats').classList.contains('active'))renderStats();
+  });
+}
+
+window.cambiarPartidoTaquilla=()=>{
+  partidoActualTaquilla=document.getElementById('taquilla-partido-sel').value;
+  const botones=document.getElementById('taquilla-botones');
+  if(partidoActualTaquilla){botones.style.opacity='1';botones.style.pointerEvents='auto';}
+  else{botones.style.opacity='0.4';botones.style.pointerEvents='none';}
+  renderTaquilla();
+};
+
+window.venderEntrada=async(tipo)=>{
+  if(!partidoActualTaquilla){alert('Selecciona una jornada antes de vender entradas.');return;}
+  try{playSonido('ok');}catch(e){}
+  const ref=doc(db,'taquilla',partidoActualTaquilla);
+  const snap=await getDoc(ref);
+  const data=snap.exists()?snap.data():{general:0,menor:0,historial:[]};
+  if(!data.historial)data.historial=[];
+  data[tipo]=(data[tipo]||0)+1;
+  data.historial.push({tipo,hora:new Date().toISOString()});
+  await setDoc(ref,data);
+};
+
+window.deshacerVenta=async()=>{
+  if(!partidoActualTaquilla)return;
+  const ref=doc(db,'taquilla',partidoActualTaquilla);
+  const snap=await getDoc(ref);
+  if(!snap.exists())return;
+  const data=snap.data();
+  if(!data.historial||!data.historial.length)return;
+  const ultimo=data.historial.pop();
+  data[ultimo.tipo]=Math.max(0,(data[ultimo.tipo]||0)-1);
+  await setDoc(ref,data);
+};
+
+function renderTaquilla(){
+  const d=taquilla[partidoActualTaquilla]||{general:0,menor:0,historial:[]};
+  document.getElementById('contador-general').textContent=d.general||0;
+  document.getElementById('contador-menor').textContent=d.menor||0;
+  const btnDeshacer=document.getElementById('btn-deshacer-venta');
+  const resumen=document.getElementById('taquilla-resumen');
+  if(!partidoActualTaquilla){resumen.innerHTML='';btnDeshacer.style.display='none';return;}
+  const totalEntradas=(d.general||0)+(d.menor||0);
+  const recaudacion=(d.general||0)*PRECIOS.general+(d.menor||0)*PRECIOS.menor;
+  resumen.innerHTML=`<div class="grid2">
+    <div class="stat"><div class="stat-n">${totalEntradas}</div><div class="stat-l">Entradas vendidas — ${partidoActualTaquilla}</div></div>
+    <div class="stat"><div class="stat-n">${recaudacion.toLocaleString('es-ES')} €</div><div class="stat-l">Recaudación de taquilla</div></div>
+  </div>`;
+  btnDeshacer.style.display=(d.historial&&d.historial.length)?'inline-block':'none';
+}
+
 function nextNum(){return socios.length?Math.max(...socios.map(s=>s.numerico||0))+1:1;}
+
 window.addSocio=async()=>{
-  const n=document.getElementById('f-nombre').value.trim(),a1=document.getElementById('f-ap1').value.trim(),a2=document.getElementById('f-ap2').value.trim(),dni=document.getElementById('f-dni').value.trim().toUpperCase(),fnac=document.getElementById('f-fnac').value,tel=document.getElementById('f-tel').value.trim(),email=document.getElementById('f-email').value.trim(),tipo=document.getElementById('f-tipo').value,msg=document.getElementById('form-msg');
-  if(!n||!a1||!dni){msg.className='msg msg-err';msg.textContent='Nombre, primer apellido y DNI son obligatorios.';return;}
+  const n=document.getElementById('f-nombre').value.trim(),a1=document.getElementById('f-ap1').value.trim(),a2=document.getElementById('f-ap2').value.trim(),
+        dni=document.getElementById('f-dni').value.trim().toUpperCase(),fnac=document.getElementById('f-fnac').value,
+        tel=document.getElementById('f-tel').value.trim(),email=document.getElementById('f-email').value.trim(),
+        tipo=document.getElementById('f-tipo').value,msg=document.getElementById('form-msg');
+  if(!n||!a1||!a2||!dni||!fnac||!tel||!email||!tipo){msg.className='msg msg-err';msg.textContent='Todos los campos son obligatorios. Revisa que no falte ninguno.';return;}
+  if(!/^\S+@\S+\.\S+$/.test(email)){msg.className='msg msg-err';msg.textContent='Introduce un email válido.';return;}
   if(socios.find(s=>s.dni===dni)){msg.className='msg msg-err';msg.textContent='Ya existe un socio con ese DNI.';return;}
   document.getElementById('add-spinner').style.display='inline-flex';
   const num=nextNum(),id='HUE-'+String(num).padStart(3,'0');
-  try{await setDoc(doc(db,'socios',id),{nombre:n,ap1:a1,ap2:a2,dni,fnac,tel,email,tipo,numerico:num,alta:new Date().toISOString()});msg.className='msg msg-ok';msg.textContent=`Socio ${id} añadido correctamente.`;clearForm();}
-  catch(e){msg.className='msg msg-err';msg.textContent='Error al guardar.';}
+  try{
+    await setDoc(doc(db,'socios',id),{nombre:n,ap1:a1,ap2:a2,dni,fnac,tel,email,tipo,numerico:num,alta:new Date().toISOString()});
+    msg.className='msg msg-ok';msg.textContent=`Socio ${id} añadido correctamente.`;clearForm();
+  }catch(e){msg.className='msg msg-err';msg.textContent='Error al guardar.';}
   document.getElementById('add-spinner').style.display='none';
 };
 window.deleteSocio=async(id)=>{if(!confirm(`¿Borrar al socio ${id}?`))return;await deleteDoc(doc(db,'socios',id));};
 window.cambiarPartido=()=>{partidoActual=document.getElementById('partido-sel').value;document.getElementById('scan-result').innerHTML='';renderLog();};
 window.escanearManual=()=>{const r=document.getElementById('manual-id').value.trim().toUpperCase();procesarScan(r.startsWith('HUESCA:')?r.replace('HUESCA:',''):r);document.getElementById('manual-id').value='';};
+
 window.procesarScan=async(rawId)=>{
-  const id=rawId.startsWith('HUESCA:')?rawId.replace('HUESCA:',''):rawId,res=document.getElementById('scan-result');
+  const id=rawId.startsWith('HUESCA:')?rawId.replace('HUESCA:',''):rawId;
+  const res=document.getElementById('scan-result');
   if(!partidoActual){res.innerHTML='<div class="scanner-result result-no">Selecciona una jornada antes de escanear.</div>';return;}
   const s=socios.find(x=>x.id===id);
-  if(!s){res.innerHTML=`<div class="scanner-result result-no">❌ QR no reconocido: ${id}</div>`;return;}
-  const ref=doc(db,'entradas',partidoActual),snap=await getDoc(ref),data=snap.exists()?snap.data():{};
-  if(data[id]){res.innerHTML=`<div class="scanner-result result-dup">⚠️ Ya entró — ${s.nombre} ${s.ap1} (${id})<br><small>Primera entrada: ${new Date(data[id]).toLocaleTimeString('es-ES')}</small></div>`;return;}
-  data[id]=new Date().toISOString();await setDoc(ref,data);
-  res.innerHTML=`<div class="scanner-result result-ok">✅ Acceso válido — ${s.nombre} ${s.ap1} ${s.ap2||''}<br><small>${s.tipo} · ${id}</small></div>`;
+  if(!s){playSonido('error');res.innerHTML=`<div class="scanner-result result-no">❌ QR no reconocido: ${id}</div>`;return;}
+
+  // Un único registro por socio y jornada: {hora:'...'}. Si ya existe, queda bloqueado.
+  const ref=doc(db,'entradas',partidoActual);
+  const snap=await getDoc(ref);
+  const data=snap.exists()?snap.data():{};
+
+  if(data[id]){
+    playSonido('error');
+    res.innerHTML=`<div class="scanner-result result-no">⚠️ QR ya utilizado — ${s.nombre} ${s.ap1} (${id})<br><small>Entrada registrada a las ${new Date(data[id]).toLocaleTimeString('es-ES')}. No puede volver a entrar en esta jornada.</small></div>`;
+    return;
+  }
+
+  const ahora=new Date().toISOString();
+  data[id]=ahora;
+  await setDoc(ref,data);
+  playSonido('ok');
+  res.innerHTML=`<div class="scanner-result result-entrada">✅ ACCESO VÁLIDO — ${s.nombre} ${s.ap1} ${s.ap2||''}<br><small>${s.tipo} · ${id} · ${new Date(ahora).toLocaleTimeString('es-ES')}</small></div>`;
 };
+
+// Sonidos de confirmación/rechazo generados con Web Audio API (sin archivos externos)
+let _audioCtx=null;
+function getAudioCtx(){
+  if(!_audioCtx)_audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  if(_audioCtx.state==='suspended')_audioCtx.resume();
+  return _audioCtx;
+}
+function playSonido(tipo){
+  try{
+    const ctx=getAudioCtx();
+    if(tipo==='ok'){
+      // Dos notas ascendentes, tono agradable tipo "ding"
+      [[880,0,0.11],[1318.5,0.10,0.16]].forEach(([freq,delay,dur])=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.type='sine';o.frequency.value=freq;
+        o.connect(g);g.connect(ctx.destination);
+        const t0=ctx.currentTime+delay;
+        g.gain.setValueAtTime(0.0001,t0);
+        g.gain.exponentialRampToValueAtTime(0.35,t0+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+        o.start(t0);o.stop(t0+dur+0.02);
+      });
+    } else {
+      // Tono grave doble, aviso de rechazo
+      [[220,0,0.16],[180,0.18,0.22]].forEach(([freq,delay,dur])=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.type='square';o.frequency.value=freq;
+        o.connect(g);g.connect(ctx.destination);
+        const t0=ctx.currentTime+delay;
+        g.gain.setValueAtTime(0.0001,t0);
+        g.gain.exponentialRampToValueAtTime(0.25,t0+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+        o.start(t0);o.stop(t0+dur+0.02);
+      });
+    }
+  }catch(e){/* Si el navegador bloquea audio sin interacción previa, se ignora silenciosamente */}
+}
+
 window.renderTabla=()=>{
   const q=(document.getElementById('buscador').value||'').toLowerCase(),tbody=document.getElementById('tabla-socios'),empty=document.getElementById('tabla-empty');
   const filt=socios.filter(s=>`${s.nombre} ${s.ap1} ${s.ap2} ${s.dni}`.toLowerCase().includes(q));
@@ -285,28 +516,97 @@ window.renderTabla=()=>{
   empty.style.display='none';
   tbody.innerHTML=filt.map(s=>`<tr><td><code>${s.id}</code></td><td style="color:#fff">${s.nombre} ${s.ap1} ${s.ap2||''}</td><td>${s.dni}</td><td>${s.tipo}</td><td><button class="btn" style="font-size:12px;padding:4px 10px" onclick="quickQR('${s.id}')">Ver QR</button><button class="btn btn-danger" style="font-size:12px;padding:4px 10px;margin-left:4px" onclick="deleteSocio('${s.id}')">Borrar</button></td></tr>`).join('');
 };
-function fillPartidos(){const sel=document.getElementById('partido-sel');sel.innerHTML='<option value="">— Selecciona jornada —</option>'+PARTIDOS.map(p=>`<option value="${p}">${p}</option>`).join('');}
+function fillPartidos(){
+  const sel=document.getElementById('partido-sel');
+  sel.innerHTML='<option value="">— Selecciona jornada —</option>'+PARTIDOS.map(p=>`<option value="${p}">${p}</option>`).join('');
+  const selT=document.getElementById('taquilla-partido-sel');
+  selT.innerHTML='<option value="">— Selecciona jornada —</option>'+PARTIDOS.map(p=>`<option value="${p}">${p}</option>`).join('');
+}
 function fillQrSelect(){const sel=document.getElementById('qr-socio');sel.innerHTML='<option value="">— Selecciona socio —</option>'+socios.map(s=>`<option value="${s.id}">${s.id} — ${s.nombre} ${s.ap1}</option>`).join('');}
+
 function renderLog(){
   const log=document.getElementById('log-entradas');
   if(!partidoActual||!entradas[partidoActual]){log.innerHTML='';return;}
-  const e=entradas[partidoActual],keys=Object.keys(e).sort((a,b)=>new Date(e[b])-new Date(e[a]));
+  const e=entradas[partidoActual];
+  const keys=Object.keys(e).sort((a,b)=>new Date(e[b])-new Date(e[a]));
   if(!keys.length){log.innerHTML='<p class="empty">Sin entradas registradas aún.</p>';return;}
-  log.innerHTML=`<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#fff">${keys.length} entradas en ${partidoActual}</div><div class="overflow-x"><table><thead><tr><th>ID</th><th>Socio</th><th>Hora</th></tr></thead><tbody>${keys.map(id=>{const s=socios.find(x=>x.id===id)||{nombre:id,ap1:'',ap2:''};return `<tr><td><code>${id}</code></td><td>${s.nombre} ${s.ap1}</td><td>${new Date(e[id]).toLocaleTimeString('es-ES')}</td></tr>`;}).join('')}</tbody></table></div>`;
+  log.innerHTML=`
+    <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="background:#1A1A1A;border-radius:8px;padding:8px 14px;font-size:13px"><span style="color:#22c55e;font-weight:700">${keys.length}</span> <span style="color:#666">entradas en esta jornada</span></div>
+    </div>
+    <div class="overflow-x"><table><thead><tr><th>ID</th><th>Socio</th><th>Hora</th></tr></thead><tbody>${
+    keys.map(id=>{const s=socios.find(x=>x.id===id)||{nombre:id,ap1:'',ap2:''};
+    return `<tr><td><code>${id}</code></td><td>${s.nombre} ${s.ap1}</td><td>${new Date(e[id]).toLocaleTimeString('es-ES')}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
 }
+
 window.renderStats=()=>{
   const total=socios.length,tipos={};socios.forEach(s=>{tipos[s.tipo]=(tipos[s.tipo]||0)+1;});
-  const tot=Object.values(entradas).reduce((a,e)=>a+Object.keys(e).length,0);
-  document.getElementById('stats-cards').innerHTML=`<div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Socios totales</div></div><div class="stat"><div class="stat-n">${Object.keys(entradas).length}</div><div class="stat-l">Jornadas con datos</div></div><div class="stat"><div class="stat-n">${tot}</div><div class="stat-l">Entradas acumuladas</div></div>`;
-  document.getElementById('stats-tabla').innerHTML=PARTIDOS.map(p=>{const n=entradas[p]?Object.keys(entradas[p]).length:0,pct=total?Math.round(n/total*100):0,cls=pct>70?'badge-ok':pct>30?'badge-warn':'badge-no';return `<tr><td>${p}</td><td>${n}</td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;}).join('');
-  document.getElementById('stats-tipos').innerHTML=Object.entries(tipos).map(([t,n])=>`<tr><td>${t}</td><td>${n}</td></tr>`).join('')||'<tr><td colspan="2" style="color:#444">Sin datos</td></tr>';
+  // Los socios con Abono Internacional no asisten al campo: se excluyen de la base de cálculo de asistencia
+  const sociosConAsistencia=socios.filter(s=>s.tipo!=='Abono Internacional');
+  const totalAsistencia=sociosConAsistencia.length;
+  // Las entradas registradas de un Abono Internacional (si alguna vez asisten) tampoco cuentan en las stats
+  const idsExcluidos=new Set(socios.filter(s=>s.tipo==='Abono Internacional').map(s=>s.id));
+  const totalEntradas=Object.values(entradas).reduce((acc,e)=>acc+Object.keys(e).filter(id=>!idsExcluidos.has(id)).length,0);
+  document.getElementById('stats-cards').innerHTML=`
+    <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Socios totales</div></div>
+    <div class="stat"><div class="stat-n">${Object.keys(entradas).length}</div><div class="stat-l">Jornadas con datos</div></div>
+    <div class="stat"><div class="stat-n">${totalEntradas}</div><div class="stat-l">Entradas acumuladas</div></div>`;
+  document.getElementById('stats-tabla').innerHTML=PARTIDOS.map(p=>{
+    const e=entradas[p]||{};
+    const n=Object.keys(e).filter(id=>!idsExcluidos.has(id)).length;
+    const pct=totalAsistencia?Math.round(n/totalAsistencia*100):0;
+    const cls=pct>70?'badge-ok':pct>30?'badge-warn':'badge-no';
+    return `<tr><td>${p}</td><td>${n}</td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
+  }).join('');
+  document.getElementById('stats-tipos').innerHTML=Object.entries(tipos).map(([t,n])=>`<tr><td>${t}${t==='Abono Internacional'?' <span style="color:#666;font-size:11px">(no asiste)</span>':''}</td><td>${n}</td></tr>`).join('')||'<tr><td colspan="2" style="color:#444">Sin datos</td></tr>';
+
+  // Taquilla: entradas vendidas a no-socios, por jornada
+  const taquillaPorJornada=PARTIDOS.map(p=>{
+    const d=taquilla[p]||{general:0,menor:0};
+    return {jornada:p,general:d.general||0,menor:d.menor||0,total:(d.general||0)+(d.menor||0),recaudacion:(d.general||0)*PRECIOS.general+(d.menor||0)*PRECIOS.menor};
+  });
+  const totalEntradasTaquilla=taquillaPorJornada.reduce((a,j)=>a+j.total,0);
+  const totalRecaudacion=taquillaPorJornada.reduce((a,j)=>a+j.recaudacion,0);
+  const jornadasConVenta=taquillaPorJornada.filter(j=>j.total>0).length;
+  document.getElementById('stats-taquilla-cards').innerHTML=`
+    <div class="stat"><div class="stat-n">${totalEntradasTaquilla}</div><div class="stat-l">Entradas vendidas</div></div>
+    <div class="stat"><div class="stat-n">${totalRecaudacion.toLocaleString('es-ES')} €</div><div class="stat-l">Recaudación total</div></div>
+    <div class="stat"><div class="stat-n">${jornadasConVenta}</div><div class="stat-l">Jornadas con venta</div></div>`;
+
+  const ctx=document.getElementById('chart-taquilla');
+  if(ctx){
+    if(window._chartTaquilla)window._chartTaquilla.destroy();
+    window._chartTaquilla=new Chart(ctx,{
+      type:'bar',
+      data:{
+        labels:taquillaPorJornada.map(j=>j.jornada.replace('Jornada ','J')),
+        datasets:[
+          {label:'General (10€)',data:taquillaPorJornada.map(j=>j.general),backgroundColor:'#C8102E',borderRadius:4,yAxisID:'y'},
+          {label:'Menor 16 años (5€)',data:taquillaPorJornada.map(j=>j.menor),backgroundColor:'#E8354A',borderRadius:4,yAxisID:'y'},
+          {label:'Recaudación (€)',data:taquillaPorJornada.map(j=>j.recaudacion),type:'line',borderColor:'#eab308',backgroundColor:'#eab308',tension:0.3,yAxisID:'y1',pointRadius:3}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        scales:{
+          x:{ticks:{color:'#999',font:{size:11}},grid:{color:'#1E1E1E'}},
+          y:{stacked:true,beginAtZero:true,ticks:{color:'#999',font:{size:11},precision:0},grid:{color:'#1E1E1E'},title:{display:true,text:'Entradas',color:'#666',font:{size:11}}},
+          y1:{position:'right',beginAtZero:true,ticks:{color:'#eab308',font:{size:11}},grid:{display:false},title:{display:true,text:'€',color:'#eab308',font:{size:11}}}
+        },
+        plugins:{legend:{labels:{color:'#CCC',font:{size:11},boxWidth:12}}}
+      }
+    });
+  }
 };
-window.clearForm=()=>{['f-nombre','f-ap1','f-ap2','f-dni','f-tel','f-email','f-fnac'].forEach(id=>{document.getElementById(id).value='';});document.getElementById('f-tipo').value='General';document.getElementById('form-msg').textContent='';};
-window.switchTab=(t)=>{const names=['socios','qr','scanner','stats'];document.querySelectorAll('.tab').forEach((b,i)=>{b.classList.toggle('active',names[i]===t);document.getElementById('panel-'+names[i]).classList.toggle('active',names[i]===t);});if(t==='stats')renderStats();};
+window.clearForm=()=>{['f-nombre','f-ap1','f-ap2','f-dni','f-tel','f-email','f-fnac'].forEach(id=>{document.getElementById(id).value='';});document.getElementById('f-tipo').value='';document.getElementById('form-msg').textContent='';};
+window.switchTab=(t)=>{const names=['socios','qr','scanner','taquilla','stats','import'];document.querySelectorAll('.tab').forEach((b,i)=>{b.classList.toggle('active',names[i]===t);document.getElementById('panel-'+names[i]).classList.toggle('active',names[i]===t);});if(t==='stats')renderStats();if(t==='taquilla')renderTaquilla();};
 window.quickQR=(id)=>{switchTab('qr');setTimeout(()=>{document.getElementById('qr-socio').value=id;previewQR();},100);};
 window.exportCSV=()=>{const h=['ID','Nombre','Apellido 1','Apellido 2','DNI','Fecha nac.','Teléfono','Email','Tipo','Alta'],r=socios.map(s=>[s.id,s.nombre,s.ap1,s.ap2,s.dni,s.fnac,s.tel,s.email,s.tipo,s.alta]),csv=[h,...r].map(row=>row.map(c=>`"${c||''}"`).join(',')).join('\n'),a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='Socios_InternacionalHuesca.csv';a.click();};
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -319,6 +619,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 let streamActivo=false,rafId=null;
 window.toggleCamara=async()=>{
+  try{getAudioCtx();}catch(e){} // Desbloquea el audio aprovechando este gesto del usuario
   const wrap=document.getElementById('video-wrap'),video=document.getElementById('scanner-video'),btn=document.getElementById('btn-camara'),status=document.getElementById('scan-status');
   if(streamActivo){cancelAnimationFrame(rafId);video.srcObject&&video.srcObject.getTracks().forEach(t=>t.stop());video.srcObject=null;wrap.style.display='none';btn.textContent='📷 Abrir cámara';status.textContent='';streamActivo=false;return;}
   try{
@@ -334,7 +635,10 @@ function escanearFrame(video,status){
     if(video.readyState===video.HAVE_ENOUGH_DATA){
       canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0,canvas.width,canvas.height);
       const img=ctx.getImageData(0,0,canvas.width,canvas.height),code=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});
-      if(code){status.textContent='QR detectado ✓';window.procesarScan(code.data);streamActivo=false;setTimeout(()=>{if(document.getElementById('video-wrap').style.display!=='none'){streamActivo=true;status.textContent='Listo para el siguiente socio...';rafId=requestAnimationFrame(tick);}},3000);return;}
+      if(code){
+        status.textContent='QR detectado ✓';window.procesarScan(code.data);streamActivo=false;
+        setTimeout(()=>{if(document.getElementById('video-wrap').style.display!=='none'){streamActivo=true;status.textContent='Listo para el siguiente...';rafId=requestAnimationFrame(tick);}},3000);return;
+      }
     }
     rafId=requestAnimationFrame(tick);
   }
@@ -362,5 +666,121 @@ window.downloadAllQRs=async()=>{
   prog.textContent='Empaquetando ZIP...';const blob=await zip.generateAsync({type:'blob'});saveAs(blob,'QRs_InternacionalHuesca.zip');prog.textContent=`Listo. ${ids.length} QRs descargados.`;
 };
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+let excelData=null, excelHeaders=[];
+
+window.handleDrop=e=>{e.preventDefault();document.getElementById('drop-zone').style.borderColor='#333';const f=e.dataTransfer.files[0];if(f)handleFile(f);};
+
+window.handleFile=file=>{
+  if(!file){return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const json=XLSX.utils.sheet_to_json(ws,{defval:''});
+    if(!json.length){document.getElementById('import-preview').innerHTML='<p style="color:#E8354A;font-size:13px">El archivo está vacío o no tiene el formato correcto.</p>';return;}
+    excelData=json;
+    excelHeaders=Object.keys(json[0]);
+    mostrarPreview();
+    mostrarMapeado();
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+function mostrarPreview(){
+  const prev=document.getElementById('import-preview');
+  const muestra=excelData.slice(0,3);
+  prev.innerHTML=`<div style="font-size:13px;color:#888;margin-bottom:8px">Vista previa — ${excelData.length} filas detectadas:</div>
+  <div class="overflow-x"><table style="font-size:12px">
+    <thead><tr>${excelHeaders.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${muestra.map(r=>`<tr>${excelHeaders.map(h=>`<td>${r[h]||''}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div>
+  ${excelData.length>3?`<div style="font-size:12px;color:#555;margin-top:4px">...y ${excelData.length-3} filas más</div>`:''}`;
+}
+
+function mostrarMapeado(){
+  const card=document.getElementById('card-mapeado');
+  card.style.display='block';
+  const opts='<option value="">— No usar —</option>'+excelHeaders.map(h=>`<option value="${h}">${h}</option>`).join('');
+  ['map-nombre','map-ap1','map-ap2','map-dni','map-fnac','map-tel'].forEach(id=>{
+    document.getElementById(id).innerHTML=opts;
+  });
+  // Autodetección inteligente de columnas
+  const automap={
+    'map-nombre':['nombre','name','nombres','primer nombre','first name'],
+    'map-ap1':['apellido1','apellido 1','primer apellido','apellidos','surname','lastname','last name'],
+    'map-ap2':['apellido2','apellido 2','segundo apellido'],
+    'map-dni':['dni','nie','nif','documento','id'],
+    'map-fnac':['fecha','nacimiento','fecha de nacimiento','birthdate','birth','fecha nac','fnac','f.nacimiento'],
+    'map-tel':['telefono','teléfono','tel','phone','movil','móvil']
+  };
+  Object.entries(automap).forEach(([selId,keywords])=>{
+    const sel=document.getElementById(selId);
+    const match=excelHeaders.find(h=>keywords.some(k=>h.toLowerCase().includes(k)));
+    if(match)sel.value=match;
+  });
+}
+
+window.importarSocios=async()=>{
+  if(!excelData){return;}
+  const maps={
+    nombre:document.getElementById('map-nombre').value,
+    ap1:document.getElementById('map-ap1').value,
+    ap2:document.getElementById('map-ap2').value,
+    dni:document.getElementById('map-dni').value,
+    fnac:document.getElementById('map-fnac').value,
+    tel:document.getElementById('map-tel').value,
+  };
+  if(!maps.nombre||!maps.ap1||!maps.dni){
+    document.getElementById('import-msg').innerHTML='<div class="msg msg-err">Nombre, primer apellido y DNI son obligatorios.</div>';return;
+  }
+  const prog=document.getElementById('import-progress');
+  const msg=document.getElementById('import-msg');
+  let ok=0,skip=0,err=0;
+
+  // Obtener socios actuales para evitar duplicados por DNI
+  const dniExistentes=new Set(window._sociosActuales||[]);
+
+  for(let i=0;i<excelData.length;i++){
+    const row=excelData[i];
+    const dni=(row[maps.dni]||'').toString().trim().toUpperCase();
+    const nombre=(row[maps.nombre]||'').toString().trim();
+    const ap1=(row[maps.ap1]||'').toString().trim();
+    if(!nombre||!ap1||!dni){skip++;continue;}
+    if(dniExistentes.has(dni)){skip++;continue;}
+
+    prog.innerHTML=`<div style="font-size:13px;color:#888">Importando ${i+1} de ${excelData.length}... (${ok} OK, ${skip} omitidos)</div>`;
+
+    try{
+      await window._addSocioDirecto({
+        nombre,
+        ap1,
+        ap2:(row[maps.ap2]||'').toString().trim(),
+        dni,
+        fnac:(row[maps.fnac]||'').toString().trim(),
+        tel:(row[maps.tel]||'').toString().trim(),
+        email:'',
+        tipo:'Abono Academia'
+      });
+      dniExistentes.add(dni);
+      ok++;
+    }catch(e){err++;}
+    await new Promise(r=>setTimeout(r,120));
+  }
+  prog.innerHTML='';
+  msg.innerHTML=`<div class="msg msg-ok">✅ Importación completada: <strong>${ok} socios añadidos</strong>${skip?' · '+skip+' omitidos (ya existían o datos incompletos)':''}${err?' · '+err+' errores':''}</div>`;
+};
+
+window.resetImport=()=>{
+  excelData=null;excelHeaders=[];
+  document.getElementById('import-preview').innerHTML='';
+  document.getElementById('card-mapeado').style.display='none';
+  document.getElementById('import-msg').innerHTML='';
+  document.getElementById('excel-input').value='';
+};
+</script>
+
 </body>
 </html>
