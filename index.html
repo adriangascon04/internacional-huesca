@@ -452,8 +452,12 @@ let socios=[],entradas={},partidoActual='',partidoActualTaquilla='';
 let taquilla={}; // {jornadaConTemporada: {general:N, menor:N}}
 let jornadasBloqueadas={}; // {jornadaConTemporada: true}
 let temporadaActual=localStorage.getItem('hue_temporada')||'2026/27';
-function getPartidos(){return Array.from({length:17},(_,i)=>`${temporadaActual} - Jornada ${String(i+1).padStart(2,'0')}`);}
+// PARTIDOS: claves sanitizadas (sin /) para usar en Firestore y en memoria
+// PARTIDOS_LABEL: nombres bonitos para mostrar en pantalla
+function getPartidos(){return Array.from({length:17},(_,i)=>jKey(`${temporadaActual} - Jornada ${String(i+1).padStart(2,'0')}`));}
+function getPartidosLabel(){return Array.from({length:17},(_,i)=>`${temporadaActual} - Jornada ${String(i+1).padStart(2,'0')}`);}
 let PARTIDOS=getPartidos();
+let PARTIDOS_LABEL=getPartidosLabel();
 const PRECIOS={general:10,menor:5};
 const jKey=j=>j.replace(/\//g,'-'); // Firestore no permite / en IDs de documento
 
@@ -461,6 +465,7 @@ window.cambiarTemporada=()=>{
   temporadaActual=document.getElementById('temporada-sel').value;
   localStorage.setItem('hue_temporada',temporadaActual);
   PARTIDOS=getPartidos();
+  PARTIDOS_LABEL=getPartidosLabel();
   partidoActual='';partidoActualTaquilla='';
   document.getElementById('scan-result').innerHTML='';
   fillPartidos();
@@ -623,7 +628,7 @@ window.deshacerVenta=async()=>{
 };
 
 function renderTaquilla(){
-  const d=taquilla[partidoActualTaquilla]||{general:0,menor:0,historial:[]};
+  const d=taquilla[jKey(partidoActualTaquilla)]||{general:0,menor:0,historial:[]};
   document.getElementById('contador-general').textContent=d.general||0;
   document.getElementById('contador-menor').textContent=d.menor||0;
   const btnDeshacer=document.getElementById('btn-deshacer-venta');
@@ -631,8 +636,9 @@ function renderTaquilla(){
   if(!partidoActualTaquilla){resumen.innerHTML='';btnDeshacer.style.display='none';return;}
   const totalEntradas=(d.general||0)+(d.menor||0);
   const recaudacion=(d.general||0)*PRECIOS.general+(d.menor||0)*PRECIOS.menor;
+  const labelActual=PARTIDOS_LABEL[PARTIDOS.indexOf(partidoActualTaquilla)]||partidoActualTaquilla;
   resumen.innerHTML=`<div class="grid2">
-    <div class="stat"><div class="stat-n">${totalEntradas}</div><div class="stat-l">Entradas vendidas — ${partidoActualTaquilla}</div></div>
+    <div class="stat"><div class="stat-n">${totalEntradas}</div><div class="stat-l">Entradas vendidas — ${labelActual}</div></div>
     <div class="stat"><div class="stat-n">${recaudacion.toLocaleString('es-ES')} €</div><div class="stat-l">Recaudación de taquilla</div></div>
   </div>`;
   btnDeshacer.style.display=(d.historial&&d.historial.length)?'inline-block':'none';
@@ -888,10 +894,10 @@ window.renderTabla=()=>{
   }).join('');
 };
 function fillPartidos(){
-  const sel=document.getElementById('partido-sel');
-  sel.innerHTML='<option value="">— Selecciona jornada —</option>'+PARTIDOS.map(p=>`<option value="${p}">${p}</option>`).join('');
-  const selT=document.getElementById('taquilla-partido-sel');
-  selT.innerHTML='<option value="">— Selecciona jornada —</option>'+PARTIDOS.map(p=>`<option value="${p}">${p}</option>`).join('');
+  const opciones='<option value="">— Selecciona jornada —</option>'+
+    PARTIDOS.map((p,i)=>`<option value="${p}">${PARTIDOS_LABEL[i]}</option>`).join('');
+  document.getElementById('partido-sel').innerHTML=opciones;
+  document.getElementById('taquilla-partido-sel').innerHTML=opciones;
 }
 function fillQrSelect(){const sel=document.getElementById('qr-socio');sel.innerHTML='<option value="">— Selecciona socio —</option>'+socios.map(s=>`<option value="${s.id}">${s.id} — ${s.nombre} ${s.ap1}</option>`).join('');}
 
@@ -928,18 +934,18 @@ window.renderStats=()=>{
     <div class="stat" style="${pendientesPago>0?'border-color:#3A1A1A':''}"><div class="stat-n" style="${pendientesPago>0?'color:#E8354A':''}">${pendientesPago}</div><div class="stat-l">Pendientes de pago</div></div>`;
 
   // Tabla fusionada: socios + taquilla por jornada
-  const datosPorJornada=PARTIDOS.map(p=>{
+  const datosPorJornada=PARTIDOS.map((p,i)=>{
     const e=entradas[p]||{};
     const nSocios=Object.keys(e).filter(id=>!idsExcluidos.has(id)).length;
     const d=taquilla[p]||{};
     const nTaquilla=(d.general||0)+(d.menor||0);
     const pct=totalAsistencia?Math.round(nSocios/totalAsistencia*100):0;
-    return {jornada:p,nSocios,pct,nTaquilla,totalAsistentes:nSocios+nTaquilla};
+    return {jornada:p,label:PARTIDOS_LABEL[i],nSocios,pct,nTaquilla,totalAsistentes:nSocios+nTaquilla};
   });
 
   document.getElementById('stats-tabla').innerHTML=datosPorJornada.map(j=>{
     const cls=j.pct>70?'badge-ok':j.pct>30?'badge-warn':'badge-no';
-    return `<tr><td>${j.jornada}</td><td>${j.nSocios}</td><td><span class="badge ${cls}">${j.pct}%</span></td><td>${j.nTaquilla}</td><td style="color:#fff;font-weight:600">${j.totalAsistentes}</td></tr>`;
+    return `<tr><td>${j.label}</td><td>${j.nSocios}</td><td><span class="badge ${cls}">${j.pct}%</span></td><td>${j.nTaquilla}</td><td style="color:#fff;font-weight:600">${j.totalAsistentes}</td></tr>`;
   }).join('');
 
   document.getElementById('stats-tipos').innerHTML=Object.entries(tipos).map(([t,n])=>`<tr><td>${t}${t==='Abono Internacional'?' <span style="color:#666;font-size:11px">(no asiste)</span>':''}</td><td>${n}</td></tr>`).join('')||'<tr><td colspan="2" style="color:#444">Sin datos</td></tr>';
@@ -965,7 +971,7 @@ window.renderStats=()=>{
     window._chartTaquilla=new Chart(ctx,{
       type:'bar',
       data:{
-        labels:datosPorJornada.map(j=>j.jornada.split('Jornada ')[1]?('J'+j.jornada.split('Jornada ')[1]):j.jornada),
+        labels:datosPorJornada.map(j=>j.label.split('Jornada ')[1]?('J'+j.label.split('Jornada ')[1]):j.label),
         datasets:[
           {label:'Socios',data:datosPorJornada.map(j=>j.nSocios),backgroundColor:'#C8102E',borderRadius:4},
           {label:'Taquilla (no socios)',data:datosPorJornada.map(j=>j.nTaquilla),backgroundColor:'#888',borderRadius:4},
@@ -1020,11 +1026,11 @@ window.renderStats=()=>{
   }).join(''):'<tr><td colspan="4" style="color:#444">Sin jornadas registradas aún</td></tr>';
 
   // Punto 5: ingresos por jornada (taquilla)
-  const ingresosPorJornada=PARTIDOS.map(p=>{
+  const ingresosPorJornada=PARTIDOS.map((p,i)=>{
     const d=taquilla[p]||{general:0,menor:0};
     const n=(d.general||0)+(d.menor||0);
     const recaudacion=(d.general||0)*PRECIOS.general+(d.menor||0)*PRECIOS.menor;
-    return{jornada:p,n,recaudacion};
+    return{jornada:p,label:PARTIDOS_LABEL[i],n,recaudacion};
   });
   const totalRecaudacion=ingresosPorJornada.reduce((a,j)=>a+j.recaudacion,0);
   const jornadasConIngresos=ingresosPorJornada.filter(j=>j.n>0).length;
@@ -1034,7 +1040,7 @@ window.renderStats=()=>{
     <div class="stat"><div class="stat-n">${mediaPorJornada.toLocaleString('es-ES')} €</div><div class="stat-l">Media por jornada</div></div>
     <div class="stat"><div class="stat-n">${jornadasConIngresos}</div><div class="stat-l">Jornadas con venta</div></div>`;
   document.getElementById('stats-ingresos-tabla').innerHTML=ingresosPorJornada.map(j=>
-    `<tr><td>${j.jornada}</td><td>${j.n}</td><td style="color:#fff">${j.recaudacion.toLocaleString('es-ES')} €</td></tr>`
+    `<tr><td>${j.label}</td><td>${j.n}</td><td style="color:#fff">${j.recaudacion.toLocaleString('es-ES')} €</td></tr>`
   ).join('');
 };
 window.clearForm=()=>{['f-nombre','f-ap1','f-ap2','f-dni','f-tel','f-email','f-fnac'].forEach(id=>{document.getElementById(id).value='';});document.getElementById('f-tipo').value='';document.getElementById('form-msg').textContent='';};
