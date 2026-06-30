@@ -117,6 +117,12 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
       <div class="topbar-title">Internacional Huesca &mdash; Abonados</div>
     </div>
     <div class="topbar-right">
+      <select id="temporada-sel" onchange="cambiarTemporada()" style="background:var(--gris);border:1px solid var(--gris-borde);color:#fff;border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit">
+        <option value="2026/27">Temporada 26/27</option>
+        <option value="2027/28">Temporada 27/28</option>
+        <option value="2028/29">Temporada 28/29</option>
+        <option value="2029/30">Temporada 29/30</option>
+      </select>
       <span><span class="sync-dot"></span><span style="font-size:11px;color:#555">En línea</span></span>
       <span class="topbar-user" id="user-label"></span>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
@@ -439,14 +445,29 @@ window.doLogout=()=>signOut(auth);
 onAuthStateChanged(auth,u=>{
   document.getElementById('login-screen').style.display=u?'none':'flex';
   document.getElementById('app-screen').style.display=u?'block':'none';
-  if(u){document.getElementById('user-label').textContent=u.email;suscribirSocios();suscribirEntradas();suscribirTaquilla();suscribirBloqueos();suscribirBackups();fillPartidos();}
+  if(u){document.getElementById('user-label').textContent=u.email;document.getElementById('temporada-sel').value=temporadaActual;suscribirSocios();suscribirEntradas();suscribirTaquilla();suscribirBloqueos();suscribirBackups();fillPartidos();}
 });
 
 let socios=[],entradas={},partidoActual='',partidoActualTaquilla='';
-let taquilla={}; // {jornada: {general:N, menor:N}}
-let jornadasBloqueadas={}; // {jornada: true}
-const PARTIDOS=Array.from({length:17},(_,i)=>`Jornada ${String(i+1).padStart(2,'0')}`);
+let taquilla={}; // {jornadaConTemporada: {general:N, menor:N}}
+let jornadasBloqueadas={}; // {jornadaConTemporada: true}
+let temporadaActual=localStorage.getItem('hue_temporada')||'2026/27';
+function getPartidos(){return Array.from({length:17},(_,i)=>`${temporadaActual} - Jornada ${String(i+1).padStart(2,'0')}`);}
+let PARTIDOS=getPartidos();
 const PRECIOS={general:10,menor:5};
+
+window.cambiarTemporada=()=>{
+  temporadaActual=document.getElementById('temporada-sel').value;
+  localStorage.setItem('hue_temporada',temporadaActual);
+  PARTIDOS=getPartidos();
+  partidoActual='';partidoActualTaquilla='';
+  document.getElementById('scan-result').innerHTML='';
+  fillPartidos();
+  renderLog();
+  renderTaquilla();
+  actualizarUIBloqueo();
+  if(document.getElementById('panel-stats').classList.contains('active'))renderStats();
+};
 
 // suscribirSocios reemplazada
 function _suscribirSociosOLD(){
@@ -647,14 +668,30 @@ window.verPerfil=(id)=>{
   if(!s)return;
   _perfilActualId=id;
 
+  // Socio Fundador: dado de alta antes del 30 de mayo de 2027 (fin de la temporada 26/27)
+  const FECHA_LIMITE_FUNDADOR=new Date('2027-05-30T23:59:59');
+  const esFundador=s.alta&&new Date(s.alta)<=FECHA_LIMITE_FUNDADOR;
+
   document.getElementById('perfil-nombre').textContent=`${s.nombre} ${s.ap1} ${s.ap2||''}`;
-  document.getElementById('perfil-subtitulo').textContent=`Socio nº ${s.id} · ${s.tipo}`;
+  document.getElementById('perfil-subtitulo').innerHTML=`Socio nº ${s.id} · ${s.tipo}${esFundador?' · <span style="color:#eab308;font-weight:600">⭐ Socio Fundador</span>':''}`;
 
   // Calcular asistencia del socio en todas las jornadas
   const jornadasAsistidas=PARTIDOS.filter(p=>entradas[p]&&entradas[p][id]);
   const totalJornadas=PARTIDOS.filter(p=>entradas[p]).length; // jornadas en las que ya hay datos registrados
   const pct=totalJornadas?Math.round(jornadasAsistidas.length/totalJornadas*100):0;
-  const fechaAlta=s.alta?new Date(s.alta).toLocaleDateString('es-ES'):'—';
+
+  // Fecha de alta con años de antigüedad calculados
+  let fechaAlta='—';
+  if(s.alta){
+    const dAlta=new Date(s.alta);
+    const ahora=new Date();
+    let años=ahora.getFullYear()-dAlta.getFullYear();
+    const aunNoCumplido=(ahora.getMonth()<dAlta.getMonth())||(ahora.getMonth()===dAlta.getMonth()&&ahora.getDate()<dAlta.getDate());
+    if(aunNoCumplido)años--;
+    años=Math.max(0,años);
+    const textoAños=años===0?'menos de 1 año':años===1?'1 año':`${años} años`;
+    fechaAlta=`${dAlta.toLocaleDateString('es-ES')} (${textoAños})`;
+  }
 
   document.getElementById('perfil-stats').innerHTML=`
     <div class="stat"><div class="stat-n">${jornadasAsistidas.length}</div><div class="stat-l">Partidos asistidos</div></div>
@@ -668,7 +705,7 @@ window.verPerfil=(id)=>{
     <tr><td style="color:#888">Teléfono</td><td style="color:#fff">${s.tel||'—'}</td></tr>
     <tr><td style="color:#888">Email</td><td style="color:#fff">${s.email||'—'}</td></tr>
     <tr><td style="color:#888">Tipo de abono</td><td style="color:#fff">${s.tipo}</td></tr>
-    <tr><td style="color:#888">Socio desde</td><td style="color:#fff">${fechaAlta}</td></tr>`;
+    <tr><td style="color:#888">Socio desde</td><td style="color:#fff">${fechaAlta}${esFundador?' <span style="color:#eab308">⭐ Fundador</span>':''}</td></tr>`;
 
   document.getElementById('perfil-asistencia').innerHTML=PARTIDOS.map(p=>{
     const hayDatos=!!entradas[p];
@@ -835,14 +872,18 @@ window.renderTabla=()=>{
   const filt=socios.filter(s=>`${s.nombre} ${s.ap1} ${s.ap2} ${s.dni}`.toLowerCase().includes(q));
   if(!filt.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  tbody.innerHTML=filt.map(s=>`<tr>
+  const FECHA_LIMITE_FUNDADOR=new Date('2027-05-30T23:59:59');
+  tbody.innerHTML=filt.map(s=>{
+    const esFundador=s.alta&&new Date(s.alta)<=FECHA_LIMITE_FUNDADOR;
+    return `<tr>
     <td><code>${s.id}</code></td>
-    <td style="color:#fff">${s.nombre} ${s.ap1} ${s.ap2||''}</td>
+    <td style="color:#fff">${s.nombre} ${s.ap1} ${s.ap2||''}${esFundador?' <span title="Socio Fundador" style="color:#eab308">⭐</span>':''}</td>
     <td>${s.dni}</td>
     <td>${s.tipo}</td>
     <td style="text-align:center"><input type="checkbox" ${s.pagado?'checked':''} onchange="togglePagado('${s.id}',this.checked)" style="width:18px;height:18px;accent-color:#22c55e;cursor:pointer"/></td>
     <td><button class="btn" style="font-size:12px;padding:4px 10px" onclick="verPerfil('${s.id}')">👤 Perfil</button><button class="btn" style="font-size:12px;padding:4px 10px;margin-left:4px" onclick="quickQR('${s.id}')">Ver QR</button><button class="btn btn-danger" style="font-size:12px;padding:4px 10px;margin-left:4px" onclick="deleteSocio('${s.id}')">Borrar</button></td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 };
 function fillPartidos(){
   const sel=document.getElementById('partido-sel');
@@ -922,7 +963,7 @@ window.renderStats=()=>{
     window._chartTaquilla=new Chart(ctx,{
       type:'bar',
       data:{
-        labels:datosPorJornada.map(j=>j.jornada.replace('Jornada ','J')),
+        labels:datosPorJornada.map(j=>j.jornada.split('Jornada ')[1]?('J'+j.jornada.split('Jornada ')[1]):j.jornada),
         datasets:[
           {label:'Socios',data:datosPorJornada.map(j=>j.nSocios),backgroundColor:'#C8102E',borderRadius:4},
           {label:'Taquilla (no socios)',data:datosPorJornada.map(j=>j.nTaquilla),backgroundColor:'#888',borderRadius:4},
