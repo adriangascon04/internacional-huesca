@@ -49,7 +49,9 @@ input:focus,select:focus{outline:none;border-color:var(--rojo);box-shadow:0 0 0 
 input::placeholder{color:#555}select option{background:var(--negro-card)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-@media(max-width:600px){.grid2,.grid3{grid-template-columns:1fr}}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+@media(max-width:600px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+@media(min-width:601px) and (max-width:800px){.grid4{grid-template-columns:1fr 1fr}}
 .btn{padding:9px 18px;border:1px solid var(--gris-borde);border-radius:8px;background:var(--gris);color:var(--blanco-apagado);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500;transition:all 0.15s;}
 .btn:hover{border-color:var(--rojo);color:var(--blanco)}.btn:active{transform:scale(0.98)}
 .btn-primary{background:var(--rojo);color:var(--blanco);border-color:var(--rojo);font-weight:600;}
@@ -97,7 +99,7 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
     <div class="login-logo">
       <img id="logo-login" src="" alt="Internacional Huesca"/>
       <div class="club">Internacional Huesca</div>
-      <div class="sub">Sistema de abonados &middot; Temporada 2024/25</div>
+      <div class="sub">Sistema de abonados &middot; Temporada 2026/27</div>
     </div>
     <label>Correo electrónico</label>
     <input type="email" id="l-email" placeholder="nombre@club.es" autocomplete="email"/>
@@ -130,6 +132,22 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
   </div>
 
   <div id="panel-socios" class="panel active">
+    <div class="card" style="background:#0F0F0F;border-color:#262626">
+      <div class="card-title">Precios de los abonos · Temporada 2026/27</div>
+      <div class="overflow-x">
+        <table>
+          <thead><tr><th>Tipo</th><th>Precio</th><th>Detalle</th></tr></thead>
+          <tbody>
+            <tr><td style="color:#fff;font-weight:500">Abono Familiar</td><td style="color:var(--rojo-claro);font-weight:600">170 €</td><td>Incluye 2 adultos y hasta 3 hijos</td></tr>
+            <tr><td style="color:#fff;font-weight:500">Abono General</td><td style="color:var(--rojo-claro);font-weight:600">95 €</td><td>—</td></tr>
+            <tr><td style="color:#fff;font-weight:500">Abono Internacional</td><td style="color:var(--rojo-claro);font-weight:600">80 €</td><td>No incluye asistencia regular al campo</td></tr>
+            <tr><td style="color:#fff;font-weight:500">Abono Academia</td><td style="color:#22c55e;font-weight:600">Gratuito</td><td>Jugadores de la academia del club</td></tr>
+            <tr><td style="color:#fff;font-weight:500">Abono Jubilado</td><td style="color:var(--rojo-claro);font-weight:600">75 €</td><td>—</td></tr>
+            <tr><td style="color:#fff;font-weight:500">Abono -16 años</td><td style="color:var(--rojo-claro);font-weight:600">50 €</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">Añadir nuevo socio</div>
       <p style="font-size:12px;color:#666;margin-bottom:0.5rem">Todos los campos son obligatorios.</p>
@@ -149,7 +167,7 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
           <select id="f-tipo">
             <option value="">— Selecciona —</option>
             <option>Abono Familiar</option>
-            <option>Abono Normal</option>
+            <option>Abono General</option>
             <option>Abono Internacional</option>
             <option>Abono Academia</option>
             <option>Abono Jubilado</option>
@@ -171,7 +189,7 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
       </div>
       <input placeholder="Buscar por nombre, apellido o DNI..." id="buscador" oninput="renderTabla()" style="margin-bottom:1rem"/>
       <div class="overflow-x">
-        <table><thead><tr><th>ID</th><th>Nombre completo</th><th>DNI</th><th>Tipo</th><th>Acciones</th></tr></thead><tbody id="tabla-socios"></tbody></table>
+        <table><thead><tr><th>ID</th><th>Nombre completo</th><th>DNI</th><th>Tipo</th><th>Pagado</th><th>Acciones</th></tr></thead><tbody id="tabla-socios"></tbody></table>
       </div>
       <div id="tabla-empty" class="empty" style="display:none">No hay socios aún. Añade el primero arriba.</div>
     </div>
@@ -186,7 +204,7 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
     </div>
     <div class="card">
       <div class="card-title">Descargar todos los QRs</div>
-      <p style="font-size:13px;color:#666;margin-bottom:1rem">Genera un ZIP con un PNG por cada socio (HUE-001.png, HUE-002.png...).</p>
+      <p style="font-size:13px;color:#666;margin-bottom:1rem">Genera un ZIP con un PNG por cada socio (1.png, 2.png, 3.png...).</p>
       <button class="btn btn-primary" onclick="downloadAllQRs()">⬇ Descargar ZIP con todos los QRs</button>
       <div id="zip-progress" style="margin-top:8px;font-size:12px;color:#666"></div>
     </div>
@@ -214,7 +232,7 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
         <div style="margin-top:1.5rem;border-top:1px solid #1E1E1E;padding-top:1rem">
           <p style="font-size:12px;color:#555;margin-bottom:8px">O introduce el ID manualmente:</p>
           <div style="display:flex;gap:8px;max-width:320px;margin:0 auto">
-            <input id="manual-id" placeholder="HUE-001" style="flex:1" onkeydown="if(event.key==='Enter')escanearManual()"/>
+            <input id="manual-id" placeholder="Nº de socio, ej. 1" style="flex:1" onkeydown="if(event.key==='Enter')escanearManual()"/>
             <button class="btn btn-primary" onclick="escanearManual()">Verificar</button>
           </div>
         </div>
@@ -227,7 +245,7 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
   <div id="panel-stats" class="panel">
     <div class="card">
       <div class="card-title">Resumen general</div>
-      <div class="grid3" id="stats-cards"></div>
+      <div class="grid4" id="stats-cards"></div>
     </div>
     <div class="card">
       <div class="card-title">Asistencia por jornada</div>
@@ -355,9 +373,10 @@ function suscribirSocios(){
   });
 }
 window._addSocioDirecto=async(datos)=>{
-  const num=nextNum();const id='HUE-'+String(num).padStart(3,'0');
-  await setDoc(doc(db,'socios',id),{...datos,numerico:num,alta:new Date().toISOString()});
-  socios.push({...datos,id,numerico:num});
+  const num=nextNum();const id=String(num);
+  const pagado=datos.tipo==='Abono Academia'; // El abono Academia es gratuito, se marca pagado automáticamente
+  await setDoc(doc(db,'socios',id),{...datos,numerico:num,alta:new Date().toISOString(),pagado});
+  socios.push({...datos,id,numerico:num,pagado});
 };
 
 function suscribirEntradas(){
@@ -435,14 +454,19 @@ window.addSocio=async()=>{
   if(!/^\S+@\S+\.\S+$/.test(email)){msg.className='msg msg-err';msg.textContent='Introduce un email válido.';return;}
   if(socios.find(s=>s.dni===dni)){msg.className='msg msg-err';msg.textContent='Ya existe un socio con ese DNI.';return;}
   document.getElementById('add-spinner').style.display='inline-flex';
-  const num=nextNum(),id='HUE-'+String(num).padStart(3,'0');
+  const num=nextNum(),id=String(num);
   try{
-    await setDoc(doc(db,'socios',id),{nombre:n,ap1:a1,ap2:a2,dni,fnac,tel,email,tipo,numerico:num,alta:new Date().toISOString()});
+    const pagadoInicial=tipo==='Abono Academia';
+    await setDoc(doc(db,'socios',id),{nombre:n,ap1:a1,ap2:a2,dni,fnac,tel,email,tipo,numerico:num,alta:new Date().toISOString(),pagado:pagadoInicial});
     msg.className='msg msg-ok';msg.textContent=`Socio ${id} añadido correctamente.`;clearForm();
   }catch(e){msg.className='msg msg-err';msg.textContent='Error al guardar.';}
   document.getElementById('add-spinner').style.display='none';
 };
 window.deleteSocio=async(id)=>{if(!confirm(`¿Borrar al socio ${id}?`))return;await deleteDoc(doc(db,'socios',id));};
+window.togglePagado=async(id,pagado)=>{
+  try{await updateDoc(doc(db,'socios',id),{pagado});}
+  catch(e){alert('No se pudo actualizar el estado de pago. Inténtalo de nuevo.');}
+};
 window.cambiarPartido=()=>{partidoActual=document.getElementById('partido-sel').value;document.getElementById('scan-result').innerHTML='';renderLog();};
 window.escanearManual=()=>{const r=document.getElementById('manual-id').value.trim().toUpperCase();procesarScan(r.startsWith('HUESCA:')?r.replace('HUESCA:',''):r);document.getElementById('manual-id').value='';};
 
@@ -514,7 +538,14 @@ window.renderTabla=()=>{
   const filt=socios.filter(s=>`${s.nombre} ${s.ap1} ${s.ap2} ${s.dni}`.toLowerCase().includes(q));
   if(!filt.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  tbody.innerHTML=filt.map(s=>`<tr><td><code>${s.id}</code></td><td style="color:#fff">${s.nombre} ${s.ap1} ${s.ap2||''}</td><td>${s.dni}</td><td>${s.tipo}</td><td><button class="btn" style="font-size:12px;padding:4px 10px" onclick="quickQR('${s.id}')">Ver QR</button><button class="btn btn-danger" style="font-size:12px;padding:4px 10px;margin-left:4px" onclick="deleteSocio('${s.id}')">Borrar</button></td></tr>`).join('');
+  tbody.innerHTML=filt.map(s=>`<tr>
+    <td><code>${s.id}</code></td>
+    <td style="color:#fff">${s.nombre} ${s.ap1} ${s.ap2||''}</td>
+    <td>${s.dni}</td>
+    <td>${s.tipo}</td>
+    <td style="text-align:center"><input type="checkbox" ${s.pagado?'checked':''} onchange="togglePagado('${s.id}',this.checked)" style="width:18px;height:18px;accent-color:#22c55e;cursor:pointer"/></td>
+    <td><button class="btn" style="font-size:12px;padding:4px 10px" onclick="quickQR('${s.id}')">Ver QR</button><button class="btn btn-danger" style="font-size:12px;padding:4px 10px;margin-left:4px" onclick="deleteSocio('${s.id}')">Borrar</button></td>
+  </tr>`).join('');
 };
 function fillPartidos(){
   const sel=document.getElementById('partido-sel');
@@ -548,10 +579,12 @@ window.renderStats=()=>{
   // Las entradas registradas de un Abono Internacional (si alguna vez asisten) tampoco cuentan en las stats
   const idsExcluidos=new Set(socios.filter(s=>s.tipo==='Abono Internacional').map(s=>s.id));
   const totalEntradas=Object.values(entradas).reduce((acc,e)=>acc+Object.keys(e).filter(id=>!idsExcluidos.has(id)).length,0);
+  const pendientesPago=socios.filter(s=>!s.pagado).length;
   document.getElementById('stats-cards').innerHTML=`
     <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Socios totales</div></div>
     <div class="stat"><div class="stat-n">${Object.keys(entradas).length}</div><div class="stat-l">Jornadas con datos</div></div>
-    <div class="stat"><div class="stat-n">${totalEntradas}</div><div class="stat-l">Entradas acumuladas</div></div>`;
+    <div class="stat"><div class="stat-n">${totalEntradas}</div><div class="stat-l">Entradas acumuladas</div></div>
+    <div class="stat" style="${pendientesPago>0?'border-color:#3A1A1A':''}"><div class="stat-n" style="${pendientesPago>0?'color:#E8354A':''}">${pendientesPago}</div><div class="stat-l">Pendientes de pago</div></div>`;
   document.getElementById('stats-tabla').innerHTML=PARTIDOS.map(p=>{
     const e=entradas[p]||{};
     const n=Object.keys(e).filter(id=>!idsExcluidos.has(id)).length;
