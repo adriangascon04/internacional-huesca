@@ -455,6 +455,7 @@ let temporadaActual=localStorage.getItem('hue_temporada')||'2026/27';
 function getPartidos(){return Array.from({length:17},(_,i)=>`${temporadaActual} - Jornada ${String(i+1).padStart(2,'0')}`);}
 let PARTIDOS=getPartidos();
 const PRECIOS={general:10,menor:5};
+const jKey=j=>j.replace(/\//g,'-'); // Firestore no permite / en IDs de documento
 
 window.cambiarTemporada=()=>{
   temporadaActual=document.getElementById('temporada-sel').value;
@@ -599,7 +600,7 @@ window.venderEntrada=async(tipo)=>{
   if(!partidoActualTaquilla){alert('Selecciona una jornada antes de vender entradas.');return;}
   if(jornadasBloqueadas[partidoActualTaquilla.replace(/\//g,'-')]===true){alert('Esta jornada está cerrada. Desbloquéala primero para poder vender entradas.');return;}
   try{playSonido('ok');}catch(e){}
-  const ref=doc(db,'taquilla',partidoActualTaquilla);
+  const ref=doc(db,'taquilla',jKey(partidoActualTaquilla));
   const snap=await getDoc(ref);
   const data=snap.exists()?snap.data():{general:0,menor:0,historial:[]};
   if(!data.historial)data.historial=[];
@@ -611,7 +612,7 @@ window.venderEntrada=async(tipo)=>{
 window.deshacerVenta=async()=>{
   if(!partidoActualTaquilla)return;
   if(jornadasBloqueadas[partidoActualTaquilla.replace(/\//g,'-')]===true){alert('Esta jornada está cerrada. Desbloquéala primero para poder deshacer ventas.');return;}
-  const ref=doc(db,'taquilla',partidoActualTaquilla);
+  const ref=doc(db,'taquilla',jKey(partidoActualTaquilla));
   const snap=await getDoc(ref);
   if(!snap.exists())return;
   const data=snap.data();
@@ -794,7 +795,7 @@ window.borrarEntrada=async(id)=>{
   const nombre=s?`${s.nombre} ${s.ap1}`:id;
   if(!confirm(`¿Borrar el registro de entrada de ${nombre} en ${partidoActual}? Su QR volverá a estar disponible para usarse en esta jornada.`))return;
   try{
-    const ref=doc(db,'entradas',partidoActual);
+    const ref=doc(db,'entradas',jKey(partidoActual));
     const snap=await getDoc(ref);
     if(!snap.exists())return;
     const data=snap.data();
@@ -813,7 +814,7 @@ window.procesarScan=async(rawId)=>{
   if(!s){playSonido('error');res.innerHTML=`<div class="scanner-result result-no">❌ QR no reconocido: ${id}</div>`;return;}
 
   // Un único registro por socio y jornada: {hora:'...'}. Si ya existe, queda bloqueado.
-  const ref=doc(db,'entradas',partidoActual);
+  const ref=doc(db,'entradas',jKey(partidoActual));
   const snap=await getDoc(ref);
   const data=snap.exists()?snap.data():{};
 
