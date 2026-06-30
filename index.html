@@ -597,7 +597,7 @@ window.cambiarPartidoTaquilla=()=>{
 
 window.venderEntrada=async(tipo)=>{
   if(!partidoActualTaquilla){alert('Selecciona una jornada antes de vender entradas.');return;}
-  if(jornadasBloqueadas[partidoActualTaquilla]===true){alert('Esta jornada está cerrada. Desbloquéala primero para poder vender entradas.');return;}
+  if(jornadasBloqueadas[partidoActualTaquilla.replace(/\//g,'-')]===true){alert('Esta jornada está cerrada. Desbloquéala primero para poder vender entradas.');return;}
   try{playSonido('ok');}catch(e){}
   const ref=doc(db,'taquilla',partidoActualTaquilla);
   const snap=await getDoc(ref);
@@ -610,7 +610,7 @@ window.venderEntrada=async(tipo)=>{
 
 window.deshacerVenta=async()=>{
   if(!partidoActualTaquilla)return;
-  if(jornadasBloqueadas[partidoActualTaquilla]===true){alert('Esta jornada está cerrada. Desbloquéala primero para poder deshacer ventas.');return;}
+  if(jornadasBloqueadas[partidoActualTaquilla.replace(/\//g,'-')]===true){alert('Esta jornada está cerrada. Desbloquéala primero para poder deshacer ventas.');return;}
   const ref=doc(db,'taquilla',partidoActualTaquilla);
   const snap=await getDoc(ref);
   if(!snap.exists())return;
@@ -742,24 +742,25 @@ window.guardarObservaciones=async()=>{
 window.cambiarPartido=()=>{partidoActual=document.getElementById('partido-sel').value;document.getElementById('scan-result').innerHTML='';renderLog();actualizarUIBloqueo();};
 
 window.toggleBloqueoJornada=async()=>{
-  // Detecta sobre qué jornada actúa según la pestaña activa
   const enScanner=document.getElementById('panel-scanner').classList.contains('active');
   const jornada=enScanner?partidoActual:partidoActualTaquilla;
   if(!jornada)return;
-  const yaBloqueada=jornadasBloqueadas[jornada]===true;
+  const jornadaKey=jornada.replace(/\//g,'-'); // Firestore no permite / en IDs
+  const yaBloqueada=jornadasBloqueadas[jornadaKey]===true;
   const accion=yaBloqueada?'desbloquear':'bloquear';
   if(!confirm(`¿Quieres ${accion} la ${jornada}? ${yaBloqueada?'Se podrán volver a registrar entradas y ventas.':'No se podrán registrar ni borrar entradas ni ventas hasta que la desbloquees.'}`))return;
   try{
-    await setDoc(doc(db,'jornadas_bloqueadas',jornada),{bloqueada:!yaBloqueada,fecha:new Date().toISOString()});
+    await setDoc(doc(db,'jornadas_bloqueadas',jornadaKey),{bloqueada:!yaBloqueada,fecha:new Date().toISOString()});
   }catch(e){alert('No se pudo cambiar el estado de la jornada. Inténtalo de nuevo.');}
 };
 
 function actualizarUIBloqueo(){
+  const toKey=j=>j.replace(/\//g,'-');
   // Escáner
   const btnS=document.getElementById('btn-bloqueo-scanner');
   const avisoS=document.getElementById('aviso-jornada-bloqueada-scanner');
   if(partidoActual){
-    const bloqueada=jornadasBloqueadas[partidoActual]===true;
+    const bloqueada=jornadasBloqueadas[toKey(partidoActual)]===true;
     btnS.style.display='inline-block';
     btnS.textContent=bloqueada?'🔓 Desbloquear jornada':'🔒 Cerrar jornada';
     btnS.className=bloqueada?'btn btn-primary':'btn btn-danger';
@@ -775,7 +776,7 @@ function actualizarUIBloqueo(){
   const avisoT=document.getElementById('aviso-jornada-bloqueada-taquilla');
   const botonesT=document.getElementById('taquilla-botones');
   if(partidoActualTaquilla){
-    const bloqueada=jornadasBloqueadas[partidoActualTaquilla]===true;
+    const bloqueada=jornadasBloqueadas[toKey(partidoActualTaquilla)]===true;
     btnT.style.display='inline-block';
     btnT.textContent=bloqueada?'🔓 Desbloquear jornada':'🔒 Cerrar jornada';
     btnT.className=bloqueada?'btn btn-primary':'btn btn-danger';
@@ -788,7 +789,7 @@ function actualizarUIBloqueo(){
 }
 window.borrarEntrada=async(id)=>{
   if(!partidoActual)return;
-  if(jornadasBloqueadas[partidoActual]===true){alert('Esta jornada está cerrada. Desbloquéala primero para poder borrar entradas.');return;}
+  if(jornadasBloqueadas[partidoActual.replace(/\//g,'-')]===true){alert('Esta jornada está cerrada. Desbloquéala primero para poder borrar entradas.');return;}
   const s=socios.find(x=>x.id===id);
   const nombre=s?`${s.nombre} ${s.ap1}`:id;
   if(!confirm(`¿Borrar el registro de entrada de ${nombre} en ${partidoActual}? Su QR volverá a estar disponible para usarse en esta jornada.`))return;
@@ -807,7 +808,7 @@ window.procesarScan=async(rawId)=>{
   const id=rawId.startsWith('HUESCA:')?rawId.replace('HUESCA:',''):rawId;
   const res=document.getElementById('scan-result');
   if(!partidoActual){res.innerHTML='<div class="scanner-result result-no">Selecciona una jornada antes de escanear.</div>';return;}
-  if(jornadasBloqueadas[partidoActual]===true){res.innerHTML='<div class="scanner-result result-no">🔒 Esta jornada está cerrada. Desbloquéala para seguir registrando entradas.</div>';return;}
+  if(jornadasBloqueadas[partidoActual.replace(/\//g,'-')]===true){res.innerHTML='<div class="scanner-result result-no">🔒 Esta jornada está cerrada. Desbloquéala para seguir registrando entradas.</div>';return;}
   const s=socios.find(x=>x.id===id);
   if(!s){playSonido('error');res.innerHTML=`<div class="scanner-result result-no">❌ QR no reconocido: ${id}</div>`;return;}
 
