@@ -335,6 +335,49 @@ code{font-family:'Courier New',monospace;font-size:12px;color:var(--rojo-claro)}
 
 </div>
 
+<!-- MODAL PERFIL DE SOCIO -->
+<div id="modal-perfil" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)cerrarPerfil()">
+  <div style="background:var(--negro-card);border:1px solid var(--gris-borde);border-top:3px solid var(--rojo);border-radius:16px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;padding:1.75rem">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:#fff" id="perfil-nombre">—</div>
+        <div style="font-size:12px;color:#888;margin-top:2px" id="perfil-subtitulo">—</div>
+      </div>
+      <button class="btn" style="padding:6px 10px;font-size:16px;line-height:1" onclick="cerrarPerfil()">✕</button>
+    </div>
+
+    <div class="grid3" id="perfil-stats" style="margin-bottom:1.25rem"></div>
+
+    <div style="margin-bottom:1.25rem">
+      <div class="card-title" style="font-size:15px">Datos personales</div>
+      <div class="overflow-x">
+        <table>
+          <tbody id="perfil-datos"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-bottom:1.25rem">
+      <div class="card-title" style="font-size:15px">Asistencia por jornada</div>
+      <div class="overflow-x">
+        <table>
+          <thead><tr><th>Jornada</th><th>Estado</th><th>Hora de entrada</th></tr></thead>
+          <tbody id="perfil-asistencia"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="card-title" style="font-size:15px">Observaciones internas</div>
+      <textarea id="perfil-observaciones" placeholder="Anotaciones del club sobre este socio (incidencias, peticiones especiales, etc.)" style="width:100%;min-height:90px;padding:9px 12px;border:1px solid var(--gris-borde);border-radius:8px;background:var(--gris);color:var(--blanco);font-size:13px;font-family:inherit;resize:vertical"></textarea>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="guardarObservaciones()">💾 Guardar observaciones</button>
+        <span id="perfil-obs-msg" style="font-size:12px;color:#22c55e"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 const firebaseConfig={apiKey:"AIzaSyBz5iW_Xxtx7kP-_6C3fA_DL3l2M7FQsAo",authDomain:"internacional-huesca.firebaseapp.com",projectId:"internacional-huesca",storageBucket:"internacional-huesca.firebasestorage.app",messagingSenderId:"403874724172",appId:"1:403874724172:web:d21b7b35cbc84b40aef7e9"};
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -467,7 +510,83 @@ window.togglePagado=async(id,pagado)=>{
   try{await updateDoc(doc(db,'socios',id),{pagado});}
   catch(e){alert('No se pudo actualizar el estado de pago. Inténtalo de nuevo.');}
 };
+
+let _perfilActualId=null;
+window.verPerfil=(id)=>{
+  const s=socios.find(x=>x.id===id);
+  if(!s)return;
+  _perfilActualId=id;
+
+  document.getElementById('perfil-nombre').textContent=`${s.nombre} ${s.ap1} ${s.ap2||''}`;
+  document.getElementById('perfil-subtitulo').textContent=`Socio nº ${s.id} · ${s.tipo}`;
+
+  // Calcular asistencia del socio en todas las jornadas
+  const jornadasAsistidas=PARTIDOS.filter(p=>entradas[p]&&entradas[p][id]);
+  const totalJornadas=PARTIDOS.filter(p=>entradas[p]).length; // jornadas en las que ya hay datos registrados
+  const pct=totalJornadas?Math.round(jornadasAsistidas.length/totalJornadas*100):0;
+  const fechaAlta=s.alta?new Date(s.alta).toLocaleDateString('es-ES'):'—';
+
+  document.getElementById('perfil-stats').innerHTML=`
+    <div class="stat"><div class="stat-n">${jornadasAsistidas.length}</div><div class="stat-l">Partidos asistidos</div></div>
+    <div class="stat"><div class="stat-n">${pct}%</div><div class="stat-l">% asistencia</div></div>
+    <div class="stat" style="${s.pagado?'':'border-color:#3A1A1A'}"><div class="stat-n" style="${s.pagado?'color:#22c55e':'color:#E8354A'};font-size:20px">${s.pagado?'✅ Pagado':'❌ Pendiente'}</div><div class="stat-l">Estado de pago</div></div>`;
+
+  document.getElementById('perfil-datos').innerHTML=`
+    <tr><td style="color:#888;width:40%">Nombre completo</td><td style="color:#fff">${s.nombre} ${s.ap1} ${s.ap2||''}</td></tr>
+    <tr><td style="color:#888">DNI / NIE</td><td style="color:#fff">${s.dni}</td></tr>
+    <tr><td style="color:#888">Fecha de nacimiento</td><td style="color:#fff">${s.fnac?new Date(s.fnac).toLocaleDateString('es-ES'):'—'}</td></tr>
+    <tr><td style="color:#888">Teléfono</td><td style="color:#fff">${s.tel||'—'}</td></tr>
+    <tr><td style="color:#888">Email</td><td style="color:#fff">${s.email||'—'}</td></tr>
+    <tr><td style="color:#888">Tipo de abono</td><td style="color:#fff">${s.tipo}</td></tr>
+    <tr><td style="color:#888">Socio desde</td><td style="color:#fff">${fechaAlta}</td></tr>`;
+
+  document.getElementById('perfil-asistencia').innerHTML=PARTIDOS.map(p=>{
+    const hayDatos=!!entradas[p];
+    const entro=hayDatos&&entradas[p][id];
+    let estado,hora;
+    if(entro){estado='<span class="badge badge-ok">✓ Asistió</span>';hora=new Date(entradas[p][id]).toLocaleTimeString('es-ES');}
+    else if(hayDatos){estado='<span class="badge badge-no">No asistió</span>';hora='—';}
+    else{estado='<span style="color:#444">Sin jugar aún</span>';hora='—';}
+    return `<tr><td>${p}</td><td>${estado}</td><td>${hora}</td></tr>`;
+  }).join('');
+
+  document.getElementById('perfil-observaciones').value=s.observaciones||'';
+  document.getElementById('perfil-obs-msg').textContent='';
+
+  document.getElementById('modal-perfil').style.display='flex';
+};
+
+window.cerrarPerfil=()=>{
+  document.getElementById('modal-perfil').style.display='none';
+  _perfilActualId=null;
+};
+
+window.guardarObservaciones=async()=>{
+  if(!_perfilActualId)return;
+  const texto=document.getElementById('perfil-observaciones').value;
+  const msg=document.getElementById('perfil-obs-msg');
+  try{
+    await updateDoc(doc(db,'socios',_perfilActualId),{observaciones:texto});
+    msg.style.color='#22c55e';msg.textContent='Guardado ✓';
+    setTimeout(()=>{msg.textContent='';},2500);
+  }catch(e){msg.style.color='#E8354A';msg.textContent='Error al guardar.';}
+};
+
 window.cambiarPartido=()=>{partidoActual=document.getElementById('partido-sel').value;document.getElementById('scan-result').innerHTML='';renderLog();};
+window.borrarEntrada=async(id)=>{
+  if(!partidoActual)return;
+  const s=socios.find(x=>x.id===id);
+  const nombre=s?`${s.nombre} ${s.ap1}`:id;
+  if(!confirm(`¿Borrar el registro de entrada de ${nombre} en ${partidoActual}? Su QR volverá a estar disponible para usarse en esta jornada.`))return;
+  try{
+    const ref=doc(db,'entradas',partidoActual);
+    const snap=await getDoc(ref);
+    if(!snap.exists())return;
+    const data=snap.data();
+    delete data[id];
+    await setDoc(ref,data);
+  }catch(e){alert('No se pudo borrar el registro. Inténtalo de nuevo.');}
+};
 window.escanearManual=()=>{const r=document.getElementById('manual-id').value.trim().toUpperCase();procesarScan(r.startsWith('HUESCA:')?r.replace('HUESCA:',''):r);document.getElementById('manual-id').value='';};
 
 window.procesarScan=async(rawId)=>{
@@ -544,7 +663,7 @@ window.renderTabla=()=>{
     <td>${s.dni}</td>
     <td>${s.tipo}</td>
     <td style="text-align:center"><input type="checkbox" ${s.pagado?'checked':''} onchange="togglePagado('${s.id}',this.checked)" style="width:18px;height:18px;accent-color:#22c55e;cursor:pointer"/></td>
-    <td><button class="btn" style="font-size:12px;padding:4px 10px" onclick="quickQR('${s.id}')">Ver QR</button><button class="btn btn-danger" style="font-size:12px;padding:4px 10px;margin-left:4px" onclick="deleteSocio('${s.id}')">Borrar</button></td>
+    <td><button class="btn" style="font-size:12px;padding:4px 10px" onclick="verPerfil('${s.id}')">👤 Perfil</button><button class="btn" style="font-size:12px;padding:4px 10px;margin-left:4px" onclick="quickQR('${s.id}')">Ver QR</button><button class="btn btn-danger" style="font-size:12px;padding:4px 10px;margin-left:4px" onclick="deleteSocio('${s.id}')">Borrar</button></td>
   </tr>`).join('');
 };
 function fillPartidos(){
@@ -565,9 +684,9 @@ function renderLog(){
     <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
       <div style="background:#1A1A1A;border-radius:8px;padding:8px 14px;font-size:13px"><span style="color:#22c55e;font-weight:700">${keys.length}</span> <span style="color:#666">entradas en esta jornada</span></div>
     </div>
-    <div class="overflow-x"><table><thead><tr><th>ID</th><th>Socio</th><th>Hora</th></tr></thead><tbody>${
+    <div class="overflow-x"><table><thead><tr><th>ID</th><th>Socio</th><th>Hora</th><th>Acciones</th></tr></thead><tbody>${
     keys.map(id=>{const s=socios.find(x=>x.id===id)||{nombre:id,ap1:'',ap2:''};
-    return `<tr><td><code>${id}</code></td><td>${s.nombre} ${s.ap1}</td><td>${new Date(e[id]).toLocaleTimeString('es-ES')}</td></tr>`;
+    return `<tr><td><code>${id}</code></td><td>${s.nombre} ${s.ap1}</td><td>${new Date(e[id]).toLocaleTimeString('es-ES')}</td><td><button class="btn btn-danger" style="font-size:12px;padding:4px 10px" onclick="borrarEntrada('${id}')">Borrar</button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
