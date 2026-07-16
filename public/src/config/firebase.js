@@ -11,12 +11,13 @@ import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.0/firebas
 // La apiKey de una app web NO es un secreto: la seguridad real vive en
 // firestore.rules. Aun así, para no exponer la lógica se recomienda repo privado.
 export const firebaseConfig = {
-  apiKey: 'REEMPLAZA_CON_TU_API_KEY',
-  authDomain: 'internacional-huesca-nacho.firebaseapp.com',
-  projectId: 'internacional-huesca-nacho',
-  storageBucket: 'internacional-huesca-nacho.firebasestorage.app',
-  messagingSenderId: 'REEMPLAZA',
-  appId: 'REEMPLAZA',
+  apiKey: "AIzaSyD6AbT7wEDOsDJh4ANY9ZBAt1hyI9i065Y",
+  authDomain: "internacional-huesca-nacho.firebaseapp.com",
+  projectId: "internacional-huesca-nacho",
+  storageBucket: "internacional-huesca-nacho.firebasestorage.app",
+  messagingSenderId: "422376516762",
+  appId: "1:422376516762:web:37c871cb0f9dfe1cd68323",
+  measurementId: "G-DJD42BPTKM"
 };
 
 const app = initializeApp(firebaseConfig);
