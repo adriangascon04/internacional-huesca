@@ -3,6 +3,7 @@
 // ============================================================================
 import { db } from '../config/firebase.js';
 import { COLECCIONES } from '../config/app.config.js';
+import { session } from '../core/session.js';
 import {
   collection,
   doc,
@@ -14,6 +15,9 @@ export const bloquearJornada = (jornadaKey, bloqueada) =>
   setDoc(doc(db, COLECCIONES.jornadasBloqueadas, jornadaKey), {
     bloqueada,
     fecha: new Date().toISOString(),
+    // Auditoría (Upgrades #4): cerrar o reabrir un acta es la acción más
+    // sensible del sistema; sin esto no se sabía quién la había reabierto.
+    bloqueadaPor: session.email ?? null,
   });
 
 export function suscribirBloqueos(callback) {

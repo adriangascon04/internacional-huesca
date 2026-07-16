@@ -57,10 +57,18 @@ export async function altaSocio(datos) {
 
 /** Edición de socio (Upgrades #2: antes NO se podía editar). */
 export async function editarSocio(id, campos) {
-  const errores = validarSocio({ ...obtener(id), ...campos });
+  const datos = { ...obtener(id), ...campos };
+  if (campos.dni) datos.dni = String(campos.dni).trim().toUpperCase();
+  const errores = validarSocio(datos);
   if (errores.length) return { ok: false, errores };
+  // Mismo criterio que el alta: el DNI no puede chocar con otro socio activo.
+  if (_socios.some((s) => s.id !== id && s.dni === datos.dni && s.activo !== false)) {
+    return { ok: false, errores: ['Ya existe otro socio con ese DNI.'] };
+  }
   await repo.actualizarSocio(id, {
     ...campos,
+    // Después del spread: el DNI se guarda siempre normalizado, como en el alta.
+    ...(campos.dni ? { dni: datos.dni } : {}),
     modificadoPor: session.email,
     modificadoEn: new Date().toISOString(),
   });

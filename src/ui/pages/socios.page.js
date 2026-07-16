@@ -13,11 +13,14 @@ import * as roles from '../../services/roles.service.js';
 
 let perfilActualId = null;
 
+const OPCIONES_TIPO =
+  '<option value="">— Selecciona —</option>' +
+  TIPOS_ABONO.map((t) => `<option>${esc(t.id)}</option>`).join('');
+
 export function initSocios() {
   // Rellenar el select de tipos desde la config (antes estaba en el HTML).
-  $('#f-tipo').innerHTML =
-    '<option value="">— Selecciona —</option>' +
-    TIPOS_ABONO.map((t) => `<option>${esc(t.id)}</option>`).join('');
+  $('#f-tipo').innerHTML = OPCIONES_TIPO;
+  $('#e-tipo').innerHTML = OPCIONES_TIPO;
 
   on($('#buscador'), 'input', render);
   on($('#btn-alta'), 'click', onAlta);
@@ -26,6 +29,9 @@ export function initSocios() {
     $('#modal-perfil').style.display = 'none';
   });
   on($('#btn-export-csv'), 'click', exportarCSV);
+  on($('#btn-editar-toggle'), 'click', () => mostrarFormEdicion(true));
+  on($('#btn-cancelar-edicion'), 'click', () => mostrarFormEdicion(false));
+  on($('#btn-guardar-socio'), 'click', onGuardarSocio);
 }
 
 export function render() {
@@ -159,9 +165,62 @@ function verPerfil(id) {
     <tr><td>Tipo de abono</td><td>${esc(s.tipo)}</td></tr>
     <tr><td>Socio desde</td><td>${antiguedad(s.alta)}</td></tr>`;
 
+  // El formulario de edición solo existe para quien puede gestionar socios;
+  // las reglas de Firestore lo imponen igualmente en el servidor.
+  $('#perfil-edicion').style.display = roles.puedeGestionarSocios() ? 'block' : 'none';
+  mostrarFormEdicion(false);
+
   $('#perfil-observaciones').value = s.observaciones || '';
   $('#perfil-obs-msg').textContent = '';
   $('#modal-perfil').style.display = 'flex';
+}
+
+/** Muestra/oculta el formulario y lo recarga desde el socio actual. */
+function mostrarFormEdicion(visible) {
+  $('#perfil-form').style.display = visible ? 'block' : 'none';
+  $('#btn-editar-toggle').style.display = visible ? 'none' : 'inline-block';
+  $('#perfil-edit-msg').textContent = '';
+  if (!visible) return;
+
+  const s = socios.obtener(perfilActualId);
+  if (!s) return;
+  $('#e-nombre').value = s.nombre || '';
+  $('#e-ap1').value = s.ap1 || '';
+  $('#e-ap2').value = s.ap2 || '';
+  $('#e-dni').value = s.dni || '';
+  $('#e-fnac').value = s.fnac || '';
+  $('#e-tel').value = s.tel || '';
+  $('#e-email').value = s.email || '';
+  $('#e-tipo').value = s.tipo || '';
+}
+
+async function onGuardarSocio() {
+  if (!perfilActualId) return;
+  const msg = $('#perfil-edit-msg');
+  const campos = {
+    nombre: $('#e-nombre').value.trim(),
+    ap1: $('#e-ap1').value.trim(),
+    ap2: $('#e-ap2').value.trim(),
+    dni: $('#e-dni').value.trim().toUpperCase(),
+    fnac: $('#e-fnac').value,
+    tel: $('#e-tel').value.trim(),
+    email: $('#e-email').value.trim(),
+    tipo: $('#e-tipo').value,
+  };
+  try {
+    const res = await socios.editarSocio(perfilActualId, campos);
+    if (!res.ok) {
+      msg.className = 'msg msg-err';
+      msg.textContent = res.errores.join(' ');
+      return;
+    }
+    verPerfil(perfilActualId); // repinta la ficha; también limpia los mensajes
+    msg.className = 'msg msg-ok';
+    msg.textContent = 'Guardado ✓';
+  } catch {
+    msg.className = 'msg msg-err';
+    msg.textContent = 'No se pudo guardar. Revisa tus permisos.';
+  }
 }
 
 async function onGuardarObs() {

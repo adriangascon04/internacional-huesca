@@ -274,6 +274,32 @@ canvas#chart-taquilla{max-height:300px}
     <p class="nota" id="perfil-subtitulo"></p>
     <div class="grid" id="perfil-stats" style="margin:16px 0"></div>
     <table><tbody id="perfil-datos"></tbody></table>
+
+    <!-- Edición de datos (Upgrades #2). Solo admin: se oculta por rol. -->
+    <div id="perfil-edicion" style="display:none;margin-top:18px;border-top:1px solid var(--borde);padding-top:14px">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="font-size:14px;color:#fff">Editar datos</h2>
+        <button class="btn" id="btn-editar-toggle">✏️ Editar</button>
+      </div>
+      <div id="perfil-form" style="display:none">
+        <div class="grid" style="margin-top:12px">
+          <div><label for="e-nombre">Nombre</label><input id="e-nombre"></div>
+          <div><label for="e-ap1">Primer apellido</label><input id="e-ap1"></div>
+          <div><label for="e-ap2">Segundo apellido</label><input id="e-ap2"></div>
+          <div><label for="e-dni">DNI / NIE</label><input id="e-dni"></div>
+          <div><label for="e-fnac">Fecha de nacimiento</label><input type="date" id="e-fnac"></div>
+          <div><label for="e-tel">Teléfono</label><input id="e-tel"></div>
+          <div><label for="e-email">Email</label><input type="email" id="e-email"></div>
+          <div><label for="e-tipo">Tipo de abono</label><select id="e-tipo"></select></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn btn-primary" id="btn-guardar-socio">Guardar cambios</button>
+          <button class="btn" id="btn-cancelar-edicion">Cancelar</button>
+          <span class="msg" id="perfil-edit-msg"></span>
+        </div>
+      </div>
+    </div>
+
     <label for="perfil-observaciones" style="margin-top:16px">Observaciones</label>
     <textarea id="perfil-observaciones" rows="3"></textarea>
     <div class="row" style="margin-top:10px">
