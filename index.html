@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#185FA5">
+<title>Internacional Huesca · Gestión de Abonados</title>
+<link rel="manifest" href="./manifest.json">
+
+<!-- Dependencias externas (CDN). Ver DESARROLLO.md sobre SRI. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js" defer></script>
+
+<style>
+:root{--azul:#185FA5;--rojo:#E8354A;--verde:#22c55e;--bg:#0D0D0D;--panel:#141414;--borde:#242424;--txt:#E8E8E8;--txt2:#8A8A8A}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:15px}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-box{background:var(--panel);border:1px solid var(--borde);border-radius:14px;padding:32px;width:100%;max-width:380px}
+.login-box h1{font-size:20px;margin-bottom:6px;color:#fff}
+.login-box p{color:var(--txt2);font-size:13px;margin-bottom:22px}
+input,select,textarea{width:100%;padding:11px 12px;background:#1C1C1C;border:1px solid var(--borde);border-radius:8px;color:var(--txt);font-size:14px;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul)}
+label{display:block;font-size:12px;color:var(--txt2);margin:12px 0 5px}
+.btn{padding:9px 16px;border:1px solid var(--borde);border-radius:8px;background:#1C1C1C;color:var(--txt);cursor:pointer;font-size:13px;font-family:inherit}
+.btn:hover{border-color:#3A3A3A}
+.btn-primary{background:var(--azul);border-color:var(--azul);color:#fff}
+.btn-danger{background:transparent;border-color:#4A2028;color:var(--rojo)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+header{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--borde);background:var(--panel);position:sticky;top:0;z-index:20}
+header h1{font-size:16px;color:#fff;flex:1}
+#user-label{font-size:12px;color:var(--txt2)}
+nav{display:flex;gap:4px;padding:10px 18px;border-bottom:1px solid var(--borde);overflow-x:auto;background:var(--panel);position:sticky;top:57px;z-index:19}
+.tab{white-space:nowrap;padding:8px 14px;border:none;background:transparent;color:var(--txt2);border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit}
+.tab.active{background:var(--azul);color:#fff}
+.panel{display:none;padding:18px;max-width:1100px;margin:0 auto}
+.panel.active{display:block}
+.card{background:var(--panel);border:1px solid var(--borde);border-radius:12px;padding:18px;margin-bottom:16px}
+.card h2{font-size:14px;color:#fff;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 8px;color:var(--txt2);font-weight:500;border-bottom:1px solid var(--borde);font-size:12px}
+td{padding:9px 8px;border-bottom:1px solid #1B1B1B;color:var(--txt2)}
+code{background:#1C1C1C;padding:2px 6px;border-radius:4px;font-size:12px;color:var(--azul)}
+.stat{background:#1A1A1A;border:1px solid var(--borde);border-radius:10px;padding:14px;text-align:center}
+.stat-n{font-size:22px;font-weight:700;color:#fff}
+.stat-l{font-size:11px;color:var(--txt2);margin-top:3px}
+.badge{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-ok{background:#0F2E1A;color:var(--verde)}
+.badge-warn{background:#2E2A0F;color:#eab308}
+.badge-no{background:#2E1418;color:var(--rojo)}
+.msg{font-size:12px;margin-top:10px;min-height:16px}
+.msg-ok{color:var(--verde)} .msg-err{color:var(--rojo)}
+.empty,.nota{color:var(--txt2);font-size:12px;padding:8px 0}
+.scanner-result{padding:16px;border-radius:10px;margin:12px 0;font-size:14px;font-weight:600}
+.result-entrada{background:#0F2E1A;border:1px solid #1D5A32;color:var(--verde)}
+.result-no{background:#2E1418;border:1px solid #5A1D28;color:var(--rojo)}
+.aviso{background:#2E2A0F;border:1px solid #5A521D;color:#eab308;padding:10px;border-radius:8px;font-size:12px;margin:10px 0;display:none}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:50;align-items:center;justify-content:center;padding:16px}
+.modal-box{background:var(--panel);border:1px solid var(--borde);border-radius:14px;padding:22px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.spinner{display:none;width:14px;height:14px;border:2px solid #333;border-top-color:var(--azul);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+canvas#chart-taquilla{max-height:300px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="login-screen">
+  <form class="login-box" id="login-form">
+    <h1>Internacional Huesca</h1>
+    <p>Gestión de abonados · Acceso restringido</p>
+    <label for="l-email">Correo electrónico</label>
+    <input type="email" id="l-email" required autocomplete="username">
+    <label for="l-pass">Contraseña</label>
+    <input type="password" id="l-pass" required autocomplete="current-password">
+    <button class="btn btn-primary" id="login-btn" type="submit" style="width:100%;margin-top:18px">Entrar</button>
+    <p class="msg msg-err" id="login-msg"></p>
+  </form>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app-screen" style="display:none">
+  <header>
+    <h1>⚽ Internacional Huesca</h1>
+    <span id="user-label"></span>
+    <button class="btn" id="btn-logout">Salir</button>
+  </header>
+
+  <nav>
+    <button class="tab" data-tab="socios">Socios</button>
+    <button class="tab" data-tab="qr">QRs</button>
+    <button class="tab" data-tab="scanner">Escáner</button>
+    <button class="tab" data-tab="taquilla">Taquilla</button>
+    <button class="tab" data-tab="stats">Estadísticas</button>
+    <button class="tab" data-tab="import">Importar</button>
+    <button class="tab" data-tab="backup">Backup</button>
+  </nav>
+
+  <!-- ---------- SOCIOS ---------- -->
+  <section class="panel" id="panel-socios">
+    <div class="card" id="form-alta">
+      <h2>Alta de socio</h2>
+      <div class="grid">
+        <div><label for="f-nombre">Nombre</label><input id="f-nombre"></div>
+        <div><label for="f-ap1">Primer apellido</label><input id="f-ap1"></div>
+        <div><label for="f-ap2">Segundo apellido</label><input id="f-ap2"></div>
+        <div><label for="f-dni">DNI / NIE</label><input id="f-dni"></div>
+        <div><label for="f-fnac">Fecha de nacimiento</label><input type="date" id="f-fnac"></div>
+        <div><label for="f-tel">Teléfono</label><input id="f-tel"></div>
+        <div><label for="f-email">Email</label><input type="email" id="f-email"></div>
+        <div><label for="f-tipo">Tipo de abono</label><select id="f-tipo"></select></div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn btn-primary" id="btn-alta">Añadir socio</button>
+        <span class="spinner" id="add-spinner"></span>
+      </div>
+      <p class="msg" id="form-msg"></p>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:12px">
+        <input id="buscador" placeholder="Buscar por nombre, apellidos o DNI…" style="flex:1;min-width:200px">
+        <span class="nota">Total: <strong id="total-socios">0</strong></span>
+        <button class="btn" id="btn-export-csv">⬇ CSV</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Nº</th><th>Nombre</th><th>DNI</th><th>Abono</th><th>Pagado</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-socios"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="tabla-empty" style="display:none">No se han encontrado socios.</p>
+    </div>
+  </section>
+
+  <!-- ---------- QRs ---------- -->
+  <section class="panel" id="panel-qr">
+    <div class="card">
+      <h2>Generar QR</h2>
+      <label for="qr-socio">Socio</label>
+      <select id="qr-socio"></select>
+      <div id="qr-preview" style="margin:18px 0;text-align:center"></div>
+      <div class="row">
+        <button class="btn btn-primary" id="btn-descargar-qr">⬇ Descargar PNG</button>
+        <button class="btn" id="btn-zip-qr">📦 Descargar todos (ZIP)</button>
+        <span class="msg" id="qr-zip-msg"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- ESCÁNER ---------- -->
+  <section class="panel" id="panel-scanner">
+    <div class="card">
+      <h2>Control de acceso</h2>
+      <label for="partido-sel">Jornada</label>
+      <select id="partido-sel"></select>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-danger" id="btn-bloqueo-scanner" style="display:none"></button>
+      </div>
+      <div class="aviso" id="aviso-bloqueada-scanner">🔒 Esta jornada está cerrada. No se pueden registrar entradas.</div>
+      <div class="row" style="margin-top:12px">
+        <input id="manual-id" placeholder="Nº de socio o texto del QR" style="flex:1;min-width:180px">
+        <button class="btn btn-primary" id="btn-manual">Validar</button>
+      </div>
+      <div id="scan-result"></div>
+    </div>
+    <div class="card">
+      <h2>Entradas registradas</h2>
+      <div id="log-entradas" style="overflow-x:auto"></div>
+    </div>
+  </section>
+
+  <!-- ---------- TAQUILLA ---------- -->
+  <section class="panel" id="panel-taquilla">
+    <div class="card">
+      <h2>Venta en taquilla</h2>
+      <label for="taquilla-partido-sel">Jornada</label>
+      <select id="taquilla-partido-sel"></select>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-danger" id="btn-bloqueo-taquilla" style="display:none"></button>
+      </div>
+      <div class="aviso" id="aviso-bloqueada-taquilla">🔒 Esta jornada está cerrada. No se pueden vender entradas.</div>
+      <div class="grid" style="margin-top:14px">
+        <div class="stat">
+          <div class="stat-n" id="contador-general">0</div>
+          <div class="stat-l">General · <span id="precio-general"></span></div>
+          <button class="btn btn-primary" id="btn-vender-general" style="margin-top:10px;width:100%">+1 General</button>
+        </div>
+        <div class="stat">
+          <div class="stat-n" id="contador-menor">0</div>
+          <div class="stat-l">Menor · <span id="precio-menor"></span></div>
+          <button class="btn btn-primary" id="btn-vender-menor" style="margin-top:10px;width:100%">+1 Menor</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="btn-deshacer-venta" style="display:none">↩ Deshacer última venta</button>
+      </div>
+    </div>
+    <div class="card"><div class="grid" id="taquilla-resumen"></div></div>
+  </section>
+
+  <!-- ---------- ESTADÍSTICAS ---------- -->
+  <section class="panel" id="panel-stats">
+    <div class="card"><div class="grid" id="stats-cards"></div></div>
+    <div class="card">
+      <h2>Asistencia por jornada</h2>
+      <canvas id="chart-taquilla"></canvas>
+    </div>
+    <div class="card">
+      <h2>Detalle por jornada · Recaudación total: <span id="stats-recaudacion"></span></h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Jornada</th><th>Socios</th><th>% asist.</th><th>Taquilla</th><th>Total</th><th>Recaudación</th></tr></thead>
+          <tbody id="stats-tabla"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Socios por tipo de abono</h2>
+      <table><thead><tr><th>Tipo</th><th>Nº</th></tr></thead><tbody id="stats-tipos"></tbody></table>
+    </div>
+  </section>
+
+  <!-- ---------- IMPORTAR ---------- -->
+  <section class="panel" id="panel-import">
+    <div class="card">
+      <h2>Importar socios desde Excel</h2>
+      <p class="nota">Cabeceras esperadas: Nombre, Apellido 1, Apellido 2, DNI, Fecha nac., Teléfono, Email, Tipo.
+         Las filas con errores se muestran abajo y NO se importan.</p>
+      <label for="file-excel">Archivo .xlsx</label>
+      <input type="file" id="file-excel" accept=".xlsx,.xls">
+      <div id="import-informe" style="margin-top:14px"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-primary" id="btn-importar" disabled>Importar filas válidas</button>
+        <span class="msg" id="import-msg"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- BACKUP ---------- -->
+  <section class="panel" id="panel-backup">
+    <div class="card">
+      <h2>Copias de seguridad</h2>
+      <div class="row">
+        <button class="btn btn-primary" id="btn-crear-backup">Crear copia ahora</button>
+        <span class="msg" id="backup-msg"></span>
+      </div>
+    </div>
+    <div class="card"><div id="backup-lista" style="overflow-x:auto"></div></div>
+  </section>
+</div>
+
+<!-- ---------- MODAL PERFIL ---------- -->
+<div class="modal" id="modal-perfil">
+  <div class="modal-box">
+    <div class="row" style="justify-content:space-between;margin-bottom:4px">
+      <h2 id="perfil-nombre" style="font-size:18px;color:#fff"></h2>
+      <button class="btn" id="btn-cerrar-perfil">✕</button>
+    </div>
+    <p class="nota" id="perfil-subtitulo"></p>
+    <div class="grid" id="perfil-stats" style="margin:16px 0"></div>
+    <table><tbody id="perfil-datos"></tbody></table>
+    <label for="perfil-observaciones" style="margin-top:16px">Observaciones</label>
+    <textarea id="perfil-observaciones" rows="3"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn btn-primary" id="btn-guardar-obs">Guardar</button>
+      <span class="msg" id="perfil-obs-msg"></span>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
