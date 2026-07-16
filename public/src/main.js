@@ -29,6 +29,7 @@ import * as statsPage from './ui/pages/stats.page.js';
 import * as importarPage from './ui/pages/importar.page.js';
 import * as backupPage from './ui/pages/backup.page.js';
 import * as jornadasPage from './ui/pages/jornadas.page.js';
+import * as scannerPage from './ui/pages/scanner.page.js';
 
 let suscripciones = [];
 let appIniciada = false;
@@ -87,6 +88,7 @@ function iniciarApp() {
 
 /** Re-render bajo demanda al cambiar de pestaña (evita trabajo innecesario). */
 function onTabChange(tab) {
+  if (tab !== 'scanner') scannerPage.pararCamaraSiActiva();
   if (tab === 'stats') statsPage.render();
   if (tab === 'taquilla') taquillaPage.render();
   if (tab === 'backup') backupPage.render();
@@ -97,3 +99,4 @@ function cerrarSuscripciones() {
   suscripciones.forEach((unsub) => typeof unsub === 'function' && unsub());
   suscripciones = [];
 }
+
