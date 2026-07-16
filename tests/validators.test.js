@@ -5,8 +5,8 @@ import {
   esEmailValido,
   esTelefonoValido,
   validarSocio,
-} from '../public/src/utils/validators.js';
-import { esc } from '../public/src/utils/sanitize.js';
+} from '../src/utils/validators.js';
+import { esc } from '../src/utils/sanitize.js';
 
 test('DNI: valida la letra de control', () => {
   assert.ok(esDniValido('12345678Z'));

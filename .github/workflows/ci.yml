@@ -20,14 +20,20 @@ jobs:
         run: npm install --no-save eslint@8 prettier@3
 
       - name: Lint
-        run: npx eslint "public/src/**/*.js"
+        run: npx eslint "src/**/*.js"
 
       - name: Formato
-        run: npx prettier --check "public/src/**/*.js"
+        run: npx prettier --check "src/**/*.js"
 
       - name: Tests
         run: node --import ./tests/setup.js --test tests/*.test.js
 
       # No hay paso de build: son módulos ES nativos, se sirven tal cual.
       - name: Comprobar que index.html carga main.js
-        run: grep -q 'src="./src/main.js"' public/index.html
+        run: grep -q 'src="./src/main.js"' index.html
+
+      # La cámara del escáner vive en la raíz: es lo que GitHub Pages publica.
+      - name: Comprobar que el escáner trae la cámara
+        run: |
+          grep -q 'id="btn-camara"' index.html
+          test -f src/ui/camara.js

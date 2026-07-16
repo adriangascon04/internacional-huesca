@@ -49,11 +49,11 @@ Abre VS Code → **Archivo → Abrir carpeta** → selecciona `internacional-hue
 Abre el terminal de VS Code (**Ver → Terminal**) y escribe:
 
 ```bash
-python3 --version
+node --version
 ```
 
-Si te dice una versión (3.x), perfecto. Si dice "no se reconoce", en Windows
-prueba con `python --version`. Si tampoco, instala Python desde python.org
+Si te dice una versión (18 o superior), perfecto: `npm run dev` ya te levanta
+el servidor local. Si dice "no se reconoce", instala Node desde nodejs.org
 o usa la extensión **Live Server** de VS Code (ver paso 6).
 
 ---
@@ -72,7 +72,7 @@ o usa la extensión **Live Server** de VS Code (ver paso 6).
 
 ### 2.2. Pegarlas en el proyecto
 
-Abre `public/src/config/firebase.js` y sustituye el objeto de configuración
+Abre `src/config/firebase.js` y sustituye el objeto de configuración
 por el tuyo:
 
 ```js
@@ -196,8 +196,7 @@ contadores/
 En el terminal de VS Code:
 
 ```bash
-cd public
-python3 -m http.server 8080
+npm run dev
 ```
 
 Abre el navegador en **http://localhost:8080**
@@ -209,7 +208,7 @@ Abre el navegador en **http://localhost:8080**
 > tener un paso de build. Siempre a través del servidor.
 >
 > **Alternativa:** extensión **Live Server** de VS Code → clic derecho sobre
-> `public/index.html` → *Open with Live Server*.
+> `index.html` → *Open with Live Server*.
 
 ### Qué deberías ver
 
@@ -409,7 +408,7 @@ Abre la consola del navegador (**F12** → pestaña Console).
 
 | Error | Causa | Solución |
 |-------|-------|----------|
-| `CORS policy` / `blocked` | Abriste el HTML con doble clic | Usa `python3 -m http.server` |
+| `CORS policy` / `blocked` | Abriste el HTML con doble clic | Levántalo con `npm run dev` |
 | `Failed to resolve module` | Ruta de import mal | ¿Abriste la carpeta correcta en VS Code? |
 | `Firebase: Error (auth/invalid-api-key)` | Credenciales mal pegadas | Revisa el paso 2.2 |
 
@@ -452,10 +451,10 @@ de Node, sin dependencias.
 ## Resumen en 6 líneas
 
 ```bash
-# 1. Pega tus credenciales en public/src/config/firebase.js
+# 1. Pega tus credenciales en src/config/firebase.js
 # 2. Authentication → crea tu usuario → copia el UID
 # 3. Firestore → usuarios/{tu-UID} → { rol: "admin", ... }     ← ANTES de las reglas
 # 4. Firestore → contadores/socios → { ultimo: 0 }
-# 5. cd public && python3 -m http.server 8080
+# 5. npm run dev          (sirve la raíz en http://localhost:8080)
 # 6. Prueba las reglas en el Simulador → Publicar
 ```

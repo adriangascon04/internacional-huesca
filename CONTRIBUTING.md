@@ -3,7 +3,7 @@
 ## Antes de tocar nada
 
 1. Lee `README.md` (estructura) y `DESARROLLO.md` (ramas y entorno).
-2. Levanta el proyecto en local: `cd public && python3 -m http.server 8080`.
+2. Levanta el proyecto en local: `npm run dev` (sirve la raíz en el puerto 8080).
 
 ## Reglas de la arquitectura
 
@@ -21,7 +21,7 @@
 
 - Rama desde `develop`, nombre `feature/lo-que-sea`.
 - Commits en español con prefijo (`feat:`, `fix:`, `refactor:`, `docs:`).
-- Que pase `npx eslint "public/src/**/*.js"`.
+- Que pase `npx eslint "src/**/*.js"`.
 - Describe **qué** cambia y **por qué**, no solo el cómo.
 
 ## Cambios en las reglas de Firestore

@@ -14,12 +14,11 @@ con **módulos ES nativos**, sin paso de build, desplegable en GitHub Pages.
 
 ```bash
 # 1. Configurar Firebase
-#    Edita public/src/config/firebase.js y pega tus credenciales
+#    Edita src/config/firebase.js y pega tus credenciales
 #    (Firebase Console → Configuración del proyecto → Tus apps → Config)
 
 # 2. Levantar en local (los módulos ES exigen un servidor: file:// NO vale)
-cd public
-python3 -m http.server 8080
+npm run dev
 #    → abre http://localhost:8080
 ```
 
@@ -31,7 +30,7 @@ python3 -m http.server 8080
 ## Estructura
 
 ```
-public/
+.                           Raíz del repo = lo que publica GitHub Pages
 ├── index.html              Shell de la app (HTML + CSS)
 ├── manifest.json           Manifiesto PWA
 └── src/
@@ -66,6 +65,7 @@ public/
     └── ui/
         ├── login.view.js
         ├── layout.view.js  Pestañas y permisos por rol
+        ├── camara.js       Cámara + lectura de QR (jsQR)
         ├── sonidos.js
         └── pages/          Una página por pestaña
             ├── socios.page.js
@@ -100,7 +100,7 @@ service. Si el service necesita persistir, pasa por un repository.
 | Tocar la tabla de socios | `ui/pages/socios.page.js` |
 | Cambiar la lógica del escáner | `services/acceso.service.js` |
 | Cambiar quién puede hacer qué | `firestore.rules` (+ `services/roles.service.js` para la UI) |
-| Cambiar estilos | `<style>` de `public/index.html` |
+| Cambiar estilos | `<style>` de `index.html` |
 
 ---
 

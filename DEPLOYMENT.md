@@ -2,7 +2,7 @@
 
 ## 1. Configurar Firebase
 
-Edita `public/src/config/firebase.js` con los valores de tu proyecto
+Edita `src/config/firebase.js` con los valores de tu proyecto
 (Firebase Console → ⚙️ Configuración del proyecto → Tus apps → Config).
 
 > La `apiKey` de una app web **no es un secreto**: viaja en el navegador de
@@ -59,12 +59,14 @@ anterior → *Restaurar*. Tenlo localizado antes de publicar.
 Settings → Pages:
 - **Source:** Deploy from a branch
 - **Branch:** `main`
-- **Folder:** `/public`
+- **Folder:** `/ (root)`
 
 En 1–2 minutos: `https://<usuario>.github.io/<repo>/`
 
-> Si prefieres servir desde la raíz, mueve el contenido de `public/` a la raíz
-> y ajusta la ruta en Pages.
+> La app se sirve desde la raíz del repositorio. No hay carpeta `public/`:
+> existió una copia duplicada ahí y provocó que se publicara código viejo
+> (la cámara del escáner se añadió solo a esa copia y nunca llegó a la web).
+> Mantén una única copia en la raíz.
 
 ## Índices de Firestore
 

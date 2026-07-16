@@ -5,11 +5,15 @@
 Los módulos ES nativos **no funcionan con `file://`**. Necesitas un servidor:
 
 ```bash
-cd public
-python3 -m http.server 8080     # o: npx serve .
+npm run dev                     # sirve la raíz en http://localhost:8080
 ```
 
 En VS Code, la extensión **Live Server** también sirve (botón "Go Live").
+
+> Cualquier servidor estático vale, siempre que apunte a la **raíz** del repo.
+> Con Python es `python -m http.server 8080` (en Windows el ejecutable es
+> `python`, no `python3`, y si usas conda tendrás que lanzarlo desde un
+> *Anaconda Prompt* o tener conda en el PATH).
 
 ---
 
@@ -85,8 +89,8 @@ chore: actualizar reglas de Firestore
 ## Calidad de código
 
 ```bash
-npx eslint "public/src/**/*.js"          # lint
-npx prettier --write "public/src/**/*.js" # formatear
+npx eslint "src/**/*.js"          # lint
+npx prettier --write "src/**/*.js" # formatear
 ```
 
 La CI (`.github/workflows/ci.yml`) ejecuta lint y formato en cada PR.

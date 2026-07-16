@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseQr } from '../public/src/services/acceso.service.js';
+import { parseQr } from '../src/services/acceso.service.js';
 
 test('parseQr: recorta el prefijo', () => {
   assert.equal(parseQr('HUESCA:5'), '5');

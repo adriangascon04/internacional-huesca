@@ -25,7 +25,7 @@ git push -u origin main
 
 ### 2. Configurar Firebase
 
-Abre `public/src/config/firebase.js` y pega tu configuración (desde Firebase
+Abre `src/config/firebase.js` y pega tu configuración (desde Firebase
 Console → ⚙️ Configuración del proyecto → Tus apps → Config):
 
 ```js
@@ -42,7 +42,7 @@ const firebaseConfig = {
 Commit y push:
 
 ```bash
-git add public/src/config/firebase.js
+git add src/config/firebase.js
 git commit -m "config: firebase credentials"
 git push
 ```
@@ -196,7 +196,7 @@ Ver la tabla de deuda técnica en `DESARROLLO.md`.
 # 1. Subir a GitHub
 git init && git add . && git commit -m "init" && git push -u origin main
 
-# 2. Pegas credenciales en public/src/config/firebase.js y pushas
+# 2. Pegas credenciales en src/config/firebase.js y pushas
 
 # 3. Firebase → usuarios/{tu-UID} → {rol:"admin", ...}
 # 4. Firebase → contadores/socios → {ultimo:0}
