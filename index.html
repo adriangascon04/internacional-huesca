@@ -168,6 +168,14 @@ canvas#chart-taquilla{max-height:300px}
         <input id="manual-id" placeholder="Nº de socio o texto del QR" style="flex:1;min-width:180px">
         <button class="btn btn-primary" id="btn-manual">Validar</button>
       </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-primary" id="btn-camara">📷 Activar cámara</button>
+      </div>
+      <div id="camara-wrap" style="display:none;margin-top:12px">
+        <video id="camara-video" playsinline muted autoplay
+              style="width:100%;max-width:420px;border-radius:10px;background:#000"></video>
+        <canvas id="camara-canvas" style="display:none"></canvas>
+      </div>
       <div id="scan-result"></div>
     </div>
     <div class="card">

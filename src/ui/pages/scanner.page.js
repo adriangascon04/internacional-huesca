@@ -9,6 +9,7 @@ import { getPartidos, getPartidosLabel } from '../../config/app.config.js';
 import * as acceso from '../../services/acceso.service.js';
 import * as socios from '../../services/socios.service.js';
 import { playSonido } from '../sonidos.js';
+import { iniciarCamara, pararCamara, camaraActiva } from '../camara.js';
 
 export function initScanner() {
   rellenarSelect();
@@ -21,6 +22,7 @@ export function initScanner() {
     await escanear($('#manual-id').value);
     $('#manual-id').value = '';
   });
+  on($('#btn-camara'), 'click', toggleCamara);
 }
 
 function rellenarSelect() {
@@ -100,4 +102,35 @@ export function renderLog() {
       await acceso.borrarAcceso(el.dataset.borrar, jornada);
     }),
   );
+}
+async function toggleCamara() {
+  const wrap = $('#camara-wrap');
+  const video = $('#camara-video');
+  const btn = $('#btn-camara');
+
+  if (camaraActiva()) {
+    pararCamara(video);
+    wrap.style.display = 'none';
+    btn.textContent = '📷 Activar cámara';
+    return;
+  }
+  if (!state.partidoScanner) {
+    return alert('Selecciona una jornada antes de escanear.');
+  }
+  try {
+    wrap.style.display = 'block';
+    await iniciarCamara(video, $('#camara-canvas'), escanear);
+    btn.textContent = '⏹ Parar cámara';
+  } catch {
+    wrap.style.display = 'none';
+    alert('No se pudo acceder a la cámara. Requiere HTTPS y permiso del navegador.');
+  }
+}
+
+export function pararCamaraSiActiva() {
+  if (camaraActiva()) {
+    pararCamara($('#camara-video'));
+    $('#camara-wrap').style.display = 'none';
+    $('#btn-camara').textContent = '📷 Activar cámara';
+  }
 }

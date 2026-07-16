@@ -87,6 +87,7 @@ function iniciarApp() {
 
 /** Re-render bajo demanda al cambiar de pestaña (evita trabajo innecesario). */
 function onTabChange(tab) {
+  if (tab !== 'scanner') scannerPage.pararCamaraSiActiva();
   if (tab === 'stats') statsPage.render();
   if (tab === 'taquilla') taquillaPage.render();
   if (tab === 'backup') backupPage.render();
