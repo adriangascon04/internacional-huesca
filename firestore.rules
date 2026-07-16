@@ -1,0 +1,139 @@
+rules_version = '2';
+// ============================================================================
+//  REGLAS DE SEGURIDAD · Internacional Huesca
+//
+//  RECORDATORIO sobre cómo evalúa Firestore: las reglas son PERMISIVAS y se
+//  combinan con OR. Si una regla concede acceso, otra posterior NO lo quita.
+//  Y `allow write` = create + update + delete.
+//  Por eso el patrón:
+//        allow write:  if puedeEscanear();
+//        allow delete: if esAdmin();
+//  era ENGAÑOSO: el `write` ya concedía delete a control_acceso y la segunda
+//  línea no restringía nada. Aquí se usan siempre verbos separados.
+//
+//  Roles: admin | taquillero | control_acceso | lector
+// ============================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() { return request.auth != null; }
+
+    function datosUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    function rol() { return datosUsuario().rol; }
+
+    function esAdmin()       { return autenticado() && rol() == 'admin'; }
+    function puedeVender()   { return autenticado() && rol() in ['admin', 'taquillero']; }
+    function puedeEscanear() { return autenticado() && rol() in ['admin', 'control_acceso']; }
+
+    // ¿Está cerrada el acta de esta jornada? Antes solo se comprobaba en el
+    // cliente: bastaba la consola del navegador para escribir en una jornada
+    // cerrada. Ahora lo impone el servidor.
+    function jornadaAbierta(jornadaId) {
+      return !exists(/databases/$(database)/documents/jornadas_bloqueadas/$(jornadaId))
+        || get(/databases/$(database)/documents/jornadas_bloqueadas/$(jornadaId)).data.bloqueada != true;
+    }
+
+    // Campos que solo el servidor/admin debería fijar.
+    function noTocaAuditoria() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['creadoPor', 'creadoEn', 'numerico', 'alta']);
+    }
+
+    // ---------------------------------------------------------------- usuarios
+    // Cada uno lee el suyo; solo admin escribe. Un usuario NO puede ascenderse.
+    match /usuarios/{uid} {
+      allow get: if autenticado() && (request.auth.uid == uid || esAdmin());
+      allow list: if esAdmin();
+      allow create, update, delete: if esAdmin();
+    }
+
+    // ------------------------------------------------------------------ socios
+    // Lectura: cualquier autenticado (el escáner la necesita).
+    // LIMITACIÓN ASUMIDA: esto expone DNI/teléfono/email a todos los roles.
+    // Las reglas conceden documentos enteros, no campos. Ocultar el DNI a un
+    // taquillero exigiría Cloud Functions (plan de pago).
+    match /socios/{id} {
+      allow read: if autenticado();
+      allow create: if esAdmin()
+        && request.resource.data.activo == true
+        && request.resource.data.numerico is number;
+      allow update: if esAdmin() && noTocaAuditoria();
+      allow delete: if false;  // baja lógica (activo:false), nunca borrado real
+    }
+
+    // ---------------------------------------------------------------- entradas
+    // Un doc por jornada: { <socioId>: <ISO> }.
+    match /entradas/{jornada} {
+      allow read: if autenticado();
+
+      allow create: if puedeEscanear() && jornadaAbierta(jornada);
+
+      // Un control_acceso solo puede AÑADIR accesos, nunca eliminarlos: se
+      // exige que todas las claves previas sigan presentes. Corregir un error
+      // (borrar un acceso) queda reservado a admin.
+      allow update: if jornadaAbierta(jornada) && (
+        esAdmin()
+        || (puedeEscanear()
+            && request.resource.data.keys().hasAll(resource.data.keys()))
+      );
+
+      allow delete: if esAdmin();
+    }
+
+    // ---------------------------------------------------------------- taquilla
+    // Un doc por jornada: { general, menor, historial:[...] }.
+    match /taquilla/{jornada} {
+      allow read: if autenticado();
+
+      allow create: if puedeVender() && jornadaAbierta(jornada);
+
+      // El contador solo puede moverse de uno en uno. Antes, un taquillero
+      // podía escribir general: 999999 y falsear la recaudación de un plumazo.
+      allow update: if jornadaAbierta(jornada) && (
+        esAdmin()
+        || (puedeVender()
+            && request.resource.data.general >= 0
+            && request.resource.data.menor >= 0
+            && request.resource.data.general <= resource.data.general + 1
+            && request.resource.data.menor <= resource.data.menor + 1
+            && request.resource.data.general >= resource.data.general - 1
+            && request.resource.data.menor >= resource.data.menor - 1)
+      );
+
+      allow delete: if esAdmin();
+    }
+
+    // ---------------------------------------------------- jornadas_bloqueadas
+    // Cerrar/abrir el acta: solo admin.
+    match /jornadas_bloqueadas/{jornada} {
+      allow read: if autenticado();
+      allow create, update, delete: if esAdmin();
+    }
+
+    // ----------------------------------------------------------------- backups
+    // Contienen datos personales de todos los socios -> solo admin.
+    match /backups/{id} {
+      allow read, create, delete: if esAdmin();
+      allow update: if false;  // una copia no se edita
+    }
+
+    // -------------------------------------------------------------- contadores
+    // El contador de números de socio SOLO puede subir. Si pudiera bajar,
+    // volveríamos a reutilizar números y a los "QR zombie" del bug original.
+    match /contadores/{id} {
+      allow read: if autenticado();
+      allow create: if esAdmin() && request.resource.data.ultimo is number;
+      allow update: if esAdmin()
+        && request.resource.data.ultimo is number
+        && request.resource.data.ultimo > resource.data.ultimo;
+      allow delete: if false;
+    }
+
+    // Todo lo demás: denegado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

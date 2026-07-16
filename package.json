@@ -1,0 +1,18 @@
+{
+  "name": "internacional-huesca",
+  "version": "1.0.0",
+  "description": "Gestión de abonados del Internacional Huesca (PWA, módulos ES nativos, sin build)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cd public && python3 -m http.server 8080",
+    "lint": "eslint \"public/src/**/*.js\"",
+    "format": "prettier --write \"public/src/**/*.js\"",
+    "format:check": "prettier --check \"public/src/**/*.js\"",
+    "test": "node --import ./tests/setup.js --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
+  }
+}

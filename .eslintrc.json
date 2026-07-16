@@ -1,0 +1,15 @@
+{
+  "env": { "browser": true, "es2022": true },
+  "parserOptions": { "ecmaVersion": "latest", "sourceType": "module" },
+  "extends": "eslint:recommended",
+  "globals": {
+    "Chart": "readonly", "QRCode": "readonly", "JSZip": "readonly",
+    "saveAs": "readonly", "XLSX": "readonly", "jsQR": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "eqeqeq": "error",
+    "prefer-const": "error"
+  }
+}
