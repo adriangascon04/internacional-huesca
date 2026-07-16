@@ -26,11 +26,6 @@ export function setState(parcial) {
   listeners.forEach((fn) => fn(state));
 }
 
-export function suscribir(fn) {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-}
-
 /** ¿Está bloqueada la jornada indicada? */
 export const estaBloqueada = (jornadaKey) =>
   state.jornadasBloqueadas[jornadaKey] === true;

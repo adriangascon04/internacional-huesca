@@ -9,7 +9,6 @@ import {
   collection,
   doc,
   setDoc,
-  getDoc,
   updateDoc,
   onSnapshot,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -17,10 +16,8 @@ import {
 const col = () => collection(db, COLECCIONES.socios);
 const ref = (id) => doc(db, COLECCIONES.socios, String(id));
 
-export const socioRef = ref;
 export const guardarSocio = (id, datos) => setDoc(ref(id), datos);
 export const actualizarSocio = (id, campos) => updateDoc(ref(id), campos);
-export const obtenerSocio = (id) => getDoc(ref(id));
 
 /**
  * Suscripción en tiempo real a TODOS los socios.

@@ -5,6 +5,7 @@ import { $ } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
 import { euros } from '../../utils/format.js';
 import { state } from '../../core/state.js';
+import { claseAsistencia } from '../../config/app.config.js';
 import { calcularStats } from '../../services/stats.service.js';
 
 let chart = null;
@@ -25,7 +26,7 @@ export function render() {
   $('#stats-tabla').innerHTML = s.porJornada
     .map((j) => {
       const pct = s.baseAsistencia ? Math.round((j.nSocios / s.baseAsistencia) * 100) : 0;
-      const cls = pct > 70 ? 'badge-ok' : pct > 30 ? 'badge-warn' : 'badge-no';
+      const cls = claseAsistencia(pct);
       return `<tr><td>${esc(j.label)}</td><td>${j.nSocios}</td>
       <td><span class="badge ${cls}">${pct}%</span></td>
       <td>${j.nTaquilla}</td><td><strong>${j.totalAsistentes}</strong></td>

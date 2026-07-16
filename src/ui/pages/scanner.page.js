@@ -19,7 +19,8 @@ export function initScanner() {
     renderLog();
   });
   on($('#btn-manual'), 'click', async () => {
-    await escanear($('#manual-id').value);
+    // manual: lo teclea el personal, no se le exige token de carnet.
+    await escanear($('#manual-id').value, { manual: true });
     $('#manual-id').value = '';
   });
   on($('#btn-camara'), 'click', toggleCamara);
@@ -36,9 +37,9 @@ function rellenarSelect() {
   $('#partido-sel').innerHTML = html;
 }
 
-export async function escanear(raw) {
+export async function escanear(raw, opciones = {}) {
   const jornada = state.partidoScanner;
-  const res = await acceso.procesarAcceso(raw, jornada, estaBloqueada(jornada));
+  const res = await acceso.procesarAcceso(raw, jornada, estaBloqueada(jornada), opciones);
   const out = $('#scan-result');
 
   switch (res.estado) {
@@ -53,6 +54,15 @@ export async function escanear(raw) {
     case 'desconocido':
       playSonido('error');
       out.innerHTML = `<div class="scanner-result result-no">❌ QR no reconocido: ${esc(res.id)}</div>`;
+      break;
+    case 'qr_invalido':
+      playSonido('error');
+      out.innerHTML = `<div class="scanner-result result-no">🚫 CARNET NO VÁLIDO — nº ${esc(res.id)}<br>
+        <small>${
+          res.motivo === 'sin_token'
+            ? 'El QR no lleva código de seguridad. Hay que reemitir el carnet.'
+            : 'El código de seguridad no coincide: el QR no es auténtico o el carnet fue reemitido.'
+        }<br>Si reconoces a la persona como socia, valida a mano con su nº de socio.</small></div>`;
       break;
     case 'repetido':
       playSonido('error');

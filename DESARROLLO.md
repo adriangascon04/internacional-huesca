@@ -103,8 +103,8 @@ Cosas que **no** se han arreglado y por qué. Sé honesto contigo mismo aquí.
 
 | Tema | Estado | Nota |
 |---|---|---|
-| QR falsificable | ❌ Pendiente | El QR es `HUESCA:<id>` en texto plano. Cualquiera puede generar uno. Firmarlo con HMAC exige un secreto en servidor → Cloud Functions → plan Blaze (de pago). |
+| QR falsificable | ✅ Cerrado | El QR es `HUESCA:<id>:<token>`, con un token aleatorio por socio guardado en su ficha, y `QR_ACEPTA_LEGACY` está en `false`: un `HUESCA:6` sin token se rechaza. Se pudo apagar el flag porque no había ningún carnet v1 impreso. La vía de escape sigue siendo la validación manual del escáner, que no exige token porque la teclea el personal. Limitación que queda: cualquier usuario autenticado puede leer los tokens (las reglas conceden documentos enteros, no campos); blindarlo del todo exigiría Cloud Functions → plan Blaze. |
 | Dependencias CDN sin SRI | ⚠️ Parcial | Si un CDN se compromete, ejecuta código en tu app. Añadir `integrity="sha384-..."` a cada `<script>`. |
-| Sin tests automáticos | ❌ Pendiente | Los services son funciones puras y fáciles de testear. Empezar por `validators.js` y `stats.service.js`. |
+| Sin tests automáticos | ✅ Cubierto lo crítico | `npm test` (runner nativo de Node, sin dependencias) cubre validadores, tokens, parseo de QR, accesos y taquilla. Falta cobertura de las páginas de UI. |
 | Ocultar el DNI a roles no-admin | ❌ Imposible con reglas | Las reglas de Firestore permiten o deniegan documentos enteros, no campos. Requeriría Cloud Functions. |
-| Cámara del escáner | ⚠️ | jsQR está cargado; la captura de vídeo se puede añadir en `scanner.page.js`. La validación manual funciona. |
+| Cámara del escáner | ✅ Implementada | `src/ui/camara.js` captura vídeo y decodifica con jsQR desde `scanner.page.js`. Exige HTTPS y permiso del navegador. La validación manual sigue como alternativa. |

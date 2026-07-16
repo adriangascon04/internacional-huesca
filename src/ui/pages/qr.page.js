@@ -4,8 +4,9 @@
 // ============================================================================
 import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
-import { QR_PREFIX } from '../../config/app.config.js';
+import { QR_PREFIX, QR_SEPARADOR } from '../../config/app.config.js';
 import * as socios from '../../services/socios.service.js';
+import * as roles from '../../services/roles.service.js';
 
 export function initQr() {
   on($('#qr-socio'), 'change', previewQR);
@@ -30,10 +31,27 @@ export function rellenarSelect() {
   sel.value = previo;
 }
 
-/** Construye el texto del QR de un socio. Formato: "HUESCA:<id>". */
-export const textoQr = (id) => `${QR_PREFIX}${id}`;
+/** Texto del QR: "HUESCA:<id>:<token>", o "HUESCA:<id>" si aún no hay token. */
+export const textoQr = (id, token) =>
+  token ? `${QR_PREFIX}${id}${QR_SEPARADOR}${token}` : `${QR_PREFIX}${id}`;
 
-function previewQR() {
+/**
+ * Token con el que emitir el carnet. Si el socio no tiene (viene de antes de
+ * los QR firmados) se le crea aquí. Un rol sin permiso para escribir socios no
+ * puede crearlo: en ese caso se emite el QR antiguo en vez de reventar.
+ */
+async function tokenParaQr(id) {
+  const s = socios.obtener(id);
+  if (s?.tokenQR) return s.tokenQR;
+  if (!roles.puedeGestionarSocios()) return null;
+  try {
+    return await socios.asegurarTokenQR(id);
+  } catch {
+    return null;
+  }
+}
+
+async function previewQR() {
   const id = $('#qr-socio').value;
   const cont = $('#qr-preview');
   cont.innerHTML = '';
@@ -41,11 +59,12 @@ function previewQR() {
   const s = socios.obtener(id);
   if (!s) return;
 
+  const token = await tokenParaQr(id);
   const box = document.createElement('div');
   cont.appendChild(box);
   // eslint-disable-next-line no-undef
   new QRCode(box, {
-    text: textoQr(id),
+    text: textoQr(id, token),
     width: 220,
     height: 220,
     correctLevel: QRCode.CorrectLevel.H,
@@ -85,11 +104,16 @@ async function descargarTodosZip() {
   temp.style.display = 'none';
   document.body.appendChild(temp);
 
+  let hecho = 0;
   for (const s of lista) {
+    // Asigna token a los socios que aún no lo tengan: el ZIP es justo el
+    // momento de la reemisión masiva de carnets.
+    const token = await tokenParaQr(s.id);
+    msg.textContent = `Generando QRs… ${++hecho}/${lista.length}`;
     temp.innerHTML = '';
     // eslint-disable-next-line no-undef
     new QRCode(temp, {
-      text: textoQr(s.id),
+      text: textoQr(s.id, token),
       width: 300,
       height: 300,
       correctLevel: QRCode.CorrectLevel.H,

@@ -390,9 +390,9 @@ Sé honesto contigo mismo sobre el estado real de esto:
 
 | Cosa | Estado | Detalle |
 |------|--------|---------|
-| **Cámara del escáner** | ❌ No implementada | El portero teclea el número a mano. jsQR está cargado pero nadie lo usa. Es la mejora nº 1 en valor real. |
-| **Editar un socio** | ❌ No hay UI | `editarSocio()` está escrita y validada en el service, pero **ningún botón la llama**. Solo puedes marcar pagado y observaciones. |
-| **QR falsificable** | ⚠️ Abierto | El QR es `HUESCA:5` en texto plano. Cualquiera genera `HUESCA:6` con el móvil y entra. Se arregla con tokens aleatorios (no requiere pagar). |
+| **Cámara del escáner** | ✅ Implementada | Botón "📷 Activar cámara" en el escáner. Requiere HTTPS (GitHub Pages lo es) y permiso del navegador. El portero puede seguir tecleando el número a mano. |
+| **Editar un socio** | ✅ Implementada | Perfil del socio (👤) → "✏️ Editar". Solo admin. |
+| **QR falsificable** | ✅ Cerrado | Los QRs son `HUESCA:5:<token>` con token aleatorio por socio y `QR_ACEPTA_LEGACY = false`, así que un `HUESCA:6` inventado se rechaza. |
 | **CDN sin SRI** | ⚠️ Abierto | Si un CDN se compromete, ejecuta código en tu app. Falta añadir `integrity="sha384-..."`. |
 | **Offline** | ❌ No activado | Sin cobertura en la puerta del campo, el escáner deja de funcionar. Se arregla con 3 líneas en `firebase.js`. |
 
@@ -443,7 +443,7 @@ Opcional, pero si quieres comprobar que la lógica está sana:
 npm test
 ```
 
-Deben pasar 15/15. No necesitas `npm install` para esto: usa el runner nativo
+Deben pasar 37/37. No necesitas `npm install` para esto: usa el runner nativo
 de Node, sin dependencias.
 
 ---

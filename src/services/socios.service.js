@@ -10,6 +10,7 @@
 import * as repo from '../repositories/socios.repository.js';
 import { siguienteNumeroSocio } from '../repositories/contadores.repository.js';
 import { validarSocio } from '../utils/validators.js';
+import { generarTokenQR } from '../utils/token.js';
 import { esGratuito } from '../config/app.config.js';
 import { session } from '../core/session.js';
 
@@ -49,10 +50,29 @@ export async function altaSocio(datos) {
     alta: ahora,
     pagado: esGratuito(datos.tipo),
     activo: true,
+    tokenQR: generarTokenQR(), // credencial del carnet (Upgrades #5)
     creadoPor: session.email, // auditoría
     creadoEn: ahora,
   });
   return { ok: true, id };
+}
+
+/**
+ * Devuelve el token del carnet, creándolo si el socio aún no lo tiene.
+ * Es la migración de los socios anteriores a los QR firmados: se les asigna
+ * token la primera vez que se genera su carnet nuevo.
+ */
+export async function asegurarTokenQR(id) {
+  const s = obtener(id);
+  if (!s) return null;
+  if (s.tokenQR) return s.tokenQR;
+  const tokenQR = generarTokenQR();
+  await repo.actualizarSocio(id, {
+    tokenQR,
+    modificadoPor: session.email,
+    modificadoEn: new Date().toISOString(),
+  });
+  return tokenQR;
 }
 
 /** Edición de socio (Upgrades #2: antes NO se podía editar). */

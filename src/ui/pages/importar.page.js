@@ -27,8 +27,11 @@ async function analizar(e) {
 
   try {
     const buf = await file.arrayBuffer();
+    // cellDates: sin esto, Excel entrega las fechas como número de serie
+    // ("33970") y acababan guardadas tal cual, porque solo se miraba que el
+    // campo no estuviera vacío (Upgrades #7).
     // eslint-disable-next-line no-undef
-    const wb = XLSX.read(buf, { type: 'array' });
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
     const hoja = wb.Sheets[wb.SheetNames[0]];
     // eslint-disable-next-line no-undef
     const filas = XLSX.utils.sheet_to_json(hoja, { defval: '' });
@@ -72,23 +75,41 @@ async function analizar(e) {
 
 /** Mapea las cabeceras del Excel a nuestro modelo. Ajusta aquí si cambian. */
 function normalizar(f) {
-  const get = (...claves) => {
+  const buscar = (...claves) => {
     for (const k of claves) {
       const encontrada = Object.keys(f).find((c) => c.toLowerCase().trim() === k);
-      if (encontrada && String(f[encontrada]).trim()) return String(f[encontrada]).trim();
+      if (encontrada && String(f[encontrada]).trim()) return f[encontrada];
     }
     return '';
   };
+  const get = (...claves) => String(buscar(...claves)).trim();
   return {
     nombre: get('nombre'),
     ap1: get('apellido 1', 'apellido1', 'ap1', 'primer apellido'),
     ap2: get('apellido 2', 'apellido2', 'ap2', 'segundo apellido'),
     dni: get('dni', 'dni / nie', 'nie').toUpperCase(),
-    fnac: get('fecha nac.', 'fecha nacimiento', 'fnac'),
+    fnac: aFechaISO(buscar('fecha nac.', 'fecha nacimiento', 'fnac')),
     tel: get('teléfono', 'telefono', 'tel'),
     email: get('email', 'correo'),
     tipo: get('tipo', 'tipo de abono', 'abono'),
   };
+}
+
+/**
+ * Lleva a "AAAA-MM-DD" lo que Excel pueda dar: un Date (con cellDates), ya el
+ * formato ISO, o el "dd/mm/aaaa" que escribe la gente a mano. Lo que no encaje
+ * se devuelve tal cual y lo rechaza `validarSocio` con un error visible.
+ */
+function aFechaISO(valor) {
+  if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
+    const y = valor.getFullYear();
+    const m = String(valor.getMonth() + 1).padStart(2, '0');
+    const d = String(valor.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(valor ?? '').trim();
+  const dmy = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  return dmy ? `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}` : s;
 }
 
 async function importar() {

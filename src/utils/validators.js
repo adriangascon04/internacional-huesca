@@ -23,6 +23,21 @@ export function esEmailValido(valor) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(valor || '').trim());
 }
 
+/**
+ * Fecha en formato AAAA-MM-DD, real y no futura.
+ * Antes solo se comprobaba "no vacío": el importador de Excel colaba números
+ * de serie ("33970") o fechas imposibles ("2024-02-31") sin rechistar.
+ */
+export function esFechaValida(valor) {
+  const s = String(valor ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return false;
+  // Rechaza desbordes: new Date('2024-02-31') se convierte en 02/03.
+  if (d.toISOString().slice(0, 10) !== s) return false;
+  return d.getUTCFullYear() >= 1900 && d <= new Date();
+}
+
 /** Teléfono español: 9 dígitos (permite prefijo +34 y espacios). */
 export function esTelefonoValido(valor) {
   const limpio = String(valor || '')
@@ -39,6 +54,8 @@ export function validarSocio(datos) {
     if (!datos?.[campo]) errores.push(`El campo "${campo}" es obligatorio.`);
   }
   if (datos?.dni && !esDniValido(datos.dni)) errores.push('El DNI/NIE no es válido.');
+  if (datos?.fnac && !esFechaValida(datos.fnac))
+    errores.push('La fecha de nacimiento no es válida (formato AAAA-MM-DD).');
   if (datos?.email && !esEmailValido(datos.email)) errores.push('El email no es válido.');
   if (datos?.tel && !esTelefonoValido(datos.tel))
     errores.push('El teléfono no es válido.');

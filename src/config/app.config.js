@@ -55,10 +55,37 @@ export const FECHA_LIMITE_FUNDADOR = new Date('2027-05-30T23:59:59');
 export const esFundador = (socio) =>
   !!socio?.alta && new Date(socio.alta) <= FECHA_LIMITE_FUNDADOR;
 
+// --- Umbrales de asistencia (Upgrades #9) -----------------------------------
+// Estaban hardcodeados en stats.page.js: `pct > 70 ? ok : pct > 30 ? warn : no`.
+// % de socios (sobre los que asisten al campo) a partir del cual la jornada se
+// pinta en verde / ámbar. Por debajo del mínimo, en rojo.
+export const UMBRALES_ASISTENCIA = { bueno: 70, medio: 30 };
+
+/** Clase CSS del badge de asistencia según el % de la jornada. */
+export const claseAsistencia = (pct) =>
+  pct > UMBRALES_ASISTENCIA.bueno
+    ? 'badge-ok'
+    : pct > UMBRALES_ASISTENCIA.medio
+      ? 'badge-warn'
+      : 'badge-no';
+
 // --- Formato del QR (Upgrades #5) -------------------------------------------
-// v1: texto plano "HUESCA:<id>" (compatibilidad con carnets ya impresos).
-// TODO seguridad: migrar a "HUESCA:<id>:<hmac>" firmando en Cloud Function.
+// v1: "HUESCA:<id>"          -> falsificable: basta adivinar el nº de socio.
+// v2: "HUESCA:<id>:<token>"  -> el token es aleatorio y vive en la ficha del
+//     socio, así que ya no se puede fabricar un carnet desde fuera.
 export const QR_PREFIX = 'HUESCA:';
+export const QR_SEPARADOR = ':';
+export const QR_LONGITUD_TOKEN = 12; // 32^12 ≈ 2^60 combinaciones
+
+// ⚠️ INTERRUPTOR DE LA MIGRACIÓN.
+//   true  -> se siguen aceptando los carnets v1 (sin token). OJO: mientras esté
+//            en true el agujero SIGUE ABIERTO, porque un "HUESCA:99" inventado
+//            se acepta igual.
+//   false -> un QR sin token se rechaza.
+// Se pone en false porque no hay ningún carnet v1 impreso: todos los carnets se
+// emiten ya con token. La vía de escape cuando un QR no lee sigue siendo la
+// entrada manual del escáner, que no exige token (ver comprobarToken).
+export const QR_ACEPTA_LEGACY = false;
 
 // --- Colecciones de Firestore (evita strings mágicos repetidos) -------------
 export const COLECCIONES = {
