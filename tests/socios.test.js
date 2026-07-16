@@ -34,7 +34,14 @@ test('editarSocio: rechaza un email inválido', async () => {
 test('editarSocio: rechaza campos obligatorios vacíos', async () => {
   const res = await editarSocio('1', { ...VALIDO, nombre: '' });
   assert.equal(res.ok, false);
-  assert.ok(res.errores.some((e) => e.includes('nombre')));
+  // El error nombra el campo como lo ve el usuario ("Nombre"), no como se
+  // llama el campo por dentro: los errores se le enseñan tal cual al admin.
+  assert.ok(res.errores.some((e) => e.includes('Nombre')));
+});
+
+test('editarSocio: el segundo apellido ya no es obligatorio', async () => {
+  const res = await editarSocio('1', { ...VALIDO, ap2: '' });
+  assert.equal(res.ok, true);
 });
 
 test('editarSocio: acepta datos válidos', async () => {

@@ -1,14 +1,24 @@
 // ============================================================================
 //  src/ui/pages/socios.page.js
-//  Listado, alta, edición y perfil de socios.
+//  Listado, alta, edición, perfil y renumeración de socios.
 //  Todo dato de usuario se pinta con `safe`/`esc` -> sin XSS (Upgrades #10).
+//
+//  El "Nº" que se ve aquí es el nº de CARNET (el impreso, el que se renumera),
+//  nunca el id interno del socio. Ver carnetDe() en app.config.js.
 // ============================================================================
 import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
-import { fecha, antiguedad } from '../../utils/format.js';
+import { fecha, antiguedad, horaCorta, duracion } from '../../utils/format.js';
 import { state } from '../../core/state.js';
-import { esFundador, TIPOS_ABONO, getPartidos } from '../../config/app.config.js';
+import {
+  esFundador,
+  TIPOS_ABONO,
+  TIPOS_DOCUMENTO,
+  tipoDocDe,
+  carnetDe,
+} from '../../config/app.config.js';
 import * as socios from '../../services/socios.service.js';
+import { historialSocio } from '../../services/stats.service.js';
 import * as roles from '../../services/roles.service.js';
 
 let perfilActualId = null;
@@ -17,10 +27,14 @@ const OPCIONES_TIPO =
   '<option value="">— Selecciona —</option>' +
   TIPOS_ABONO.map((t) => `<option>${esc(t.id)}</option>`).join('');
 
+const OPCIONES_DOC = TIPOS_DOCUMENTO.map((t) => `<option>${esc(t)}</option>`).join('');
+
 export function initSocios() {
-  // Rellenar el select de tipos desde la config (antes estaba en el HTML).
+  // Rellenar los selects desde la config (antes estaban en el HTML).
   $('#f-tipo').innerHTML = OPCIONES_TIPO;
   $('#e-tipo').innerHTML = OPCIONES_TIPO;
+  $('#f-tipodoc').innerHTML = OPCIONES_DOC;
+  $('#e-tipodoc').innerHTML = OPCIONES_DOC;
 
   on($('#buscador'), 'input', render);
   on($('#btn-alta'), 'click', onAlta);
@@ -32,15 +46,20 @@ export function initSocios() {
   on($('#btn-editar-toggle'), 'click', () => mostrarFormEdicion(true));
   on($('#btn-cancelar-edicion'), 'click', () => mostrarFormEdicion(false));
   on($('#btn-guardar-socio'), 'click', onGuardarSocio);
+  on($('#btn-renumerar'), 'click', onRenumerar);
 }
 
 export function render() {
   const q = ($('#buscador')?.value || '').toLowerCase();
   const lista = socios
     .getSociosActivos()
-    .filter((s) => `${s.nombre} ${s.ap1} ${s.ap2} ${s.dni}`.toLowerCase().includes(q));
+    .filter((s) =>
+      `${s.nombre} ${s.ap1} ${s.ap2 || ''} ${s.dni}`.toLowerCase().includes(q),
+    );
 
   $('#total-socios').textContent = socios.getSociosActivos().length;
+  renderRenumerar();
+
   const tbody = $('#tabla-socios');
   const empty = $('#tabla-empty');
   if (!lista.length) {
@@ -55,9 +74,9 @@ export function render() {
     .map(
       (s) => `
     <tr>
-      <td><code>${esc(s.id)}</code></td>
-      <td>${esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`)}${esFundador(s) ? ' <span title="Socio Fundador">⭐</span>' : ''}</td>
-      <td>${esc(s.dni)}</td>
+      <td><code>${carnetDe(s)}</code></td>
+      <td>${esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim())}${esFundador(s) ? ' <span title="Socio Fundador">⭐</span>' : ''}</td>
+      <td>${esc(s.dni)}<br><small style="color:var(--txt3)">${esc(tipoDocDe(s))}</small></td>
       <td>${esc(s.tipo)}</td>
       <td style="text-align:center">
         <input type="checkbox" data-pagado="${esc(s.id)}" ${s.pagado ? 'checked' : ''} ${admin ? '' : 'disabled'}>
@@ -84,12 +103,70 @@ export function render() {
     .forEach((el) => on(el, 'click', () => onBaja(el.dataset.baja)));
 }
 
+// --- Renumeración de temporada ---------------------------------------------
+
+/** Enseña cuántos huecos hay antes de que el admin decida renumerar. */
+function renderRenumerar() {
+  const card = $('#card-renumerar');
+  if (!card) return;
+  card.style.display = roles.puedeGestionarSocios() ? '' : 'none';
+  if (!roles.puedeGestionarSocios()) return;
+
+  const activos = socios.getSociosActivos();
+  const maxCarnet = activos.reduce((m, s) => Math.max(m, carnetDe(s)), 0);
+  const huecos = maxCarnet - activos.length;
+  $('#renumerar-info').innerHTML = huecos
+    ? `Hay <strong>${activos.length}</strong> socios activos pero los carnets llegan hasta el
+       <strong>${maxCarnet}</strong>: <strong style="color:var(--ambar)">${huecos} número${huecos === 1 ? '' : 's'} sueltos</strong>
+       que han dejado las bajas. Al renumerar pasarán a ser <strong>1 – ${activos.length}</strong>.`
+    : `Los <strong>${activos.length}</strong> socios activos ya están numerados del 1 al ${activos.length},
+       sin huecos. No hace falta renumerar.`;
+  $('#btn-renumerar').disabled = !activos.length;
+}
+
+async function onRenumerar() {
+  const activos = socios.getSociosActivos();
+  const msg = $('#renumerar-msg');
+  if (
+    !confirm(
+      `¿Renumerar los ${activos.length} socios activos para la nueva temporada?\n\n` +
+        `· Pasarán a tener los números 1 – ${activos.length}.\n` +
+        `· TODOS los carnets actuales dejarán de funcionar al instante.\n` +
+        `· Hay que reimprimir y repartir los carnets nuevos (pestaña QRs → Descargar todos).\n\n` +
+        `El historial de asistencia de cada socio se conserva.\n\nEsto no se puede deshacer.`,
+    )
+  )
+    return;
+
+  $('#btn-renumerar').disabled = true;
+  msg.className = 'msg';
+  msg.textContent = 'Renumerando…';
+  try {
+    const r = await socios.renumerarTemporada();
+    if (!r.ok) {
+      msg.className = 'msg msg-err';
+      msg.textContent = r.errores.join(' ');
+      return;
+    }
+    msg.className = 'msg msg-ok';
+    msg.textContent = `${r.renumerados} socios renumerados y ${r.huecos} hueco${r.huecos === 1 ? '' : 's'} recuperado${r.huecos === 1 ? '' : 's'}. Ahora reimprime los carnets desde la pestaña QRs.`;
+  } catch {
+    msg.className = 'msg msg-err';
+    msg.textContent = 'No se pudo renumerar. Revisa tus permisos y vuelve a intentarlo.';
+  } finally {
+    $('#btn-renumerar').disabled = false;
+  }
+}
+
+// --- Alta / baja / edición --------------------------------------------------
+
 async function onAlta() {
   const msg = $('#form-msg');
   const datos = {
     nombre: $('#f-nombre').value.trim(),
     ap1: $('#f-ap1').value.trim(),
     ap2: $('#f-ap2').value.trim(),
+    tipoDoc: $('#f-tipodoc').value,
     dni: $('#f-dni').value.trim(),
     fnac: $('#f-fnac').value,
     tel: $('#f-tel').value.trim(),
@@ -104,7 +181,7 @@ async function onAlta() {
       msg.textContent = res.errores.join(' ');
     } else {
       msg.className = 'msg msg-ok';
-      msg.textContent = `Socio ${res.id} añadido correctamente.`;
+      msg.textContent = `Socio añadido correctamente con el nº de carnet ${res.carnet}.`;
       ['f-nombre', 'f-ap1', 'f-ap2', 'f-dni', 'f-tel', 'f-email', 'f-fnac'].forEach(
         (i) => {
           $('#' + i).value = '';
@@ -112,7 +189,7 @@ async function onAlta() {
       );
       $('#f-tipo').value = '';
     }
-  } catch (e) {
+  } catch {
     msg.className = 'msg msg-err';
     msg.textContent = 'Error al guardar. Revisa tus permisos.';
   } finally {
@@ -124,7 +201,8 @@ async function onBaja(id) {
   const s = socios.obtener(id);
   if (
     !confirm(
-      `¿Dar de baja a ${s.nombre} ${s.ap1} (nº ${id})?\n\nSu carnet dejará de ser válido. El número NO se reutilizará.`,
+      `¿Dar de baja a ${s.nombre} ${s.ap1} (carnet nº ${carnetDe(s)})?\n\n` +
+        `Su carnet dejará de ser válido. El hueco que deja se recupera al renumerar la próxima temporada.`,
     )
   )
     return;
@@ -139,31 +217,34 @@ function verPerfil(id) {
   const s = socios.obtener(id);
   if (!s) return;
   perfilActualId = id;
-  const partidos = getPartidos();
-  const asistidas = partidos.filter((p) => state.entradas[p]?.[id]);
-  const conDatos = partidos.filter((p) => state.entradas[p]);
-  const pct = conDatos.length
-    ? Math.round((asistidas.length / conDatos.length) * 100)
-    : 0;
 
-  $('#perfil-nombre').textContent = `${s.nombre} ${s.ap1} ${s.ap2 || ''}`;
+  const h = historialSocio({
+    socioId: id,
+    entradas: state.entradas,
+    salidas: state.salidas,
+  });
+
+  $('#perfil-nombre').textContent = `${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim();
   $('#perfil-subtitulo').innerHTML =
-    `Socio nº ${esc(s.id)} · ${esc(s.tipo)}` +
+    `Carnet nº ${carnetDe(s)} · ${esc(s.tipo)}` +
     (esFundador(s) ? ' · <span style="color:#eab308">⭐ Socio Fundador</span>' : '');
 
   $('#perfil-stats').innerHTML = `
-    <div class="stat"><div class="stat-n">${asistidas.length}</div><div class="stat-l">Partidos asistidos</div></div>
-    <div class="stat"><div class="stat-n">${pct}%</div><div class="stat-l">% asistencia</div></div>
-    <div class="stat"><div class="stat-n">${s.pagado ? '✅ Pagado' : '❌ Pendiente'}</div><div class="stat-l">Estado de pago</div></div>`;
+    <div class="stat"><div class="stat-n">${h.asistidos}</div><div class="stat-l">Partidos asistidos<br>de ${h.jornadasConDatos} jugados</div></div>
+    <div class="stat"><div class="stat-n">${h.pct}%</div><div class="stat-l">% asistencia</div></div>
+    <div class="stat"><div class="stat-n">${h.minutosMedios === null ? '—' : duracion(h.minutosMedios)}</div><div class="stat-l">Tiempo medio en el campo</div></div>
+    <div class="stat"><div class="stat-n">${s.pagado ? '✅' : '❌'}</div><div class="stat-l">${s.pagado ? 'Pagado' : 'Pago pendiente'}</div></div>`;
 
   $('#perfil-datos').innerHTML = `
-    <tr><td>Nombre completo</td><td>${esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`)}</td></tr>
-    <tr><td>DNI / NIE</td><td>${esc(s.dni)}</td></tr>
+    <tr><td>Nombre completo</td><td>${esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim())}</td></tr>
+    <tr><td>${esc(tipoDocDe(s))}</td><td>${esc(s.dni)}</td></tr>
     <tr><td>Fecha de nacimiento</td><td>${fecha(s.fnac)}</td></tr>
     <tr><td>Teléfono</td><td>${esc(s.tel || '—')}</td></tr>
     <tr><td>Email</td><td>${esc(s.email || '—')}</td></tr>
     <tr><td>Tipo de abono</td><td>${esc(s.tipo)}</td></tr>
     <tr><td>Socio desde</td><td>${antiguedad(s.alta)}</td></tr>`;
+
+  renderHistorial(h);
 
   // El formulario de edición solo existe para quien puede gestionar socios;
   // las reglas de Firestore lo imponen igualmente en el servidor.
@@ -173,6 +254,28 @@ function verPerfil(id) {
   $('#perfil-observaciones').value = s.observaciones || '';
   $('#perfil-obs-msg').textContent = '';
   $('#modal-perfil').style.display = 'flex';
+}
+
+/** Partido a partido: a qué fue, a qué hora entró, a qué hora salió. */
+function renderHistorial(h) {
+  const cont = $('#perfil-historial');
+  if (!h.partidos.length) {
+    cont.innerHTML = '<p class="empty">Todavía no ha asistido a ningún partido.</p>';
+    return;
+  }
+  cont.innerHTML = `<table>
+    <thead><tr><th>Jornada</th><th>Entró</th><th>Salió</th><th>Tiempo dentro</th></tr></thead>
+    <tbody>${h.partidos
+      .map(
+        (p) => `<tr>
+        <td>${esc(p.label.split(' - ')[1] || p.label)}</td>
+        <td>${horaCorta(p.entrada)}</td>
+        <td>${p.salida ? horaCorta(p.salida) : '<span style="color:var(--txt3)">sin fichar</span>'}</td>
+        <td>${p.minutos === null ? '—' : duracion(p.minutos)}</td>
+      </tr>`,
+      )
+      .join('')}</tbody></table>
+    <p class="nota">"Sin fichar" = entró pero nadie registró su salida. No significa que siguiera dentro.</p>`;
 }
 
 /** Muestra/oculta el formulario y lo recarga desde el socio actual. */
@@ -187,6 +290,7 @@ function mostrarFormEdicion(visible) {
   $('#e-nombre').value = s.nombre || '';
   $('#e-ap1').value = s.ap1 || '';
   $('#e-ap2').value = s.ap2 || '';
+  $('#e-tipodoc').value = tipoDocDe(s);
   $('#e-dni').value = s.dni || '';
   $('#e-fnac').value = s.fnac || '';
   $('#e-tel').value = s.tel || '';
@@ -201,7 +305,8 @@ async function onGuardarSocio() {
     nombre: $('#e-nombre').value.trim(),
     ap1: $('#e-ap1').value.trim(),
     ap2: $('#e-ap2').value.trim(),
-    dni: $('#e-dni').value.trim().toUpperCase(),
+    tipoDoc: $('#e-tipodoc').value,
+    dni: $('#e-dni').value.trim(),
     fnac: $('#e-fnac').value,
     tel: $('#e-tel').value.trim(),
     email: $('#e-email').value.trim(),
@@ -239,11 +344,12 @@ async function onGuardarObs() {
 
 function exportarCSV() {
   const h = [
-    'ID',
+    'Nº carnet',
     'Nombre',
     'Apellido 1',
     'Apellido 2',
-    'DNI',
+    'Tipo documento',
+    'Documento',
     'Fecha nac.',
     'Teléfono',
     'Email',
@@ -253,10 +359,11 @@ function exportarCSV() {
   const filas = socios
     .getSociosActivos()
     .map((s) => [
-      s.id,
+      carnetDe(s),
       s.nombre,
       s.ap1,
       s.ap2,
+      tipoDocDe(s),
       s.dni,
       s.fnac,
       s.tel,
@@ -268,7 +375,11 @@ function exportarCSV() {
     .map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
     .join('\n');
   const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  // El BOM (U+FEFF) va escapado a propósito: pegado literal es invisible en el
+  // editor y cualquiera lo borraría sin saberlo. Sin él, Excel se come los
+  // acentos al abrir el CSV.
+  const BOM = '\uFEFF';
+  a.href = 'data:text/csv;charset=utf-8,' + BOM + encodeURIComponent(csv);
   a.download = 'Socios_InternacionalHuesca.csv';
   a.click();
 }

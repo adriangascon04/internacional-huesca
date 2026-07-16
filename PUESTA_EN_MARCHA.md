@@ -9,6 +9,17 @@ Tiempo estimado: **40–60 minutos** la primera vez.
 > después del 6, **te deja fuera de tu propia aplicación**. Sigue los pasos
 > en orden aunque te parezcan pesados.
 
+> ### 🔴 ¿Ya tenías la app funcionando? Republica las reglas
+>
+> El fichaje de **salidas** guarda en una colección nueva (`salidas`) que las
+> reglas antiguas **no contemplan**, y todo lo que las reglas no contemplan queda
+> denegado. Si no las republicas, el modo SALIDA del escáner fallará con un error
+> de permisos mientras el resto de la app funciona con normalidad.
+>
+> **Qué hacer:** copia `firestore.rules` → Firebase Console → Firestore → Reglas →
+> Publicar. Es el paso 7 de esta guía. No hay que migrar ningún dato: lo que ya
+> está grabado no se toca.
+
 ---
 
 ## Índice

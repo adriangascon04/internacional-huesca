@@ -1,12 +1,17 @@
 {
   "name": "Abonados Internacional Huesca",
   "short_name": "Huesca Abonados",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f5f4",
+  "background_color": "#0A0B0D",
   "theme_color": "#185FA5",
   "icons": [
-    {"src": "https://via.placeholder.com/192x192/185FA5/ffffff?text=HUE", "sizes": "192x192", "type": "image/png"},
-    {"src": "https://via.placeholder.com/512x512/185FA5/ffffff?text=HUE", "sizes": "512x512", "type": "image/png"}
+    {
+      "src": "./Internacional_Huesca_escudo.png",
+      "sizes": "316x316",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }

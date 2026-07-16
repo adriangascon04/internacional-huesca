@@ -1,14 +1,21 @@
 // ============================================================================
 //  src/ui/pages/stats.page.js  ·  Estadísticas y gráfico (Chart.js por CDN).
 // ============================================================================
-import { $ } from '../../utils/dom.js';
+import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
 import { euros } from '../../utils/format.js';
 import { state } from '../../core/state.js';
-import { claseAsistencia } from '../../config/app.config.js';
-import { calcularStats } from '../../services/stats.service.js';
+import {
+  claseAsistencia,
+  getPartidos,
+  getPartidosLabel,
+  FRANJA_MINUTOS,
+} from '../../config/app.config.js';
+import { calcularStats, calcularAfluencia } from '../../services/stats.service.js';
 
 let chart = null;
+let chartAfluencia = null;
+let selectorListo = false;
 
 export function render() {
   const s = calcularStats({
@@ -41,6 +48,129 @@ export function render() {
 
   $('#stats-recaudacion').textContent = euros(s.recaudacionTotal);
   pintarGrafico(s);
+  renderAfluencia();
+}
+
+// ============================================================================
+//  Afluencia: a qué hora entra y sale la gente.
+// ============================================================================
+
+function renderAfluencia() {
+  const sel = $('#afluencia-jornada');
+  if (!sel) return;
+
+  // El selector se rellena una vez: repintarlo en cada snapshot le borraría al
+  // usuario la jornada que acaba de elegir.
+  if (!selectorListo) {
+    const partidos = getPartidos();
+    const labels = getPartidosLabel();
+    sel.innerHTML =
+      '<option value="">Todas las jornadas jugadas</option>' +
+      partidos
+        .map((p, i) => `<option value="${esc(p)}">${esc(labels[i])}</option>`)
+        .join('');
+    on(sel, 'change', renderAfluencia);
+    selectorListo = true;
+  }
+
+  const elegida = sel.value;
+  const jornadas = elegida ? [elegida] : getPartidos();
+  const a = calcularAfluencia({
+    entradas: state.entradas,
+    salidas: state.salidas,
+    jornadas,
+  });
+
+  const resumen = $('#afluencia-resumen');
+  if (!a.franjas.length) {
+    resumen.innerHTML = '<p class="empty">Todavía no hay fichajes en esta selección.</p>';
+    $('#chart-afluencia').style.display = 'none';
+    return;
+  }
+  $('#chart-afluencia').style.display = '';
+
+  const sinFichar = a.totalEntradas - a.totalSalidas;
+  resumen.innerHTML = `
+    <div class="stat"><div class="stat-n">${esc(a.pico.label)}</div><div class="stat-l">Franja de más gente${a.nJornadas > 1 ? `<br>(${a.nJornadas} jornadas juntas)` : ''}</div></div>
+    <div class="stat"><div class="stat-n">${a.pico.dentro}</div><div class="stat-l">Personas dentro en ese momento</div></div>
+    <div class="stat"><div class="stat-n">${a.totalEntradas}</div><div class="stat-l">Entradas fichadas</div></div>
+    <div class="stat"><div class="stat-n">${a.totalSalidas}</div><div class="stat-l">Salidas fichadas</div></div>`;
+
+  const nota = $('#afluencia-nota');
+  nota.innerHTML =
+    sinFichar > 0
+      ? `⚠️ <strong>${sinFichar}</strong> ${sinFichar === 1 ? 'persona entró y no fichó' : 'personas entraron y no ficharon'} la salida, así que la curva de "dentro"
+         se queda alta al final y el nº de personas dentro es un máximo, no un dato exacto.
+         La <strong>hora del pico sí es fiable</strong>. Cuantas más salidas se fichen, más fina será la curva.`
+      : `Todas las entradas tienen su salida fichada: la curva es fiable de principio a fin.`;
+
+  pintarGraficoAfluencia(a);
+}
+
+function pintarGraficoAfluencia(a) {
+  const ctx = $('#chart-afluencia');
+  if (!ctx || typeof Chart === 'undefined') return;
+  if (chartAfluencia) chartAfluencia.destroy();
+
+  // eslint-disable-next-line no-undef
+  chartAfluencia = new Chart(ctx, {
+    data: {
+      labels: a.franjas.map((f) => f.label),
+      datasets: [
+        {
+          label: 'Dentro del campo',
+          data: a.franjas.map((f) => f.dentro),
+          type: 'line',
+          borderColor: '#4D9FE8',
+          backgroundColor: 'rgba(34,119,199,.18)',
+          tension: 0.35,
+          fill: true,
+          pointRadius: 0,
+          borderWidth: 2,
+          order: 2,
+        },
+        {
+          label: 'Entran',
+          data: a.franjas.map((f) => f.entradas),
+          type: 'bar',
+          backgroundColor: '#22c55e',
+          borderRadius: 3,
+          order: 1,
+        },
+        {
+          label: 'Salen',
+          data: a.franjas.map((f) => f.salidas),
+          type: 'bar',
+          backgroundColor: '#E8354A',
+          borderRadius: 3,
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            title: (items) => `${items[0].label} – ${etiquetaFin(items[0].label)}`,
+          },
+        },
+      },
+      scales: {
+        x: { stacked: true, ticks: { maxRotation: 0, autoSkipPadding: 16 } },
+        y: { beginAtZero: true, ticks: { precision: 0 } },
+      },
+    },
+  });
+}
+
+/** "19:15" -> "19:30": el tooltip enseña la franja entera, no solo su inicio. */
+function etiquetaFin(label) {
+  const [h, m] = label.split(':').map(Number);
+  const fin = (h * 60 + m + FRANJA_MINUTOS) % 1440;
+  return `${String(Math.floor(fin / 60)).padStart(2, '0')}:${String(fin % 60).padStart(2, '0')}`;
 }
 
 function pintarGrafico(s) {

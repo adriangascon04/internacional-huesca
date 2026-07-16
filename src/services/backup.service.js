@@ -13,9 +13,15 @@ export function iniciarBackups(onCambio) {
   return repo.suscribirBackups(onCambio);
 }
 
-export async function crearBackup(entradas, taquilla) {
+export async function crearBackup(entradas, taquilla, salidas = {}) {
   const socios = getSocios();
-  const contenido = { socios, entradas, taquilla, generado: new Date().toISOString() };
+  const contenido = {
+    socios,
+    entradas,
+    salidas,
+    taquilla,
+    generado: new Date().toISOString(),
+  };
   const fecha = new Date().toISOString();
   const id = `backup_${Date.now()}`;
   await repo.guardarBackup(id, {

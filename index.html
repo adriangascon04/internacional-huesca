@@ -48,12 +48,13 @@ body{
   width:100%;max-width:400px;box-shadow:var(--sombra);
   animation:surgir .4s cubic-bezier(.2,.8,.2,1);
 }
+.login-box{text-align:center}
+.login-box label,.login-box .msg{text-align:left}
 .login-box .escudo{
-  width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:26px;
-  background:linear-gradient(145deg,var(--azul),var(--azul-hondo));
-  box-shadow:0 8px 22px -8px rgba(34,119,199,.9);margin-bottom:18px;
+  width:132px;height:132px;margin:0 auto 20px;display:block;
+  filter:drop-shadow(0 12px 30px rgba(232,53,74,.35));
 }
-.login-box h1{font-size:22px;font-weight:650;letter-spacing:-.02em;color:#fff;margin-bottom:5px}
+.login-box h1{font-size:23px;font-weight:650;letter-spacing:-.02em;color:#fff;margin-bottom:5px}
 .login-box p{color:var(--txt2);font-size:13px;margin-bottom:20px}
 @keyframes surgir{from{opacity:0;transform:translateY(10px)}}
 
@@ -78,6 +79,11 @@ select{
 input[type=file]{padding:9px;cursor:pointer;color:var(--txt2)}
 input[type=checkbox]{width:17px;height:17px;accent-color:var(--azul);cursor:pointer}
 label{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--txt2);margin:12px 0 6px}
+.opcional{
+  font-size:9.5px;font-weight:600;letter-spacing:.05em;color:var(--txt3);
+  background:var(--panel-2);border:1px solid var(--borde);
+  border-radius:20px;padding:1px 6px;margin-left:5px;
+}
 
 /* ═══ Botones ═════════════════════════════════════════════════════════════ */
 .btn{
@@ -110,12 +116,9 @@ header{
 }
 header h1{
   font-size:15px;font-weight:650;letter-spacing:-.01em;color:#fff;flex:1;
-  display:flex;align-items:center;gap:9px;
+  display:flex;align-items:center;gap:10px;
 }
-header h1::before{
-  content:"";width:4px;height:20px;border-radius:3px;
-  background:linear-gradient(180deg,var(--azul-claro),var(--rojo));
-}
+header .escudo{width:34px;height:34px;flex:none}
 #user-label{
   font-size:11px;color:var(--txt2);background:var(--panel-2);
   border:1px solid var(--borde);border-radius:20px;padding:5px 11px;
@@ -195,6 +198,35 @@ code{
 .empty,.nota{color:var(--txt3);font-size:12.5px;padding:8px 0;line-height:1.55}
 .empty{text-align:center;padding:26px 0}
 
+/* ═══ Escáner · selector de modo ══════════════════════════════════════════ */
+/* Grande y con color: fichar una salida creyendo que es una entrada es el
+   error caro de este panel, así que el modo tiene que verse de un vistazo. */
+.modo-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.modo-btn{
+  padding:15px 10px;border:1px solid var(--borde);border-radius:var(--r);
+  background:var(--panel-2);color:var(--txt2);cursor:pointer;
+  font-size:14px;font-weight:700;letter-spacing:.04em;font-family:inherit;
+  transition:all var(--t);
+}
+.modo-btn:hover{border-color:var(--borde-vivo);color:var(--txt)}
+.modo-btn[data-modo="entrada"].modo-activo{
+  background:rgba(34,197,94,.14);border-color:var(--verde);color:#4ADE80;
+  box-shadow:inset 0 0 0 1px rgba(34,197,94,.3);
+}
+.modo-btn[data-modo="salida"].modo-activo{
+  background:rgba(234,179,8,.14);border-color:var(--ambar);color:var(--ambar);
+  box-shadow:inset 0 0 0 1px rgba(234,179,8,.3);
+}
+/* En modo salida el panel entero se tiñe: imposible no darse cuenta. */
+#scanner-panel.modo-salida{border-color:rgba(234,179,8,.45)}
+#scanner-panel.modo-salida::before{
+  content:"MODO SALIDA — estás fichando a quien se va";
+  display:block;margin:-20px -20px 16px;padding:9px 20px;
+  background:rgba(234,179,8,.12);border-bottom:1px solid rgba(234,179,8,.35);
+  border-radius:var(--r) var(--r) 0 0;
+  color:var(--ambar);font-size:11px;font-weight:700;letter-spacing:.08em;
+}
+
 /* ═══ Escáner ═════════════════════════════════════════════════════════════ */
 .scanner-result{
   padding:18px;border-radius:var(--r);margin:14px 0;font-size:15px;font-weight:600;
@@ -204,6 +236,9 @@ code{
 @keyframes aparecer{from{opacity:0;transform:scale(.98)}}
 .result-entrada{background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.4);color:#4ADE80}
 .result-no{background:rgba(232,53,74,.10);border:1px solid rgba(232,53,74,.4);color:#FF6274}
+/* La salida correcta NO se pinta de verde: verde = "puede pasar". Un ámbar
+   propio evita que el portero lea "salida OK" como "entrada OK". */
+.result-salida{background:rgba(234,179,8,.10);border:1px solid rgba(234,179,8,.4);color:var(--ambar)}
 .aviso{
   background:rgba(234,179,8,.09);border:1px solid rgba(234,179,8,.35);
   color:var(--ambar);padding:11px 13px;border-radius:var(--r-s);
@@ -231,7 +266,7 @@ code{
   border-top-color:var(--azul-claro);border-radius:50%;animation:spin .7s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-canvas#chart-taquilla{max-height:300px}
+canvas#chart-taquilla,canvas#chart-afluencia{max-height:300px}
 #qr-preview img,#qr-preview canvas{border-radius:10px;padding:12px;background:#fff}
 
 @media(max-width:600px){
@@ -249,7 +284,7 @@ canvas#chart-taquilla{max-height:300px}
 <!-- ══════════════ LOGIN ══════════════ -->
 <div id="login-screen">
   <form class="login-box" id="login-form">
-    <div class="escudo">⚽</div>
+    <img class="escudo" src="./Internacional_Huesca_escudo.png" alt="Escudo del Internacional Huesca">
     <h1>Internacional Huesca</h1>
     <p>Gestión de abonados · Acceso restringido</p>
     <label for="l-email">Correo electrónico</label>
@@ -264,7 +299,7 @@ canvas#chart-taquilla{max-height:300px}
 <!-- ══════════════ APP ══════════════ -->
 <div id="app-screen" style="display:none">
   <header>
-    <h1>⚽ Internacional Huesca</h1>
+    <h1><img class="escudo" src="./Internacional_Huesca_escudo.png" alt="">Internacional Huesca</h1>
     <span id="user-label"></span>
     <button class="btn" id="btn-logout">Salir</button>
   </header>
@@ -286,8 +321,9 @@ canvas#chart-taquilla{max-height:300px}
       <div class="grid">
         <div><label for="f-nombre">Nombre</label><input id="f-nombre"></div>
         <div><label for="f-ap1">Primer apellido</label><input id="f-ap1"></div>
-        <div><label for="f-ap2">Segundo apellido</label><input id="f-ap2"></div>
-        <div><label for="f-dni">DNI / NIE</label><input id="f-dni"></div>
+        <div><label for="f-ap2">Segundo apellido <span class="opcional">opcional</span></label><input id="f-ap2"></div>
+        <div><label for="f-tipodoc">Tipo de documento</label><select id="f-tipodoc"></select></div>
+        <div><label for="f-dni">Nº de documento</label><input id="f-dni"></div>
         <div><label for="f-fnac">Fecha de nacimiento</label><input type="date" id="f-fnac"></div>
         <div><label for="f-tel">Teléfono</label><input id="f-tel"></div>
         <div><label for="f-email">Email</label><input type="email" id="f-email"></div>
@@ -308,11 +344,27 @@ canvas#chart-taquilla{max-height:300px}
       </div>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>Nº</th><th>Nombre</th><th>DNI</th><th>Abono</th><th>Pagado</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Nº carnet</th><th>Nombre</th><th>Documento</th><th>Abono</th><th>Pagado</th><th>Acciones</th></tr></thead>
           <tbody id="tabla-socios"></tbody>
         </table>
       </div>
       <p class="empty" id="tabla-empty" style="display:none">No se han encontrado socios.</p>
+    </div>
+
+    <!-- Renumeración de temporada. Solo admin: se oculta por rol. -->
+    <div class="card" id="card-renumerar" style="display:none">
+      <h2>Nueva temporada · renumerar carnets</h2>
+      <p class="nota" id="renumerar-info"></p>
+      <div class="aviso" style="display:block">
+        ⚠️ Al renumerar, <strong>todos los carnets actuales dejan de funcionar</strong> en el mismo
+        momento. Hazlo solo al empezar temporada y reimprime los carnets después
+        (pestaña <strong>QRs → 📦 Descargar todos</strong>). El historial de asistencia de cada
+        socio se conserva.
+      </div>
+      <div class="row">
+        <button class="btn btn-danger" id="btn-renumerar">🔄 Renumerar para la nueva temporada</button>
+        <span class="msg" id="renumerar-msg"></span>
+      </div>
     </div>
   </section>
 
@@ -333,10 +385,16 @@ canvas#chart-taquilla{max-height:300px}
 
   <!-- ---------- ESCÁNER ---------- -->
   <section class="panel" id="panel-scanner">
-    <div class="card">
+    <div class="card" id="scanner-panel">
       <h2>Control de acceso</h2>
       <label for="partido-sel">Jornada</label>
       <select id="partido-sel"></select>
+
+      <label>Qué estoy fichando</label>
+      <div class="modo-switch">
+        <button class="modo-btn" data-modo="entrada">⬅️ ENTRADA</button>
+        <button class="modo-btn" data-modo="salida">SALIDA ➡️</button>
+      </div>
       <div class="row" style="margin-top:12px">
         <button class="btn btn-danger" id="btn-bloqueo-scanner" style="display:none"></button>
       </div>
@@ -354,11 +412,11 @@ canvas#chart-taquilla{max-height:300px}
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
         <label for="manual-id">Validación manual · ¿el QR no se lee?</label>
         <div class="row">
-          <input id="manual-id" placeholder="Nº de socio (ej. 42) o texto del QR" style="flex:1;min-width:180px">
+          <input id="manual-id" placeholder="Nº de carnet (ej. 42) o texto del QR" style="flex:1;min-width:180px">
           <button class="btn btn-primary" id="btn-manual">Validar</button>
         </div>
         <p class="nota">Si el carnet está roto, borroso o el móvil no enfoca, teclea aquí
-          el número de socio y pulsa Validar. Comprueba antes que la persona es quien dice ser.</p>
+          el número de carnet y pulsa Validar. Comprueba antes que la persona es quien dice ser.</p>
       </div>
     </div>
     <div class="card">
@@ -403,6 +461,15 @@ canvas#chart-taquilla{max-height:300px}
       <h2>Asistencia por jornada</h2>
       <canvas id="chart-taquilla"></canvas>
     </div>
+
+    <div class="card">
+      <h2>Afluencia · a qué hora entra y sale la gente</h2>
+      <label for="afluencia-jornada">Jornada</label>
+      <select id="afluencia-jornada"></select>
+      <div class="grid" id="afluencia-resumen" style="margin:14px 0"></div>
+      <canvas id="chart-afluencia"></canvas>
+      <p class="nota" id="afluencia-nota"></p>
+    </div>
     <div class="card">
       <h2>Detalle por jornada · Recaudación total: <span id="stats-recaudacion"></span></h2>
       <div style="overflow-x:auto">
@@ -422,7 +489,10 @@ canvas#chart-taquilla{max-height:300px}
   <section class="panel" id="panel-import">
     <div class="card">
       <h2>Importar socios desde Excel</h2>
-      <p class="nota">Cabeceras esperadas: Nombre, Apellido 1, Apellido 2, DNI, Fecha nac., Teléfono, Email, Tipo.
+      <p class="nota">Cabeceras esperadas: <strong>Nombre, Apellido 1, Apellido 2, Tipo documento, DNI,
+         Fecha nac., Teléfono, Email, Tipo</strong>.<br>
+         <em>Apellido 2</em> puede ir vacío. <em>Tipo documento</em> es opcional (DNI / NIE, Pasaporte u Otro):
+         si falta, se asume DNI / NIE y se comprueba la letra.<br>
          Las filas con errores se muestran abajo y NO se importan.</p>
       <label for="file-excel">Archivo .xlsx</label>
       <input type="file" id="file-excel" accept=".xlsx,.xls">
@@ -458,6 +528,12 @@ canvas#chart-taquilla{max-height:300px}
     <div class="grid" id="perfil-stats" style="margin:16px 0"></div>
     <table><tbody id="perfil-datos"></tbody></table>
 
+    <h2 style="font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+               color:var(--txt2);margin:22px 0 12px;padding-bottom:11px;border-bottom:1px solid var(--borde)">
+      Partido a partido
+    </h2>
+    <div id="perfil-historial" style="overflow-x:auto"></div>
+
     <!-- Edición de datos (Upgrades #2). Solo admin: se oculta por rol. -->
     <div id="perfil-edicion" style="display:none;margin-top:18px;border-top:1px solid var(--borde);padding-top:14px">
       <div class="row" style="justify-content:space-between">
@@ -468,8 +544,9 @@ canvas#chart-taquilla{max-height:300px}
         <div class="grid" style="margin-top:12px">
           <div><label for="e-nombre">Nombre</label><input id="e-nombre"></div>
           <div><label for="e-ap1">Primer apellido</label><input id="e-ap1"></div>
-          <div><label for="e-ap2">Segundo apellido</label><input id="e-ap2"></div>
-          <div><label for="e-dni">DNI / NIE</label><input id="e-dni"></div>
+          <div><label for="e-ap2">Segundo apellido <span class="opcional">opcional</span></label><input id="e-ap2"></div>
+          <div><label for="e-tipodoc">Tipo de documento</label><select id="e-tipodoc"></select></div>
+          <div><label for="e-dni">Nº de documento</label><input id="e-dni"></div>
           <div><label for="e-fnac">Fecha de nacimiento</label><input type="date" id="e-fnac"></div>
           <div><label for="e-tel">Teléfono</label><input id="e-tel"></div>
           <div><label for="e-email">Email</label><input type="email" id="e-email"></div>

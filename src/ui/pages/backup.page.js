@@ -12,7 +12,7 @@ export function initBackup() {
     const msg = $('#backup-msg');
     msg.textContent = 'Generando copia de seguridad…';
     try {
-      const r = await backup.crearBackup(state.entradas, state.taquilla);
+      const r = await backup.crearBackup(state.entradas, state.taquilla, state.salidas);
       msg.textContent = `Copia creada (${r.nSocios} socios, ${r.nJornadas} jornadas con datos).`;
     } catch {
       msg.textContent = 'Error al crear la copia. Revisa tus permisos.';

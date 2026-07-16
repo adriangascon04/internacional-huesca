@@ -1,11 +1,14 @@
 // ============================================================================
 //  src/ui/pages/scanner.page.js  ·  Escáner de QR y registro de accesos.
+//  Dos modos: ENTRADA y SALIDA. El modo es del portero, no de la jornada, y
+//  se pinta bien visible porque fichar una salida creyendo que es una entrada
+//  (o al revés) es el error caro de este panel.
 // ============================================================================
-import { $, on } from '../../utils/dom.js';
+import { $, $$, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
-import { hora } from '../../utils/format.js';
+import { hora, duracion } from '../../utils/format.js';
 import { state, estaBloqueada } from '../../core/state.js';
-import { getPartidos, getPartidosLabel } from '../../config/app.config.js';
+import { getPartidos, getPartidosLabel, carnetDe } from '../../config/app.config.js';
 import * as acceso from '../../services/acceso.service.js';
 import * as socios from '../../services/socios.service.js';
 import { playSonido } from '../sonidos.js';
@@ -24,6 +27,23 @@ export function initScanner() {
     $('#manual-id').value = '';
   });
   on($('#btn-camara'), 'click', toggleCamara);
+  $$('[data-modo]').forEach((btn) =>
+    on(btn, 'click', () => cambiarModo(btn.dataset.modo)),
+  );
+  cambiarModo(state.modoScanner);
+}
+
+function cambiarModo(modo) {
+  state.modoScanner = modo;
+  $$('[data-modo]').forEach((b) =>
+    b.classList.toggle('modo-activo', b.dataset.modo === modo),
+  );
+  const salida = modo === acceso.MODO_SALIDA;
+  $('#scanner-panel').classList.toggle('modo-salida', salida);
+  $('#manual-id').placeholder = salida
+    ? 'Nº de carnet que SALE'
+    : 'Nº de carnet (ej. 42) o texto del QR';
+  $('#scan-result').innerHTML = '';
 }
 
 function rellenarSelect() {
@@ -37,42 +57,83 @@ function rellenarSelect() {
   $('#partido-sel').innerHTML = html;
 }
 
+/** Nombre completo del socio, ya escapado. */
+const nombreDe = (s) => esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim());
+
 export async function escanear(raw, opciones = {}) {
   const jornada = state.partidoScanner;
-  const res = await acceso.procesarAcceso(raw, jornada, estaBloqueada(jornada), opciones);
+  const res = await acceso.procesarAcceso(raw, jornada, estaBloqueada(jornada), {
+    ...opciones,
+    modo: state.modoScanner,
+  });
   const out = $('#scan-result');
+  const pintar = (clase, html) => {
+    out.innerHTML = `<div class="scanner-result ${clase}">${html}</div>`;
+  };
 
   switch (res.estado) {
     case 'sin_jornada':
-      out.innerHTML =
-        '<div class="scanner-result result-no">Selecciona una jornada antes de escanear.</div>';
+      pintar('result-no', 'Selecciona una jornada antes de escanear.');
       break;
     case 'bloqueada':
-      out.innerHTML =
-        '<div class="scanner-result result-no">🔒 Jornada cerrada. Desbloquéala para registrar entradas.</div>';
+      pintar('result-no', '🔒 Jornada cerrada. Desbloquéala para registrar entradas.');
       break;
     case 'desconocido':
       playSonido('error');
-      out.innerHTML = `<div class="scanner-result result-no">❌ QR no reconocido: ${esc(res.id)}</div>`;
+      pintar('result-no', `❌ QR no reconocido: ${esc(res.id)}`);
       break;
     case 'qr_invalido':
       playSonido('error');
-      out.innerHTML = `<div class="scanner-result result-no">🚫 CARNET NO VÁLIDO — nº ${esc(res.id)}<br>
-        <small>${
-          res.motivo === 'sin_token'
-            ? 'El QR no lleva código de seguridad. Hay que reemitir el carnet.'
-            : 'El código de seguridad no coincide: el QR no es auténtico o el carnet fue reemitido.'
-        }<br>Si reconoces a la persona como socia, valida a mano con su nº de socio.</small></div>`;
+      pintar(
+        'result-no',
+        `🚫 CARNET NO VÁLIDO — nº ${esc(res.id)}<br>
+         <small>${
+           res.motivo === 'sin_token'
+             ? 'El QR no lleva código de seguridad. Hay que reemitir el carnet.'
+             : 'El código de seguridad no coincide: el QR no es auténtico o el carnet es de una temporada anterior.'
+         }<br>Si reconoces a la persona como socia, valida a mano con su nº de carnet.</small>`,
+      );
       break;
     case 'repetido':
       playSonido('error');
-      out.innerHTML = `<div class="scanner-result result-no">⚠️ QR ya utilizado — ${esc(`${res.socio.nombre} ${res.socio.ap1}`)}<br>
-        <small>Entrada registrada a las ${hora(res.hora)}. No puede volver a entrar en esta jornada.</small></div>`;
+      pintar(
+        'result-no',
+        `⚠️ QR ya utilizado — ${nombreDe(res.socio)}<br>
+         <small>Entrada registrada a las ${hora(res.hora)}. No puede volver a entrar en esta jornada.</small>`,
+      );
       break;
     case 'valido':
       playSonido('ok');
-      out.innerHTML = `<div class="scanner-result result-entrada">✅ ACCESO VÁLIDO — ${esc(`${res.socio.nombre} ${res.socio.ap1} ${res.socio.ap2 || ''}`)}<br>
-        <small>${esc(res.socio.tipo)} · ${esc(res.socio.id)} · ${hora(res.hora)}</small></div>`;
+      pintar(
+        'result-entrada',
+        `✅ ACCESO VÁLIDO — ${nombreDe(res.socio)}<br>
+         <small>${esc(res.socio.tipo)} · nº ${carnetDe(res.socio)} · ${hora(res.hora)}</small>`,
+      );
+      break;
+    // --- modo salida --------------------------------------------------------
+    case 'sin_entrada':
+      playSonido('error');
+      pintar(
+        'result-no',
+        `❌ NO CONSTA SU ENTRADA — ${nombreDe(res.socio)}<br>
+         <small>No se puede fichar la salida de quien no ha entrado. ¿Tienes el modo correcto?</small>`,
+      );
+      break;
+    case 'salida_repetida':
+      playSonido('error');
+      pintar(
+        'result-no',
+        `⚠️ SALIDA YA FICHADA — ${nombreDe(res.socio)}<br>
+         <small>Salió a las ${hora(res.hora)}.</small>`,
+      );
+      break;
+    case 'salida_ok':
+      playSonido('ok');
+      pintar(
+        'result-salida',
+        `🚪 SALIDA REGISTRADA — ${nombreDe(res.socio)}<br>
+         <small>nº ${carnetDe(res.socio)} · ${hora(res.hora)} · estuvo ${duracion(res.minutos)}</small>`,
+      );
       break;
   }
 }
@@ -81,6 +142,7 @@ export function renderLog() {
   const log = $('#log-entradas');
   const jornada = state.partidoScanner;
   const e = state.entradas[jornada];
+  const sal = state.salidas[jornada] || {};
   if (!jornada || !e) {
     log.innerHTML = '';
     return;
@@ -91,21 +153,29 @@ export function renderLog() {
     return;
   }
 
-  log.innerHTML = `<table><thead><tr><th>ID</th><th>Socio</th><th>Hora</th><th></th></tr></thead><tbody>${ids
-    .map((id) => {
-      const s = socios.obtener(id) || { nombre: id, ap1: '' };
-      return `<tr><td><code>${esc(id)}</code></td><td>${esc(`${s.nombre} ${s.ap1}`)}</td>
+  const dentro = ids.filter((id) => !sal[id]).length;
+  log.innerHTML = `
+    <p class="nota">${ids.length} han entrado · <strong style="color:var(--verde)">${dentro} siguen dentro</strong> · ${ids.length - dentro} se han ido.</p>
+    <table><thead><tr><th>Nº</th><th>Socio</th><th>Entrada</th><th>Salida</th><th>Dentro</th><th></th></tr></thead>
+    <tbody>${ids
+      .map((id) => {
+        const s = socios.obtener(id) || { nombre: `(socio ${id})`, ap1: '' };
+        const salida = sal[id];
+        return `<tr><td><code>${carnetDe(s) || esc(id)}</code></td>
+        <td>${esc(`${s.nombre} ${s.ap1}`)}</td>
         <td>${hora(e[id])}</td>
+        <td>${salida ? hora(salida) : '<span class="badge badge-ok">dentro</span>'}</td>
+        <td>${salida ? duracion(acceso.minutosEntre(e[id], salida)) : '—'}</td>
         <td><button class="btn btn-danger" data-borrar="${esc(id)}">Borrar</button></td></tr>`;
-    })
-    .join('')}</tbody></table>`;
+      })
+      .join('')}</tbody></table>`;
 
   log.querySelectorAll('[data-borrar]').forEach((el) =>
     on(el, 'click', async () => {
       if (estaBloqueada(jornada)) return alert('Jornada cerrada.');
       if (
         !confirm(
-          '¿Borrar este registro de entrada? Su QR volverá a estar disponible en esta jornada.',
+          '¿Borrar este registro? Se borran su entrada y su salida, y su QR volverá a estar disponible en esta jornada.',
         )
       )
         return;
@@ -113,6 +183,7 @@ export function renderLog() {
     }),
   );
 }
+
 async function toggleCamara() {
   const wrap = $('#camara-wrap');
   const video = $('#camara-video');

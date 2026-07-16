@@ -76,11 +76,17 @@ service cloud.firestore {
     // LIMITACIÓN ASUMIDA: esto expone DNI/teléfono/email a todos los roles.
     // Las reglas conceden documentos enteros, no campos. Ocultar el DNI a un
     // taquillero exigiría Cloud Functions (plan de pago).
+    // `numerico` = identidad interna: la fija el contador, es inmutable
+    // (noTocaAuditoria la protege) y es la clave del historial de entradas.
+    // `carnet` = nº impreso y visible: SÍ es mutable, porque se compacta al
+    // renumerar cada temporada. Reutilizar ese número es inofensivo solo
+    // porque el QR lleva además el token del socio.
     match /socios/{id} {
       allow read: if autenticado();
       allow create: if esAdmin()
         && request.resource.data.activo == true
         && request.resource.data.numerico is number
+        && request.resource.data.carnet is number
         && request.resource.data.creadoPor == request.auth.token.email;
       allow update: if esAdmin() && noTocaAuditoria() && firmaValida();
       allow delete: if false;  // baja lógica (activo:false), nunca borrado real
@@ -96,6 +102,23 @@ service cloud.firestore {
       // Un control_acceso solo puede AÑADIR accesos, nunca eliminarlos: se
       // exige que todas las claves previas sigan presentes. Corregir un error
       // (borrar un acceso) queda reservado a admin.
+      allow update: if jornadaAbierta(jornada) && (
+        esAdmin()
+        || (puedeEscanear()
+            && request.resource.data.keys().hasAll(resource.data.keys()))
+      );
+
+      allow delete: if esAdmin();
+    }
+
+    // ----------------------------------------------------------------- salidas
+    // Un doc por jornada: { <socioId>: <ISO> }. Mismas reglas que 'entradas':
+    // un control_acceso puede fichar salidas pero no borrarlas.
+    match /salidas/{jornada} {
+      allow read: if autenticado();
+
+      allow create: if puedeEscanear() && jornadaAbierta(jornada);
+
       allow update: if jornadaAbierta(jornada) && (
         esAdmin()
         || (puedeEscanear()

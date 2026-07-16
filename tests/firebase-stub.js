@@ -35,3 +35,9 @@ export const arrayUnion = fake('arrayUnion');
 export const arrayRemove = fake('arrayRemove');
 export const runTransaction = fake('runTransaction');
 export const serverTimestamp = fake('serverTimestamp');
+export const writeBatch = () => ({
+  update: noop,
+  set: noop,
+  delete: noop,
+  commit: async () => {},
+});

@@ -9,14 +9,22 @@
 // ============================================================================
 import * as repo from '../repositories/socios.repository.js';
 import { siguienteNumeroSocio } from '../repositories/contadores.repository.js';
-import { validarSocio } from '../utils/validators.js';
+import { validarSocio, normalizarDoc } from '../utils/validators.js';
 import { generarTokenQR } from '../utils/token.js';
-import { esGratuito } from '../config/app.config.js';
+import { esGratuito, carnetDe, TIPO_DOC_DNI } from '../config/app.config.js';
 import { session } from '../core/session.js';
 
 let _socios = [];
 export const getSocios = () => _socios;
 export const getSociosActivos = () => _socios.filter((s) => s.activo !== false);
+
+/** Busca por nº de CARNET (lo que va impreso y lo que teclea el portero). */
+export const porCarnet = (carnet) =>
+  getSociosActivos().find((s) => carnetDe(s) === Number(carnet));
+
+/** Siguiente nº de carnet libre: se pega al final de los que ya hay. */
+const siguienteCarnet = () =>
+  getSociosActivos().reduce((m, s) => Math.max(m, carnetDe(s)), 0) + 1;
 
 /** Suscribe la lista de socios y notifica a la UI en cada cambio. */
 export function iniciarSocios(onCambio) {
@@ -26,27 +34,30 @@ export function iniciarSocios(onCambio) {
   });
 }
 
-/** Alta de socio. Devuelve { ok, id } o { ok:false, errores:[...] }. */
+/** Alta de socio. Devuelve { ok, id, carnet } o { ok:false, errores:[...] }. */
 export async function altaSocio(datos) {
   datos = {
     ...datos,
-    dni: String(datos.dni || '')
-      .trim()
-      .toUpperCase(),
+    tipoDoc: datos.tipoDoc || TIPO_DOC_DNI,
+    dni: normalizarDoc(datos.dni),
+    ap2: String(datos.ap2 || '').trim(), // opcional: mucha gente no tiene
   };
   const errores = validarSocio(datos);
   if (errores.length) return { ok: false, errores };
   if (_socios.some((s) => s.dni === datos.dni && s.activo !== false)) {
-    return { ok: false, errores: ['Ya existe un socio con ese DNI.'] };
+    return { ok: false, errores: ['Ya existe un socio con ese documento.'] };
   }
-  // Contador monotónico: nunca reutiliza IDs (arregla los "QR zombie").
+  // Contador monotónico: nunca reutiliza IDs (arregla los "QR zombie"). Este es
+  // el id INTERNO del socio, no el nº impreso en su carnet.
   const maxActual = _socios.reduce((m, s) => Math.max(m, s.numerico || 0), 0);
   const num = await siguienteNumeroSocio(maxActual);
   const id = String(num);
+  const carnet = siguienteCarnet();
   const ahora = new Date().toISOString();
   await repo.guardarSocio(id, {
     ...datos,
     numerico: num,
+    carnet, // nº visible; se recalcula al renumerar la temporada
     alta: ahora,
     pagado: esGratuito(datos.tipo),
     activo: true,
@@ -54,7 +65,50 @@ export async function altaSocio(datos) {
     creadoPor: session.email, // auditoría
     creadoEn: ahora,
   });
-  return { ok: true, id };
+  return { ok: true, id, carnet };
+}
+
+/**
+ * Calcula la renumeración de una nueva temporada. Función PURA y exportada
+ * aparte de la escritura para poder (a) enseñar el previo al admin antes de
+ * que confirme y (b) testearla sin Firestore.
+ *
+ * Compacta los carnets de los socios activos a 1..N respetando su orden actual
+ * (el veterano sigue teniendo número bajo) y le da a cada uno un token nuevo,
+ * lo que invalida todos los carnets impresos de la temporada anterior.
+ * El id interno NO se toca: el historial de entradas y salidas cuelga de él.
+ */
+export function calcularRenumeracion(socios = getSociosActivos()) {
+  return [...socios]
+    .sort((a, b) => carnetDe(a) - carnetDe(b))
+    .map((s, i) => ({ socio: s, de: carnetDe(s), a: i + 1 }));
+}
+
+/**
+ * Ejecuta la renumeración. Devuelve { ok, renumerados, huecos }.
+ * `huecos` = cuántos números se han recuperado, que es lo que el club nota.
+ */
+export async function renumerarTemporada() {
+  const plan = calcularRenumeracion();
+  if (!plan.length) return { ok: false, errores: ['No hay socios activos.'] };
+
+  const ahora = new Date().toISOString();
+  await repo.aplicarRenumeracion(
+    plan.map(({ socio, a }) => ({
+      id: socio.id,
+      campos: {
+        carnet: a,
+        // Token nuevo SIEMPRE, aunque el número no le cambie: si no, el carnet
+        // viejo del socio que antes tenía ese número seguiría abriendo puerta.
+        tokenQR: generarTokenQR(),
+        modificadoPor: session.email,
+        modificadoEn: ahora,
+      },
+    })),
+  );
+
+  const maxAnterior = plan.reduce((m, p) => Math.max(m, p.de), 0);
+  return { ok: true, renumerados: plan.length, huecos: maxAnterior - plan.length };
 }
 
 /**
@@ -78,16 +132,16 @@ export async function asegurarTokenQR(id) {
 /** Edición de socio (Upgrades #2: antes NO se podía editar). */
 export async function editarSocio(id, campos) {
   const datos = { ...obtener(id), ...campos };
-  if (campos.dni) datos.dni = String(campos.dni).trim().toUpperCase();
+  if (campos.dni) datos.dni = normalizarDoc(campos.dni);
   const errores = validarSocio(datos);
   if (errores.length) return { ok: false, errores };
-  // Mismo criterio que el alta: el DNI no puede chocar con otro socio activo.
+  // Mismo criterio que el alta: el documento no puede chocar con otro activo.
   if (_socios.some((s) => s.id !== id && s.dni === datos.dni && s.activo !== false)) {
-    return { ok: false, errores: ['Ya existe otro socio con ese DNI.'] };
+    return { ok: false, errores: ['Ya existe otro socio con ese documento.'] };
   }
   await repo.actualizarSocio(id, {
     ...campos,
-    // Después del spread: el DNI se guarda siempre normalizado, como en el alta.
+    // Después del spread: el documento se guarda normalizado, como en el alta.
     ...(campos.dni ? { dni: datos.dni } : {}),
     modificadoPor: session.email,
     modificadoEn: new Date().toISOString(),

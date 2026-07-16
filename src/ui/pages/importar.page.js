@@ -6,8 +6,8 @@
 // ============================================================================
 import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
-import { validarSocio } from '../../utils/validators.js';
-import { TIPOS_ABONO } from '../../config/app.config.js';
+import { validarSocio, normalizarDoc } from '../../utils/validators.js';
+import { TIPOS_ABONO, TIPOS_DOCUMENTO, TIPO_DOC_DNI } from '../../config/app.config.js';
 import * as socios from '../../services/socios.service.js';
 
 let filasValidas = [];
@@ -86,13 +86,30 @@ function normalizar(f) {
   return {
     nombre: get('nombre'),
     ap1: get('apellido 1', 'apellido1', 'ap1', 'primer apellido'),
+    // Opcional: quien no tiene segundo apellido deja la casilla vacía.
     ap2: get('apellido 2', 'apellido2', 'ap2', 'segundo apellido'),
-    dni: get('dni', 'dni / nie', 'nie').toUpperCase(),
+    tipoDoc: normalizarTipoDoc(get('tipo documento', 'tipo doc', 'tipodoc')),
+    dni: normalizarDoc(get('dni', 'dni / nie', 'nie', 'documento', 'nº documento')),
     fnac: aFechaISO(buscar('fecha nac.', 'fecha nacimiento', 'fnac')),
     tel: get('teléfono', 'telefono', 'tel'),
     email: get('email', 'correo'),
     tipo: get('tipo', 'tipo de abono', 'abono'),
   };
+}
+
+/**
+ * La columna "Tipo documento" es opcional y la gente escribe lo que le apetece
+ * ("dni", "PASAPORTE", "Pasaporte "). Se casa contra la lista oficial sin
+ * distinguir mayúsculas; vacía o irreconocible -> DNI/NIE, que es el caso
+ * normal y el único que además comprueba la letra.
+ */
+function normalizarTipoDoc(valor) {
+  const v = String(valor || '')
+    .trim()
+    .toLowerCase();
+  if (!v) return TIPO_DOC_DNI;
+  if (v.includes('pasaporte')) return 'Pasaporte';
+  return TIPOS_DOCUMENTO.find((t) => t.toLowerCase() === v) || TIPO_DOC_DNI;
 }
 
 /**

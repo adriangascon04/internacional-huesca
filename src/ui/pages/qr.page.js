@@ -4,7 +4,7 @@
 // ============================================================================
 import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
-import { QR_PREFIX, QR_SEPARADOR } from '../../config/app.config.js';
+import { QR_PREFIX, QR_SEPARADOR, carnetDe } from '../../config/app.config.js';
 import * as socios from '../../services/socios.service.js';
 import * as roles from '../../services/roles.service.js';
 
@@ -24,16 +24,24 @@ export function rellenarSelect() {
     socios
       .getSociosActivos()
       .map(
+        // value = id interno (estable); texto = nº de carnet (el que ve la gente)
         (s) =>
-          `<option value="${esc(s.id)}">${esc(`${s.id} — ${s.nombre} ${s.ap1}`)}</option>`,
+          `<option value="${esc(s.id)}">${esc(`${carnetDe(s)} — ${s.nombre} ${s.ap1}`)}</option>`,
       )
       .join('');
   sel.value = previo;
 }
 
-/** Texto del QR: "HUESCA:<id>:<token>", o "HUESCA:<id>" si aún no hay token. */
-export const textoQr = (id, token) =>
-  token ? `${QR_PREFIX}${id}${QR_SEPARADOR}${token}` : `${QR_PREFIX}${id}`;
+/**
+ * Texto del QR: "HUESCA:<nº carnet>:<token>".
+ * Lleva el nº de CARNET, no el id interno, porque es el número que va impreso
+ * al lado y el que el portero teclea si el QR no lee: un solo número visible,
+ * sin dos numeraciones que confundir.
+ * Que ese número se reutilice al renumerar es inofensivo porque el token va
+ * dentro: el carnet del antiguo nº 3 no valida contra el nuevo nº 3.
+ */
+export const textoQr = (carnet, token) =>
+  token ? `${QR_PREFIX}${carnet}${QR_SEPARADOR}${token}` : `${QR_PREFIX}${carnet}`;
 
 /**
  * Token con el que emitir el carnet. Si el socio no tiene (viene de antes de
@@ -64,7 +72,7 @@ async function previewQR() {
   cont.appendChild(box);
   // eslint-disable-next-line no-undef
   new QRCode(box, {
-    text: textoQr(id, token),
+    text: textoQr(carnetDe(s), token),
     width: 220,
     height: 220,
     correctLevel: QRCode.CorrectLevel.H,
@@ -72,8 +80,8 @@ async function previewQR() {
 
   // Datos del socio: SIEMPRE escapados (antes se interpolaban en crudo).
   const info = document.createElement('p');
-  info.innerHTML = `<strong>${esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`)}</strong><br>
-    <small>Socio nº ${esc(s.id)} · ${esc(s.tipo)}</small>`;
+  info.innerHTML = `<strong>${esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim())}</strong><br>
+    <small>Carnet nº ${carnetDe(s)} · ${esc(s.tipo)}</small>`;
   cont.appendChild(info);
 }
 
@@ -88,7 +96,7 @@ function descargarQR() {
   if (!el) return;
   const a = document.createElement('a');
   a.href = el.toDataURL ? el.toDataURL('image/png') : el.src;
-  a.download = `QR_socio_${id}.png`;
+  a.download = `QR_socio_${carnetDe(socios.obtener(id))}.png`;
   a.click();
 }
 
@@ -113,7 +121,7 @@ async function descargarTodosZip() {
     temp.innerHTML = '';
     // eslint-disable-next-line no-undef
     new QRCode(temp, {
-      text: textoQr(s.id, token),
+      text: textoQr(carnetDe(s), token),
       width: 300,
       height: 300,
       correctLevel: QRCode.CorrectLevel.H,
@@ -121,11 +129,12 @@ async function descargarTodosZip() {
     await new Promise((r) => setTimeout(r, 30)); // dar tiempo a pintar
     const el = canvasDeQr(temp);
     const dataUrl = el.toDataURL ? el.toDataURL('image/png') : el.src;
-    zip.file(
-      `QR_${s.id}_${s.nombre}_${s.ap1}.png`.replace(/[^\w.-]/g, '_'),
-      dataUrl.split(',')[1],
-      { base64: true },
-    );
+    // El nº va con ceros delante para que el ZIP salga ordenado por carnet y
+    // no en el orden alfabético "1, 10, 100, 11" que da el explorador.
+    const nombreArchivo = `QR_${String(carnetDe(s)).padStart(4, '0')}_${s.nombre}_${s.ap1}.png`;
+    zip.file(nombreArchivo.replace(/[^\w.-]/g, '_'), dataUrl.split(',')[1], {
+      base64: true,
+    });
   }
   temp.remove();
   const blob = await zip.generateAsync({ type: 'blob' });

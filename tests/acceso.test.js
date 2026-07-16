@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseQr, comprobarToken } from '../src/services/acceso.service.js';
+import { parseQr, comprobarToken, minutosEntre } from '../src/services/acceso.service.js';
+import { duracion } from '../src/utils/format.js';
 
 test('parseQr: recorta el prefijo', () => {
   assert.deepEqual(parseQr('HUESCA:5'), { id: '5', token: '' });
@@ -74,4 +75,36 @@ test('token: un socio ya migrado rechaza su carnet viejo aunque legacy siga acti
     comprobarToken(SOCIO, 'VIEJO1234567', { aceptaLegacy: true }),
     'no_coincide',
   );
+});
+
+test('token: el carnet de la temporada pasada NO abre tras renumerar', () => {
+  // Es la garantía de la que depende poder reutilizar los nº de carnet: el
+  // nuevo socio nº 5 tiene otro token, así que el QR del antiguo nº 5 falla.
+  const nuevoNumero5 = { id: '31', carnet: 5, tokenQR: 'TOKEN2027ABC' };
+  assert.equal(comprobarToken(nuevoNumero5, 'A7K9MNPQ2345'), 'no_coincide');
+});
+
+// --- Tiempo dentro del campo ------------------------------------------------
+
+test('minutosEntre: cuenta los minutos de estancia', () => {
+  assert.equal(minutosEntre('2026-09-12T19:00:00', '2026-09-12T20:52:00'), 112);
+});
+
+test('minutosEntre: sale negativo si los fichajes van del revés', () => {
+  // Dos puertas con el reloj descuadrado. No se corrige aquí: se detecta y
+  // duracion() lo pinta como '—' en vez de un "-3min" sin sentido.
+  assert.ok(minutosEntre('2026-09-12T20:00:00', '2026-09-12T19:57:00') < 0);
+});
+
+test('duracion: formatea horas y minutos en cristiano', () => {
+  assert.equal(duracion(45), '45min');
+  assert.equal(duracion(112), '1h 52min');
+  assert.equal(duracion(120), '2h');
+  assert.equal(duracion(0), '0min');
+});
+
+test('duracion: lo negativo o inválido se pinta como guion', () => {
+  assert.equal(duracion(-5), '—');
+  assert.equal(duracion(null), '—');
+  assert.equal(duracion(undefined), '—');
 });

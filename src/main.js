@@ -18,6 +18,7 @@ import { initLayout } from './ui/layout.view.js';
 import * as sociosSvc from './services/socios.service.js';
 import * as backupSvc from './services/backup.service.js';
 import { suscribirEntradas } from './repositories/entradas.repository.js';
+import { suscribirSalidas } from './repositories/salidas.repository.js';
 import { suscribirTaquilla } from './repositories/taquilla.repository.js';
 import { suscribirBloqueos } from './repositories/jornadas.repository.js';
 
@@ -66,6 +67,11 @@ function iniciarApp() {
     }),
     suscribirEntradas((map) => {
       setState({ entradas: map });
+      scannerPage.renderLog();
+      if (state.tabActiva === 'stats') statsPage.render();
+    }),
+    suscribirSalidas((map) => {
+      setState({ salidas: map });
       scannerPage.renderLog();
       if (state.tabActiva === 'stats') statsPage.render();
     }),

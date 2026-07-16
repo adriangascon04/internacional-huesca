@@ -30,6 +30,16 @@ export function getPartidos(temporada = TEMPORADA_ACTUAL) {
 // --- Precios de taquilla (antes: window.PRECIOS y texto en el HTML) ---------
 export const PRECIOS_TAQUILLA = { general: 10, menor: 5 };
 
+// --- Documento identificativo -----------------------------------------------
+// El club admite socios extranjeros, así que el DNI/NIE no puede ser el único
+// documento. Solo el DNI/NIE tiene letra de control comprobable; para los demás
+// se valida la forma y se confía en quien lo teclea (ver utils/validators.js).
+export const TIPO_DOC_DNI = 'DNI / NIE';
+export const TIPOS_DOCUMENTO = [TIPO_DOC_DNI, 'Pasaporte', 'Otro'];
+// Los socios dados de alta antes de que existiera el selector no tienen el
+// campo: todos ellos eran DNI/NIE, así que ese es el valor por defecto.
+export const tipoDocDe = (socio) => socio?.tipoDoc || TIPO_DOC_DNI;
+
 // --- Tipos de abono ---------------------------------------------------------
 // El "Abono Academia" es gratuito -> se marca pagado automáticamente al alta.
 // El "Abono Internacional" no asiste al campo -> se excluye de las stats de asistencia.
@@ -91,6 +101,10 @@ export const QR_ACEPTA_LEGACY = false;
 export const COLECCIONES = {
   socios: 'socios',
   entradas: 'entradas',
+  // Las salidas van en su propia colección, con la misma forma que 'entradas'
+  // ({ <socioId>: <ISO> }), en vez de anidarse dentro de cada entrada. Así los
+  // datos de entradas ya grabados no hay que migrarlos ni se pueden romper.
+  salidas: 'salidas',
   taquilla: 'taquilla',
   jornadasBloqueadas: 'jornadas_bloqueadas',
   backups: 'backups',
@@ -99,3 +113,28 @@ export const COLECCIONES = {
 };
 
 export const MAX_BACKUPS = 7; // rotación de copias de seguridad
+
+// --- Afluencia (estadísticas de horas de entrada/salida) --------------------
+// Ancho de la franja en la que se agrupan los fichajes. 15 min da una curva
+// legible sin que cada barra sea una anécdota; 60 aplanaría el pico de llegada,
+// que es justo lo que se quiere ver.
+export const FRANJA_MINUTOS = 15;
+
+// --- Números de carnet (renumeración por temporada) --------------------------
+// Hay DOS números por socio y no son el mismo:
+//
+//   · id del documento -> IDENTIDAD INTERNA. La asigna el contador, es
+//     monotónica, no se reutiliza JAMÁS y el socio la conserva de por vida.
+//     Es la clave con la que se guardan sus entradas y salidas, así que su
+//     historial sobrevive a cualquier renumeración. No se enseña en la UI.
+//
+//   · campo `carnet` -> NÚMERO VISIBLE. Es el que va impreso en el carnet, el
+//     que se ve en las listas y el que teclea el portero. Al empezar temporada
+//     se compacta (1..N) para tapar los huecos que dejan las bajas.
+//
+// Reutilizar el número visible sería el viejo bug del "QR zombie" si el QR solo
+// llevara el número. No lo es porque el QR lleva además el token del socio: el
+// carnet del antiguo nº 3 no abre la puerta del nuevo nº 3, porque su token no
+// coincide. Por eso renumerar OBLIGA a regenerar tokens y reimprimir carnets.
+export const carnetDe = (socio) =>
+  Number(socio?.carnet ?? socio?.numerico ?? socio?.id) || 0;
