@@ -198,53 +198,38 @@ code{
 .empty,.nota{color:var(--txt3);font-size:12.5px;padding:8px 0;line-height:1.55}
 .empty{text-align:center;padding:26px 0}
 
-/* ═══ Escáner · selector de modo ══════════════════════════════════════════ */
-/* Grande y con color: fichar una salida creyendo que es una entrada es el
-   error caro de este panel, así que el modo tiene que verse de un vistazo. */
-.modo-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
-.modo-btn{
-  padding:15px 10px;border:1px solid var(--borde);border-radius:var(--r);
-  background:var(--panel-2);color:var(--txt2);cursor:pointer;
-  font-size:14px;font-weight:700;letter-spacing:.04em;font-family:inherit;
-  transition:all var(--t);
-}
-.modo-btn:hover{border-color:var(--borde-vivo);color:var(--txt)}
-.modo-btn[data-modo="entrada"].modo-activo{
-  background:rgba(34,197,94,.14);border-color:var(--verde);color:#4ADE80;
-  box-shadow:inset 0 0 0 1px rgba(34,197,94,.3);
-}
-.modo-btn[data-modo="salida"].modo-activo{
-  background:rgba(234,179,8,.14);border-color:var(--ambar);color:var(--ambar);
-  box-shadow:inset 0 0 0 1px rgba(234,179,8,.3);
-}
-/* En modo salida el panel entero se tiñe: imposible no darse cuenta. */
-#scanner-panel.modo-salida{border-color:rgba(234,179,8,.45)}
-#scanner-panel.modo-salida::before{
-  content:"MODO SALIDA — estás fichando a quien se va";
-  display:block;margin:-20px -20px 16px;padding:9px 20px;
-  background:rgba(234,179,8,.12);border-bottom:1px solid rgba(234,179,8,.35);
-  border-radius:var(--r) var(--r) 0 0;
-  color:var(--ambar);font-size:11px;font-weight:700;letter-spacing:.08em;
-}
-
 /* ═══ Escáner ═════════════════════════════════════════════════════════════ */
-.scanner-result{
-  padding:18px;border-radius:var(--r);margin:14px 0;font-size:15px;font-weight:600;
-  line-height:1.5;animation:aparecer .2s ease-out;
-}
-.scanner-result small{display:inline-block;margin-top:5px;font-size:12.5px;font-weight:400;opacity:.85}
-@keyframes aparecer{from{opacity:0;transform:scale(.98)}}
-.result-entrada{background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.4);color:#4ADE80}
-.result-no{background:rgba(232,53,74,.10);border:1px solid rgba(232,53,74,.4);color:#FF6274}
-/* La salida correcta NO se pinta de verde: verde = "puede pasar". Un ámbar
-   propio evita que el portero lea "salida OK" como "entrada OK". */
-.result-salida{background:rgba(234,179,8,.10);border:1px solid rgba(234,179,8,.4);color:var(--ambar)}
 .aviso{
   background:rgba(234,179,8,.09);border:1px solid rgba(234,179,8,.35);
   color:var(--ambar);padding:11px 13px;border-radius:var(--r-s);
   font-size:12.5px;margin:10px 0;display:none;
 }
 #camara-wrap video{box-shadow:var(--sombra)}
+.btn-grande{width:100%;min-height:64px;font-size:17px;font-weight:700;letter-spacing:.02em}
+
+/* ═══ Pop-up de resultado del escáner ═══════════════════════════════════════ */
+/* A pantalla completa: es lo que más se lee desde el móvil del portero en la
+   puerta, con la cola esperando. Cierre a mano, nunca automático, para que le
+   dé tiempo a leer el motivo de un rechazo antes de que desaparezca. */
+.popup-scanner{
+  display:none;position:fixed;inset:0;z-index:60;
+  align-items:center;justify-content:center;padding:18px;
+}
+.popup-box{
+  width:100%;max-width:480px;border-radius:20px;padding:34px 26px;text-align:center;
+  box-shadow:0 30px 80px -20px rgba(0,0,0,.95);
+  animation:surgir .18s cubic-bezier(.2,.8,.2,1);
+}
+.popup-ok{background:#0E2A18;border:2px solid var(--verde);color:#DFFFE9}
+.popup-error{background:#2B0E13;border:2px solid var(--rojo);color:#FFE1E4}
+.popup-titulo{font-size:26px;font-weight:800;letter-spacing:-.01em;line-height:1.25;margin-bottom:10px}
+.popup-nombre{font-size:19px;font-weight:700;margin-bottom:8px}
+.popup-detalle{font-size:15.5px;line-height:1.55;opacity:.92}
+@media(max-width:600px){
+  .popup-box{padding:28px 20px}
+  .popup-titulo{font-size:22px}
+  .popup-nombre{font-size:17px}
+}
 
 /* ═══ Modal ═══════════════════════════════════════════════════════════════ */
 .modal{
@@ -266,15 +251,21 @@ code{
   border-top-color:var(--azul-claro);border-radius:50%;animation:spin .7s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-canvas#chart-taquilla,canvas#chart-afluencia{max-height:300px}
+canvas#chart-taquilla{max-height:300px}
 #qr-preview img,#qr-preview canvas{border-radius:10px;padding:12px;background:#fff}
 
+@media(max-width:768px){
+  .btn{min-height:44px;padding:10px 16px}
+  td .btn{min-height:36px}
+  input,select,textarea{padding:13px 12px;font-size:16px} /* 16px evita el zoom automático de iOS */
+}
 @media(max-width:600px){
   .panel{padding:14px 12px 40px}
   .card{padding:15px;border-radius:10px}
   header h1{font-size:14px}
   #user-label{max-width:30vw}
   .grid{grid-template-columns:1fr 1fr;gap:10px}
+  .btn-grande{min-height:72px;font-size:18px}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -385,38 +376,43 @@ canvas#chart-taquilla,canvas#chart-afluencia{max-height:300px}
 
   <!-- ---------- ESCÁNER ---------- -->
   <section class="panel" id="panel-scanner">
+    <div class="card" id="bloque-jornada-actual" style="display:none">
+      <h2>Jornada actual del club <span id="jornada-actual-label"></span></h2>
+      <p class="nota">Marca cuál es la jornada de hoy: el personal de control de acceso solo podrá
+        escanear en ella, para que no se fiche por error en el partido anterior o en uno futuro.</p>
+      <div class="row">
+        <select id="jornada-actual-sel" style="flex:1;min-width:180px"></select>
+        <button class="btn btn-primary" id="btn-jornada-actual-guardar">Fijar como jornada actual</button>
+      </div>
+    </div>
     <div class="card" id="scanner-panel">
       <h2>Control de acceso</h2>
       <label for="partido-sel">Jornada</label>
       <select id="partido-sel"></select>
+      <div class="aviso" id="aviso-jornada-distinta" style="display:none"></div>
 
-      <label>Qué estoy fichando</label>
-      <div class="modo-switch">
-        <button class="modo-btn" data-modo="entrada">⬅️ ENTRADA</button>
-        <button class="modo-btn" data-modo="salida">SALIDA ➡️</button>
-      </div>
       <div class="row" style="margin-top:12px">
         <button class="btn btn-danger" id="btn-bloqueo-scanner" style="display:none"></button>
       </div>
       <div class="aviso" id="aviso-bloqueada-scanner">🔒 Esta jornada está cerrada. No se pueden registrar entradas.</div>
       <div class="row" style="margin-top:14px">
-        <button class="btn btn-primary" id="btn-camara">📷 Activar cámara</button>
+        <button class="btn btn-primary btn-grande" id="btn-camara">📷 Escanear QR</button>
       </div>
       <div id="camara-wrap" style="display:none;margin-top:12px">
         <video id="camara-video" playsinline muted autoplay
               style="width:100%;max-width:420px;border-radius:10px;background:#000"></video>
         <canvas id="camara-canvas" style="display:none"></canvas>
       </div>
-      <div id="scan-result"></div>
 
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
         <label for="manual-id">Validación manual · ¿el QR no se lee?</label>
         <div class="row">
-          <input id="manual-id" placeholder="Nº de carnet (ej. 42) o texto del QR" style="flex:1;min-width:180px">
+          <input id="manual-id" placeholder="Nº de carnet o DNI/NIE" style="flex:1;min-width:180px">
           <button class="btn btn-primary" id="btn-manual">Validar</button>
         </div>
         <p class="nota">Si el carnet está roto, borroso o el móvil no enfoca, teclea aquí
-          el número de carnet y pulsa Validar. Comprueba antes que la persona es quien dice ser.</p>
+          el número de carnet o el DNI/NIE de la persona y pulsa Validar. Comprueba antes que la
+          persona es quien dice ser.</p>
       </div>
     </div>
     <div class="card">
@@ -424,6 +420,11 @@ canvas#chart-taquilla,canvas#chart-afluencia{max-height:300px}
       <div id="log-entradas" style="overflow-x:auto"></div>
     </div>
   </section>
+
+  <!-- Pop-up de resultado del escáner: pantalla completa, verde/rojo, cierre manual. -->
+  <div id="popup-scanner" class="popup-scanner">
+    <div class="popup-box" id="popup-scanner-box"></div>
+  </div>
 
   <!-- ---------- TAQUILLA ---------- -->
   <section class="panel" id="panel-taquilla">
@@ -463,13 +464,35 @@ canvas#chart-taquilla,canvas#chart-afluencia{max-height:300px}
     </div>
 
     <div class="card">
-      <h2>Afluencia · a qué hora entra y sale la gente</h2>
-      <label for="afluencia-jornada">Jornada</label>
-      <select id="afluencia-jornada"></select>
-      <div class="grid" id="afluencia-resumen" style="margin:14px 0"></div>
-      <canvas id="chart-afluencia"></canvas>
-      <p class="nota" id="afluencia-nota"></p>
+      <h2>Facturación</h2>
+      <div class="grid" id="facturacion-cards"></div>
+      <div style="overflow-x:auto;margin-top:14px">
+        <table>
+          <thead><tr><th>Tipo de abono</th><th>Socios</th><th>Cobrado</th><th>Pendiente</th></tr></thead>
+          <tbody id="facturacion-tabla"></tbody>
+        </table>
+      </div>
     </div>
+
+    <div class="card">
+      <h2>Asistencia</h2>
+      <div class="grid" id="asistencia-cards"></div>
+      <div style="overflow-x:auto;margin-top:14px">
+        <h2 style="margin-top:14px">Asistencia por tipo de abono</h2>
+        <table>
+          <thead><tr><th>Tipo de abono</th><th>Socios</th><th>Asistencia media</th></tr></thead>
+          <tbody id="asistencia-tipos-tabla"></tbody>
+        </table>
+      </div>
+      <div style="overflow-x:auto;margin-top:14px">
+        <h2 style="margin-top:14px">Ranking de asistencia (socios)</h2>
+        <table>
+          <thead><tr><th>Nº</th><th>Socio</th><th>Jornadas asistidas</th><th>% asistencia</th></tr></thead>
+          <tbody id="asistencia-ranking-tabla"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="card">
       <h2>Detalle por jornada · Recaudación total: <span id="stats-recaudacion"></span></h2>
       <div style="overflow-x:auto">

@@ -1,24 +1,31 @@
 // ============================================================================
 //  src/ui/pages/scanner.page.js  ·  Escáner de QR y registro de accesos.
-//  Dos modos: ENTRADA y SALIDA. El modo es del portero, no de la jornada, y
-//  se pinta bien visible porque fichar una salida creyendo que es una entrada
-//  (o al revés) es el error caro de este panel.
+//  Solo hay ENTRADA: no existe modo salida. Cada resultado se muestra en un
+//  pop-up grande a pantalla completa (verde = acceso válido, rojo = rechazo),
+//  con sonido y vibración, y se cierra a mano para que el portero le dé
+//  tiempo a leerlo antes de que desaparezca.
+//
+//  Jornada actual: el admin fija cuál es "la jornada de hoy" (ver
+//  jornadas.page.js). Un portero (control_acceso) solo puede escanear en esa
+//  jornada — así no puede dejarse seleccionada por error la del partido
+//  anterior. El admin sí puede elegir cualquier otra, pero ve un aviso.
 // ============================================================================
-import { $, $$, on } from '../../utils/dom.js';
+import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
-import { hora, duracion } from '../../utils/format.js';
+import { hora } from '../../utils/format.js';
 import { state, estaBloqueada } from '../../core/state.js';
 import { getPartidos, getPartidosLabel, carnetDe } from '../../config/app.config.js';
 import * as acceso from '../../services/acceso.service.js';
 import * as socios from '../../services/socios.service.js';
-import { playSonido } from '../sonidos.js';
+import * as roles from '../../services/roles.service.js';
+import { playSonido, vibrar } from '../sonidos.js';
 import { iniciarCamara, pararCamara, camaraActiva } from '../camara.js';
 
 export function initScanner() {
   rellenarSelect();
   on($('#partido-sel'), 'change', () => {
     state.partidoScanner = $('#partido-sel').value;
-    $('#scan-result').innerHTML = '';
+    actualizarAvisoJornada();
     renderLog();
   });
   on($('#btn-manual'), 'click', async () => {
@@ -27,122 +34,140 @@ export function initScanner() {
     $('#manual-id').value = '';
   });
   on($('#btn-camara'), 'click', toggleCamara);
-  $$('[data-modo]').forEach((btn) =>
-    on(btn, 'click', () => cambiarModo(btn.dataset.modo)),
-  );
-  cambiarModo(state.modoScanner);
-}
-
-function cambiarModo(modo) {
-  state.modoScanner = modo;
-  $$('[data-modo]').forEach((b) =>
-    b.classList.toggle('modo-activo', b.dataset.modo === modo),
-  );
-  const salida = modo === acceso.MODO_SALIDA;
-  $('#scanner-panel').classList.toggle('modo-salida', salida);
-  $('#manual-id').placeholder = salida
-    ? 'Nº de carnet que SALE'
-    : 'Nº de carnet (ej. 42) o texto del QR';
-  $('#scan-result').innerHTML = '';
-}
-
-function rellenarSelect() {
-  const partidos = getPartidos();
-  const labels = getPartidosLabel();
-  const html =
-    '<option value="">— Selecciona jornada —</option>' +
-    partidos
-      .map((p, i) => `<option value="${esc(p)}">${esc(labels[i])}</option>`)
-      .join('');
-  $('#partido-sel').innerHTML = html;
+  on($('#popup-cerrar'), 'click', cerrarPopup);
+  on($('#popup-scanner'), 'click', (e) => {
+    if (e.target.id === 'popup-scanner') cerrarPopup();
+  });
 }
 
 /** Nombre completo del socio, ya escapado. */
 const nombreDe = (s) => esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim());
 
+/**
+ * Rellena el selector de jornada. Un portero (control_acceso, no admin) solo
+ * ve la jornada actual fijada por el admin: no hay forma de que se le quede
+ * seleccionada por error la del partido anterior. El admin ve todas.
+ */
+export function rellenarSelect() {
+  const sel = $('#partido-sel');
+  if (!sel) return;
+  const soloActual = roles.puedeEscanear() && !roles.esAdmin();
+
+  if (soloActual) {
+    const jornada = state.jornadaActual;
+    sel.innerHTML = jornada
+      ? `<option value="${esc(jornada)}">${esc(jornada)}</option>`
+      : '<option value="">— El admin aún no ha fijado la jornada actual —</option>';
+    sel.value = jornada || '';
+    sel.disabled = true;
+    if (state.partidoScanner !== jornada) {
+      state.partidoScanner = jornada || '';
+    }
+  } else {
+    const partidos = getPartidos();
+    const labels = getPartidosLabel();
+    const previo = sel.value;
+    sel.disabled = false;
+    sel.innerHTML =
+      '<option value="">— Selecciona jornada —</option>' +
+      partidos
+        .map((p, i) => `<option value="${esc(p)}">${esc(labels[i])}</option>`)
+        .join('');
+    sel.value = previo;
+    state.partidoScanner = sel.value;
+  }
+  actualizarAvisoJornada();
+  renderLog();
+}
+
+/** Aviso para el admin cuando escanea fuera de la jornada actual fijada. */
+function actualizarAvisoJornada() {
+  const aviso = $('#aviso-jornada-distinta');
+  if (!aviso) return;
+  const distinta =
+    roles.esAdmin() &&
+    state.partidoScanner &&
+    state.jornadaActual &&
+    state.partidoScanner !== state.jornadaActual;
+  aviso.style.display = distinta ? 'block' : 'none';
+  if (distinta) {
+    aviso.innerHTML = `⚠️ Esta NO es la jornada actual (la jornada actual configurada es
+      <strong>${esc(state.jornadaActual)}</strong>). Estás en una jornada pasada o futura —
+      revisa que no sea un error antes de fichar entradas aquí.`;
+  }
+}
+
 export async function escanear(raw, opciones = {}) {
   const jornada = state.partidoScanner;
-  const res = await acceso.procesarAcceso(raw, jornada, estaBloqueada(jornada), {
-    ...opciones,
-    modo: state.modoScanner,
-  });
-  const out = $('#scan-result');
-  const pintar = (clase, html) => {
-    out.innerHTML = `<div class="scanner-result ${clase}">${html}</div>`;
-  };
+  const res = await acceso.procesarAcceso(raw, jornada, estaBloqueada(jornada), opciones);
 
   switch (res.estado) {
     case 'sin_jornada':
-      pintar('result-no', 'Selecciona una jornada antes de escanear.');
-      break;
+      return alert('Selecciona una jornada antes de escanear.');
     case 'bloqueada':
-      pintar('result-no', '🔒 Jornada cerrada. Desbloquéala para registrar entradas.');
-      break;
+      return alert('🔒 Jornada cerrada. Desbloquéala para registrar entradas.');
     case 'desconocido':
-      playSonido('error');
-      pintar('result-no', `❌ QR no reconocido: ${esc(res.id)}`);
-      break;
+      return mostrarPopup('error', `❌ No reconocido`, `Nº o documento: ${esc(res.id)}`);
     case 'qr_invalido':
-      playSonido('error');
-      pintar(
-        'result-no',
-        `🚫 CARNET NO VÁLIDO — nº ${esc(res.id)}<br>
-         <small>${
-           res.motivo === 'sin_token'
-             ? 'El QR no lleva código de seguridad. Hay que reemitir el carnet.'
-             : 'El código de seguridad no coincide: el QR no es auténtico o el carnet es de una temporada anterior.'
-         }<br>Si reconoces a la persona como socia, valida a mano con su nº de carnet.</small>`,
+      return mostrarPopup(
+        'error',
+        `🚫 CARNET NO VÁLIDO`,
+        `nº ${esc(res.id)}<br>${motivoQr(res.motivo)}<br>
+         Si reconoces a la persona como socia, valida a mano con su nº de carnet o DNI.`,
       );
-      break;
     case 'repetido':
-      playSonido('error');
-      pintar(
-        'result-no',
-        `⚠️ QR ya utilizado — ${nombreDe(res.socio)}<br>
-         <small>Entrada registrada a las ${hora(res.hora)}. No puede volver a entrar en esta jornada.</small>`,
+      return mostrarPopup(
+        'error',
+        `⚠️ YA HA ENTRADO`,
+        `Entrada registrada a las ${hora(res.hora)}. No puede volver a entrar en esta jornada.`,
+        res.socio,
       );
-      break;
     case 'valido':
-      playSonido('ok');
-      pintar(
-        'result-entrada',
-        `✅ ACCESO VÁLIDO — ${nombreDe(res.socio)}<br>
-         <small>${esc(res.socio.tipo)} · nº ${carnetDe(res.socio)} · ${hora(res.hora)}</small>`,
+      return mostrarPopup(
+        'ok',
+        `✅ ACCESO VÁLIDO`,
+        `${esc(res.socio.tipo)} · nº ${carnetDe(res.socio)} · ${hora(res.hora)}`,
+        res.socio,
       );
-      break;
-    // --- modo salida --------------------------------------------------------
-    case 'sin_entrada':
-      playSonido('error');
-      pintar(
-        'result-no',
-        `❌ NO CONSTA SU ENTRADA — ${nombreDe(res.socio)}<br>
-         <small>No se puede fichar la salida de quien no ha entrado. ¿Tienes el modo correcto?</small>`,
-      );
-      break;
-    case 'salida_repetida':
-      playSonido('error');
-      pintar(
-        'result-no',
-        `⚠️ SALIDA YA FICHADA — ${nombreDe(res.socio)}<br>
-         <small>Salió a las ${hora(res.hora)}.</small>`,
-      );
-      break;
-    case 'salida_ok':
-      playSonido('ok');
-      pintar(
-        'result-salida',
-        `🚪 SALIDA REGISTRADA — ${nombreDe(res.socio)}<br>
-         <small>nº ${carnetDe(res.socio)} · ${hora(res.hora)} · estuvo ${duracion(res.minutos)}</small>`,
-      );
-      break;
   }
+}
+
+function motivoQr(motivo) {
+  if (motivo === 'sin_token')
+    return 'El QR no lleva código de seguridad. Hay que reemitir el carnet.';
+  if (motivo === 'temporada_anterior')
+    return 'Este QR es de una temporada anterior. Hay que reemitir el carnet desde la pestaña QR.';
+  return 'El código de seguridad no coincide: el QR no es auténtico.';
+}
+
+// ============================================================================
+//  Pop-up de resultado: a pantalla completa, con sonido y vibración. Se
+//  cierra a mano (botón o tocando fuera de la tarjeta), nunca solo, para que
+//  el portero tenga tiempo de leer el motivo de un rechazo.
+// ============================================================================
+function mostrarPopup(tipo, titulo, detalle, s) {
+  playSonido(tipo);
+  vibrar(tipo);
+  const cont = $('#popup-scanner');
+  const box = $('#popup-scanner-box');
+  box.className = `popup-box ${tipo === 'ok' ? 'popup-ok' : 'popup-error'}`;
+  box.innerHTML = `
+    <div class="popup-titulo">${titulo}</div>
+    ${s ? `<div class="popup-nombre">${nombreDe(s)}</div>` : ''}
+    <div class="popup-detalle">${detalle}</div>
+    <button class="btn btn-primary" id="popup-cerrar" style="margin-top:22px;width:100%">Cerrar</button>`;
+  on($('#popup-cerrar'), 'click', cerrarPopup);
+  cont.style.display = 'flex';
+}
+
+function cerrarPopup() {
+  $('#popup-scanner').style.display = 'none';
 }
 
 export function renderLog() {
   const log = $('#log-entradas');
   const jornada = state.partidoScanner;
   const e = state.entradas[jornada];
-  const sal = state.salidas[jornada] || {};
   if (!jornada || !e) {
     log.innerHTML = '';
     return;
@@ -153,19 +178,15 @@ export function renderLog() {
     return;
   }
 
-  const dentro = ids.filter((id) => !sal[id]).length;
   log.innerHTML = `
-    <p class="nota">${ids.length} han entrado · <strong style="color:var(--verde)">${dentro} siguen dentro</strong> · ${ids.length - dentro} se han ido.</p>
-    <table><thead><tr><th>Nº</th><th>Socio</th><th>Entrada</th><th>Salida</th><th>Dentro</th><th></th></tr></thead>
+    <p class="nota">${ids.length} ${ids.length === 1 ? 'ha entrado' : 'han entrado'}.</p>
+    <table><thead><tr><th>Nº</th><th>Socio</th><th>Entrada</th><th></th></tr></thead>
     <tbody>${ids
       .map((id) => {
         const s = socios.obtener(id) || { nombre: `(socio ${id})`, ap1: '' };
-        const salida = sal[id];
         return `<tr><td><code>${carnetDe(s) || esc(id)}</code></td>
         <td>${esc(`${s.nombre} ${s.ap1}`)}</td>
         <td>${hora(e[id])}</td>
-        <td>${salida ? hora(salida) : '<span class="badge badge-ok">dentro</span>'}</td>
-        <td>${salida ? duracion(acceso.minutosEntre(e[id], salida)) : '—'}</td>
         <td><button class="btn btn-danger" data-borrar="${esc(id)}">Borrar</button></td></tr>`;
       })
       .join('')}</tbody></table>`;
@@ -175,7 +196,7 @@ export function renderLog() {
       if (estaBloqueada(jornada)) return alert('Jornada cerrada.');
       if (
         !confirm(
-          '¿Borrar este registro? Se borran su entrada y su salida, y su QR volverá a estar disponible en esta jornada.',
+          '¿Borrar esta entrada? Su QR volverá a estar disponible en esta jornada.',
         )
       )
         return;
@@ -192,7 +213,7 @@ async function toggleCamara() {
   if (camaraActiva()) {
     pararCamara(video);
     wrap.style.display = 'none';
-    btn.textContent = '📷 Activar cámara';
+    btn.textContent = '📷 Escanear QR';
     return;
   }
   if (!state.partidoScanner) {
@@ -212,6 +233,6 @@ export function pararCamaraSiActiva() {
   if (camaraActiva()) {
     pararCamara($('#camara-video'));
     $('#camara-wrap').style.display = 'none';
-    $('#btn-camara').textContent = '📷 Activar cámara';
+    $('#btn-camara').textContent = '📷 Escanear QR';
   }
 }

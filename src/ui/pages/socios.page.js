@@ -8,7 +8,7 @@
 // ============================================================================
 import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
-import { fecha, antiguedad, horaCorta, duracion } from '../../utils/format.js';
+import { fecha, antiguedad, horaCorta } from '../../utils/format.js';
 import { state } from '../../core/state.js';
 import {
   esFundador,
@@ -221,7 +221,6 @@ function verPerfil(id) {
   const h = historialSocio({
     socioId: id,
     entradas: state.entradas,
-    salidas: state.salidas,
   });
 
   $('#perfil-nombre').textContent = `${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim();
@@ -232,7 +231,6 @@ function verPerfil(id) {
   $('#perfil-stats').innerHTML = `
     <div class="stat"><div class="stat-n">${h.asistidos}</div><div class="stat-l">Partidos asistidos<br>de ${h.jornadasConDatos} jugados</div></div>
     <div class="stat"><div class="stat-n">${h.pct}%</div><div class="stat-l">% asistencia</div></div>
-    <div class="stat"><div class="stat-n">${h.minutosMedios === null ? '—' : duracion(h.minutosMedios)}</div><div class="stat-l">Tiempo medio en el campo</div></div>
     <div class="stat"><div class="stat-n">${s.pagado ? '✅' : '❌'}</div><div class="stat-l">${s.pagado ? 'Pagado' : 'Pago pendiente'}</div></div>`;
 
   $('#perfil-datos').innerHTML = `
@@ -256,7 +254,7 @@ function verPerfil(id) {
   $('#modal-perfil').style.display = 'flex';
 }
 
-/** Partido a partido: a qué fue, a qué hora entró, a qué hora salió. */
+/** Partido a partido: a qué fue y a qué hora entró. */
 function renderHistorial(h) {
   const cont = $('#perfil-historial');
   if (!h.partidos.length) {
@@ -264,18 +262,15 @@ function renderHistorial(h) {
     return;
   }
   cont.innerHTML = `<table>
-    <thead><tr><th>Jornada</th><th>Entró</th><th>Salió</th><th>Tiempo dentro</th></tr></thead>
+    <thead><tr><th>Jornada</th><th>Entró</th></tr></thead>
     <tbody>${h.partidos
       .map(
         (p) => `<tr>
         <td>${esc(p.label.split(' - ')[1] || p.label)}</td>
         <td>${horaCorta(p.entrada)}</td>
-        <td>${p.salida ? horaCorta(p.salida) : '<span style="color:var(--txt3)">sin fichar</span>'}</td>
-        <td>${p.minutos === null ? '—' : duracion(p.minutos)}</td>
       </tr>`,
       )
-      .join('')}</tbody></table>
-    <p class="nota">"Sin fichar" = entró pero nadie registró su salida. No significa que siguiera dentro.</p>`;
+      .join('')}</tbody></table>`;
 }
 
 /** Muestra/oculta el formulario y lo recarga desde el socio actual. */

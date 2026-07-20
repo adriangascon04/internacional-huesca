@@ -111,23 +111,6 @@ service cloud.firestore {
       allow delete: if esAdmin();
     }
 
-    // ----------------------------------------------------------------- salidas
-    // Un doc por jornada: { <socioId>: <ISO> }. Mismas reglas que 'entradas':
-    // un control_acceso puede fichar salidas pero no borrarlas.
-    match /salidas/{jornada} {
-      allow read: if autenticado();
-
-      allow create: if puedeEscanear() && jornadaAbierta(jornada);
-
-      allow update: if jornadaAbierta(jornada) && (
-        esAdmin()
-        || (puedeEscanear()
-            && request.resource.data.keys().hasAll(resource.data.keys()))
-      );
-
-      allow delete: if esAdmin();
-    }
-
     // ---------------------------------------------------------------- taquilla
     // Un doc por jornada: { general, menor, historial:[...] }.
     match /taquilla/{jornada} {
@@ -172,6 +155,17 @@ service cloud.firestore {
       allow create: if esAdmin()
         && request.resource.data.creadoPor == request.auth.token.email;
       allow update: if false;  // una copia no se edita
+    }
+
+    // ------------------------------------------------------------------ config
+    // Documento único config/jornada_actual: cuál es "la jornada de hoy".
+    // Un control_acceso solo lee (para que el escáner sepa a qué restringirse);
+    // solo admin la fija, firmada con su propio correo.
+    match /config/{id} {
+      allow read: if autenticado();
+      allow create, update: if esAdmin()
+        && request.resource.data.actualizadoPor == request.auth.token.email;
+      allow delete: if esAdmin();
     }
 
     // -------------------------------------------------------------- contadores

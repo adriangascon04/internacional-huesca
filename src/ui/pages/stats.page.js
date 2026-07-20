@@ -1,21 +1,18 @@
 // ============================================================================
 //  src/ui/pages/stats.page.js  ·  Estadísticas y gráfico (Chart.js por CDN).
 // ============================================================================
-import { $, on } from '../../utils/dom.js';
+import { $ } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
 import { euros } from '../../utils/format.js';
 import { state } from '../../core/state.js';
+import { claseAsistencia, carnetDe } from '../../config/app.config.js';
 import {
-  claseAsistencia,
-  getPartidos,
-  getPartidosLabel,
-  FRANJA_MINUTOS,
-} from '../../config/app.config.js';
-import { calcularStats, calcularAfluencia } from '../../services/stats.service.js';
+  calcularStats,
+  calcularFacturacion,
+  calcularAsistencia,
+} from '../../services/stats.service.js';
 
 let chart = null;
-let chartAfluencia = null;
-let selectorListo = false;
 
 export function render() {
   const s = calcularStats({
@@ -48,129 +45,73 @@ export function render() {
 
   $('#stats-recaudacion').textContent = euros(s.recaudacionTotal);
   pintarGrafico(s);
-  renderAfluencia();
+  renderFacturacion(s);
+  renderAsistencia(s);
 }
 
 // ============================================================================
-//  Afluencia: a qué hora entra y sale la gente.
+//  Facturación: cuotas de socio (cobrado/pendiente) + taquilla.
 // ============================================================================
 
-function renderAfluencia() {
-  const sel = $('#afluencia-jornada');
-  if (!sel) return;
+function renderFacturacion(s) {
+  const f = calcularFacturacion({
+    socios: state.socios,
+    porJornada: s.porJornada,
+  });
 
-  // El selector se rellena una vez: repintarlo en cada snapshot le borraría al
-  // usuario la jornada que acaba de elegir.
-  if (!selectorListo) {
-    const partidos = getPartidos();
-    const labels = getPartidosLabel();
-    sel.innerHTML =
-      '<option value="">Todas las jornadas jugadas</option>' +
-      partidos
-        .map((p, i) => `<option value="${esc(p)}">${esc(labels[i])}</option>`)
-        .join('');
-    on(sel, 'change', renderAfluencia);
-    selectorListo = true;
-  }
+  $('#facturacion-cards').innerHTML = `
+    <div class="stat"><div class="stat-n">${euros(f.cuotasCobradas)}</div><div class="stat-l">Cuotas cobradas</div></div>
+    <div class="stat"><div class="stat-n">${euros(f.cuotasPendientes)}</div><div class="stat-l">Cuotas pendientes</div></div>
+    <div class="stat"><div class="stat-n">${euros(f.recaudacionTaquilla)}</div><div class="stat-l">Taquilla</div></div>
+    <div class="stat"><div class="stat-n">${euros(f.totalEstimado)}</div><div class="stat-l">Facturación total estimada<br><small>(cuotas cobradas + taquilla)</small></div></div>
+    ${f.jornadaMax ? `<div class="stat"><div class="stat-n">${euros(f.jornadaMax.recaudacion)}</div><div class="stat-l">Mejor taquilla<br>${esc(f.jornadaMax.label)}</div></div>` : ''}
+    ${f.jornadaMin ? `<div class="stat"><div class="stat-n">${euros(f.jornadaMin.recaudacion)}</div><div class="stat-l">Peor taquilla<br>${esc(f.jornadaMin.label)}</div></div>` : ''}`;
 
-  const elegida = sel.value;
-  const jornadas = elegida ? [elegida] : getPartidos();
-  const a = calcularAfluencia({
+  $('#facturacion-tabla').innerHTML =
+    f.porTipo
+      .filter((t) => t.socios > 0)
+      .map(
+        (t) =>
+          `<tr><td>${esc(t.tipo)}</td><td>${t.socios}</td><td>${euros(t.cobrado)}</td><td>${euros(t.pendiente)}</td></tr>`,
+      )
+      .join('') || '<tr><td colspan="4">Sin datos</td></tr>';
+}
+
+// ============================================================================
+//  Asistencia: jornada pico/valle, ranking de socios, tasa por tipo de abono.
+// ============================================================================
+
+function renderAsistencia(s) {
+  const a = calcularAsistencia({
+    socios: state.socios,
     entradas: state.entradas,
-    salidas: state.salidas,
-    jornadas,
+    porJornada: s.porJornada,
   });
 
-  const resumen = $('#afluencia-resumen');
-  if (!a.franjas.length) {
-    resumen.innerHTML = '<p class="empty">Todavía no hay fichajes en esta selección.</p>';
-    $('#chart-afluencia').style.display = 'none';
-    return;
-  }
-  $('#chart-afluencia').style.display = '';
+  $('#asistencia-cards').innerHTML = `
+    <div class="stat"><div class="stat-n">${a.asistenciaMedia}</div><div class="stat-l">Asistencia media por jornada (socios)</div></div>
+    ${a.jornadaMax ? `<div class="stat"><div class="stat-n">${a.jornadaMax.nSocios}</div><div class="stat-l">Jornada con más asistencia<br>${esc(a.jornadaMax.label)}</div></div>` : ''}
+    ${a.jornadaMin ? `<div class="stat"><div class="stat-n">${a.jornadaMin.nSocios}</div><div class="stat-l">Jornada con menos asistencia<br>${esc(a.jornadaMin.label)}</div></div>` : ''}`;
 
-  const sinFichar = a.totalEntradas - a.totalSalidas;
-  resumen.innerHTML = `
-    <div class="stat"><div class="stat-n">${esc(a.pico.label)}</div><div class="stat-l">Franja de más gente${a.nJornadas > 1 ? `<br>(${a.nJornadas} jornadas juntas)` : ''}</div></div>
-    <div class="stat"><div class="stat-n">${a.pico.dentro}</div><div class="stat-l">Personas dentro en ese momento</div></div>
-    <div class="stat"><div class="stat-n">${a.totalEntradas}</div><div class="stat-l">Entradas fichadas</div></div>
-    <div class="stat"><div class="stat-n">${a.totalSalidas}</div><div class="stat-l">Salidas fichadas</div></div>`;
+  $('#asistencia-tipos-tabla').innerHTML =
+    a.porTipo
+      .filter((t) => t.socios > 0)
+      .map(
+        (t) =>
+          `<tr><td>${esc(t.tipo)}</td><td>${t.socios}</td><td>${t.mediaAsistencia}%</td></tr>`,
+      )
+      .join('') || '<tr><td colspan="3">Sin datos</td></tr>';
 
-  const nota = $('#afluencia-nota');
-  nota.innerHTML =
-    sinFichar > 0
-      ? `⚠️ <strong>${sinFichar}</strong> ${sinFichar === 1 ? 'persona entró y no fichó' : 'personas entraron y no ficharon'} la salida, así que la curva de "dentro"
-         se queda alta al final y el nº de personas dentro es un máximo, no un dato exacto.
-         La <strong>hora del pico sí es fiable</strong>. Cuantas más salidas se fichen, más fina será la curva.`
-      : `Todas las entradas tienen su salida fichada: la curva es fiable de principio a fin.`;
-
-  pintarGraficoAfluencia(a);
-}
-
-function pintarGraficoAfluencia(a) {
-  const ctx = $('#chart-afluencia');
-  if (!ctx || typeof Chart === 'undefined') return;
-  if (chartAfluencia) chartAfluencia.destroy();
-
-  // eslint-disable-next-line no-undef
-  chartAfluencia = new Chart(ctx, {
-    data: {
-      labels: a.franjas.map((f) => f.label),
-      datasets: [
-        {
-          label: 'Dentro del campo',
-          data: a.franjas.map((f) => f.dentro),
-          type: 'line',
-          borderColor: '#4D9FE8',
-          backgroundColor: 'rgba(34,119,199,.18)',
-          tension: 0.35,
-          fill: true,
-          pointRadius: 0,
-          borderWidth: 2,
-          order: 2,
-        },
-        {
-          label: 'Entran',
-          data: a.franjas.map((f) => f.entradas),
-          type: 'bar',
-          backgroundColor: '#22c55e',
-          borderRadius: 3,
-          order: 1,
-        },
-        {
-          label: 'Salen',
-          data: a.franjas.map((f) => f.salidas),
-          type: 'bar',
-          backgroundColor: '#E8354A',
-          borderRadius: 3,
-          order: 1,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        tooltip: {
-          callbacks: {
-            title: (items) => `${items[0].label} – ${etiquetaFin(items[0].label)}`,
-          },
-        },
-      },
-      scales: {
-        x: { stacked: true, ticks: { maxRotation: 0, autoSkipPadding: 16 } },
-        y: { beginAtZero: true, ticks: { precision: 0 } },
-      },
-    },
-  });
-}
-
-/** "19:15" -> "19:30": el tooltip enseña la franja entera, no solo su inicio. */
-function etiquetaFin(label) {
-  const [h, m] = label.split(':').map(Number);
-  const fin = (h * 60 + m + FRANJA_MINUTOS) % 1440;
-  return `${String(Math.floor(fin / 60)).padStart(2, '0')}:${String(fin % 60).padStart(2, '0')}`;
+  $('#asistencia-ranking-tabla').innerHTML =
+    a.ranking
+      .slice(0, 20)
+      .map(
+        (r) =>
+          `<tr><td><code>${carnetDe(r.socio)}</code></td>
+           <td>${esc(`${r.socio.nombre} ${r.socio.ap1}`)}</td>
+           <td>${r.asistidas}</td><td>${r.pct}%</td></tr>`,
+      )
+      .join('') || '<tr><td colspan="4">Sin datos</td></tr>';
 }
 
 function pintarGrafico(s) {

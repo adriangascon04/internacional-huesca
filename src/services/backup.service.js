@@ -13,12 +13,11 @@ export function iniciarBackups(onCambio) {
   return repo.suscribirBackups(onCambio);
 }
 
-export async function crearBackup(entradas, taquilla, salidas = {}) {
+export async function crearBackup(entradas, taquilla) {
   const socios = getSocios();
   const contenido = {
     socios,
     entradas,
-    salidas,
     taquilla,
     generado: new Date().toISOString(),
   };

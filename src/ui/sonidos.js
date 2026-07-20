@@ -1,5 +1,5 @@
 // ============================================================================
-//  src/ui/sonidos.js  ·  Sonidos de confirmación/rechazo (Web Audio API).
+//  src/ui/sonidos.js  ·  Sonidos y vibración de confirmación/rechazo.
 // ============================================================================
 let ctx = null;
 const getCtx = () => {
@@ -39,5 +39,19 @@ export function playSonido(tipo) {
     });
   } catch {
     /* navegador bloquea audio sin interacción: se ignora */
+  }
+}
+
+/**
+ * Vibración corta para reforzar el resultado del escaneo (útil con ruido de
+ * ambiente en la puerta). iOS Safari no soporta navigator.vibrate: se ignora
+ * en silencio, igual que el audio cuando el navegador lo bloquea.
+ */
+export function vibrar(tipo) {
+  try {
+    if (!navigator.vibrate) return;
+    navigator.vibrate(tipo === 'ok' ? 80 : [60, 60, 60]);
+  } catch {
+    /* sin soporte de vibración: se ignora */
   }
 }

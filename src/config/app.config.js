@@ -80,9 +80,16 @@ export const claseAsistencia = (pct) =>
       : 'badge-no';
 
 // --- Formato del QR (Upgrades #5) -------------------------------------------
-// v1: "HUESCA:<id>"          -> falsificable: basta adivinar el nº de socio.
-// v2: "HUESCA:<id>:<token>"  -> el token es aleatorio y vive en la ficha del
-//     socio, así que ya no se puede fabricar un carnet desde fuera.
+// v1: "HUESCA:<id>"                     -> falsificable: basta adivinar el
+//     nº de socio.
+// v2: "HUESCA:<id>:<token>"              -> el token es aleatorio y vive en
+//     la ficha del socio, así que ya no se puede fabricar un carnet desde
+//     fuera.
+// v3: "HUESCA:<id>:<token>:<temporada>"  -> añade la temporada en la que se
+//     emitió el carnet. Aunque el token no cambiara al renumerar, un QR de
+//     una temporada anterior se rechaza igualmente (ver comprobarToken en
+//     acceso.service.js). Cambiar de formato en producción implica reemitir
+//     y reimprimir todos los carnets (pestaña QR -> "Descargar todos ZIP").
 export const QR_PREFIX = 'HUESCA:';
 export const QR_SEPARADOR = ':';
 export const QR_LONGITUD_TOKEN = 12; // 32^12 ≈ 2^60 combinaciones
@@ -101,32 +108,28 @@ export const QR_ACEPTA_LEGACY = false;
 export const COLECCIONES = {
   socios: 'socios',
   entradas: 'entradas',
-  // Las salidas van en su propia colección, con la misma forma que 'entradas'
-  // ({ <socioId>: <ISO> }), en vez de anidarse dentro de cada entrada. Así los
-  // datos de entradas ya grabados no hay que migrarlos ni se pueden romper.
-  salidas: 'salidas',
   taquilla: 'taquilla',
   jornadasBloqueadas: 'jornadas_bloqueadas',
   backups: 'backups',
   usuarios: 'usuarios',
   contadores: 'contadores',
+  // Documento único (config/jornada_actual): cuál es la jornada "de hoy". El
+  // portero solo puede escanear en ella; el admin puede elegir cualquiera
+  // pero ve un aviso si no coincide (ver jornadas.page.js / scanner.page.js).
+  config: 'config',
 };
 
-export const MAX_BACKUPS = 7; // rotación de copias de seguridad
+export const DOC_JORNADA_ACTUAL = 'jornada_actual';
 
-// --- Afluencia (estadísticas de horas de entrada/salida) --------------------
-// Ancho de la franja en la que se agrupan los fichajes. 15 min da una curva
-// legible sin que cada barra sea una anécdota; 60 aplanaría el pico de llegada,
-// que es justo lo que se quiere ver.
-export const FRANJA_MINUTOS = 15;
+export const MAX_BACKUPS = 7; // rotación de copias de seguridad
 
 // --- Números de carnet (renumeración por temporada) --------------------------
 // Hay DOS números por socio y no son el mismo:
 //
 //   · id del documento -> IDENTIDAD INTERNA. La asigna el contador, es
 //     monotónica, no se reutiliza JAMÁS y el socio la conserva de por vida.
-//     Es la clave con la que se guardan sus entradas y salidas, así que su
-//     historial sobrevive a cualquier renumeración. No se enseña en la UI.
+//     Es la clave con la que se guarda su historial de entradas, así que
+//     sobrevive a cualquier renumeración. No se enseña en la UI.
 //
 //   · campo `carnet` -> NÚMERO VISIBLE. Es el que va impreso en el carnet, el
 //     que se ve en las listas y el que teclea el portero. Al empezar temporada

@@ -22,6 +22,16 @@ export const getSociosActivos = () => _socios.filter((s) => s.activo !== false);
 export const porCarnet = (carnet) =>
   getSociosActivos().find((s) => carnetDe(s) === Number(carnet));
 
+/**
+ * Busca por DNI/NIE (u otro documento). Fallback manual del escáner cuando el
+ * lector no funciona y el portero no tiene a mano el nº de carnet: el nº de
+ * socio puede variar de temporada a temporada, pero el documento no.
+ */
+export const porDni = (valor) => {
+  const doc = normalizarDoc(valor);
+  return doc ? getSociosActivos().find((s) => s.dni === doc) : undefined;
+};
+
 /** Siguiente nº de carnet libre: se pega al final de los que ya hay. */
 const siguienteCarnet = () =>
   getSociosActivos().reduce((m, s) => Math.max(m, carnetDe(s)), 0) + 1;
@@ -76,7 +86,7 @@ export async function altaSocio(datos) {
  * Compacta los carnets de los socios activos a 1..N respetando su orden actual
  * (el veterano sigue teniendo número bajo) y le da a cada uno un token nuevo,
  * lo que invalida todos los carnets impresos de la temporada anterior.
- * El id interno NO se toca: el historial de entradas y salidas cuelga de él.
+ * El id interno NO se toca: el historial de entradas cuelga de él.
  */
 export function calcularRenumeracion(socios = getSociosActivos()) {
   return [...socios]

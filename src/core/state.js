@@ -12,13 +12,12 @@ export const state = {
   temporada: TEMPORADA_ACTUAL,
   socios: [],
   entradas: {},
-  salidas: {},
   taquilla: {},
   jornadasBloqueadas: {},
+  jornadaActual: '', // jornada "de hoy": la fija el admin (ver jornadas.page.js)
   backups: [],
   partidoScanner: '',
   partidoTaquilla: '',
-  modoScanner: 'entrada', // 'entrada' | 'salida' — lo elige el portero
   tabActiva: 'socios',
 };
 

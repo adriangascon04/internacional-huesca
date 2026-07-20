@@ -11,14 +11,16 @@ Tiempo estimado: **40–60 minutos** la primera vez.
 
 > ### 🔴 ¿Ya tenías la app funcionando? Republica las reglas
 >
-> El fichaje de **salidas** guarda en una colección nueva (`salidas`) que las
-> reglas antiguas **no contemplan**, y todo lo que las reglas no contemplan queda
-> denegado. Si no las republicas, el modo SALIDA del escáner fallará con un error
-> de permisos mientras el resto de la app funciona con normalidad.
+> La colección `config` (usada para fijar la "jornada actual") es nueva y las
+> reglas antiguas **no la contemplan**, y todo lo que las reglas no contemplan
+> queda denegado. Si no las republicas, fijar la jornada actual fallará con un
+> error de permisos mientras el resto de la app funciona con normalidad.
 >
 > **Qué hacer:** copia `firestore.rules` → Firebase Console → Firestore → Reglas →
 > Publicar. Es el paso 7 de esta guía. No hay que migrar ningún dato: lo que ya
-> está grabado no se toca.
+> está grabado no se toca. La colección `salidas`, si existía de una versión
+> anterior, ya no la usa la aplicación: puedes dejarla como está o borrarla,
+> como prefieras.
 
 ---
 

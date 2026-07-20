@@ -1,13 +1,13 @@
 // ============================================================================
 //  src/services/stats.service.js
-//  Cálculo de estadísticas (asistencia, tipos, ingresos). Devuelve datos
+//  Cálculo de estadísticas (asistencia, tipos, facturación). Devuelve datos
 //  puros; el pintado (tablas/gráfico) lo hace la página de stats.
 // ============================================================================
 import {
   getPartidos,
   getPartidosLabel,
   asisteAlCampo,
-  FRANJA_MINUTOS,
+  TIPOS_ABONO,
 } from '../config/app.config.js';
 import { recaudacion } from './taquilla.service.js';
 
@@ -54,84 +54,121 @@ export function calcularStats({ socios, entradas, taquilla }) {
 }
 
 // ============================================================================
-//  Afluencia: a qué hora llega y se va la gente.
+//  Facturación: ingreso de cuotas de socio + taquilla.
 // ============================================================================
 
-/** Minuto del día (0..1439) de un ISO, en hora local del campo. */
-const minutoDelDia = (iso) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d.getHours() * 60 + d.getMinutes();
-};
-
-/** Redondea hacia abajo al inicio de su franja. 19:22 con franja 15 -> 19:15. */
-const inicioFranja = (minuto) => Math.floor(minuto / FRANJA_MINUTOS) * FRANJA_MINUTOS;
-
-export const etiquetaFranja = (minuto) =>
-  `${String(Math.floor(minuto / 60)).padStart(2, '0')}:${String(minuto % 60).padStart(2, '0')}`;
+const precioDe = (tipo) => TIPOS_ABONO.find((t) => t.id === tipo)?.precio || 0;
 
 /**
- * Curva de afluencia por franja horaria.
- *
- * `dentro` es un acumulado: en cada franja, cuánta gente había dentro del campo
- * (los que ya habían entrado menos los que ya habían salido). Es lo que
- * responde a "¿cuándo hay más gente viendo el partido?".
- *
- * OJO al leerlo: quien entra y no ficha la salida cuenta como que sigue dentro
- * hasta el final. Mientras el fichaje de salida no sea sistemático, la cola de
- * la curva se queda alta. La franja de PICO sí es fiable.
- *
- * @param {string[]} jornadas Jornadas a incluir. Varias = se suman.
- * @returns {{franjas:Array, nJornadas:number, totalEntradas:number,
- *            totalSalidas:number, pico:object|null}}
+ * Ingresos por cuotas de socio (activos), desglosados en cobrado/pendiente
+ * según el campo `pagado`, más el total de taquilla ya calculado en
+ * `calcularStats`. Los precios de `TIPOS_ABONO` son de referencia (verifícalos
+ * con el club) y hasta ahora no se usaban para nada: es la primera vez que se
+ * traducen a una cifra de facturación.
+ * @returns {{cuotasCobradas:number, cuotasPendientes:number,
+ *            recaudacionTaquilla:number, totalEstimado:number,
+ *            porTipo:Array, jornadaMax:object|null, jornadaMin:object|null}}
  */
-export function calcularAfluencia({ entradas = {}, salidas = {}, jornadas = [] }) {
-  const conDatos = jornadas.filter((j) => Object.keys(entradas[j] || {}).length);
+export function calcularFacturacion({ socios, porJornada = [] }) {
+  const activos = socios.filter((s) => s.activo !== false);
 
-  // Acumuladores por franja. Se cuentan aparte los fichajes de cada jornada
-  // porque "dentro" es un acumulado y no se puede mezclar antes de sumarlo.
-  const cuenta = new Map(); // minutoFranja -> { entradas, salidas }
-  const anota = (iso, campo) => {
-    const m = minutoDelDia(iso);
-    if (m === null) return;
-    const f = inicioFranja(m);
-    if (!cuenta.has(f)) cuenta.set(f, { entradas: 0, salidas: 0 });
-    cuenta.get(f)[campo]++;
-  };
+  let cuotasCobradas = 0;
+  let cuotasPendientes = 0;
+  const porTipo = TIPOS_ABONO.map((t) => ({
+    tipo: t.id,
+    socios: 0,
+    cobrado: 0,
+    pendiente: 0,
+  }));
+  const idxPorTipo = new Map(porTipo.map((t, i) => [t.tipo, i]));
 
-  conDatos.forEach((j) => {
-    Object.values(entradas[j] || {}).forEach((iso) => anota(iso, 'entradas'));
-    Object.values(salidas[j] || {}).forEach((iso) => anota(iso, 'salidas'));
+  activos.forEach((s) => {
+    const precio = precioDe(s.tipo);
+    const fila = porTipo[idxPorTipo.get(s.tipo)];
+    if (!fila) return; // tipo desconocido/legacy: no se contabiliza
+    fila.socios += 1;
+    if (s.pagado) {
+      fila.cobrado += precio;
+      cuotasCobradas += precio;
+    } else {
+      fila.pendiente += precio;
+      cuotasPendientes += precio;
+    }
   });
 
-  if (!cuenta.size) {
-    return { franjas: [], nJornadas: 0, totalEntradas: 0, totalSalidas: 0, pico: null };
-  }
+  const recaudacionTaquilla = porJornada.reduce((a, j) => a + j.recaudacion, 0);
+  const conRecaudacion = porJornada.filter((j) => j.recaudacion > 0);
+  const jornadaMax = conRecaudacion.length
+    ? conRecaudacion.reduce((a, j) => (j.recaudacion > a.recaudacion ? j : a))
+    : null;
+  const jornadaMin = conRecaudacion.length
+    ? conRecaudacion.reduce((a, j) => (j.recaudacion < a.recaudacion ? j : a))
+    : null;
 
-  // Rellena también las franjas vacías intermedias: sin ellas el gráfico junta
-  // las 19:00 con las 21:30 como si fueran contiguas y la curva miente.
-  const claves = [...cuenta.keys()].sort((a, b) => a - b);
-  const franjas = [];
-  let dentro = 0;
-  for (let m = claves[0]; m <= claves[claves.length - 1]; m += FRANJA_MINUTOS) {
-    const { entradas: e = 0, salidas: s = 0 } = cuenta.get(m) || {};
-    dentro += e - s;
-    franjas.push({
-      minuto: m,
-      label: etiquetaFranja(m),
-      entradas: e,
-      salidas: s,
-      dentro,
-    });
-  }
-
-  const pico = franjas.reduce((a, f) => (f.dentro > a.dentro ? f : a), franjas[0]);
   return {
-    franjas,
-    nJornadas: conDatos.length,
-    totalEntradas: franjas.reduce((a, f) => a + f.entradas, 0),
-    totalSalidas: franjas.reduce((a, f) => a + f.salidas, 0),
-    pico,
+    cuotasCobradas,
+    cuotasPendientes,
+    recaudacionTaquilla,
+    totalEstimado: cuotasCobradas + recaudacionTaquilla,
+    porTipo,
+    jornadaMax,
+    jornadaMin,
   };
+}
+
+// ============================================================================
+//  Asistencia: jornada pico/valle, ranking de socios, tasa por tipo de abono.
+// ============================================================================
+
+/**
+ * @returns {{jornadaMax:object|null, jornadaMin:object|null,
+ *            asistenciaMedia:number, ranking:Array, porTipo:Array}}
+ */
+export function calcularAsistencia({ socios, entradas, porJornada = [] }) {
+  const conDatos = porJornada.filter((j) => j.nSocios > 0 || j.nTaquilla > 0);
+  const jornadaMax = conDatos.length
+    ? conDatos.reduce((a, j) => (j.nSocios > a.nSocios ? j : a))
+    : null;
+  const jornadaMin = conDatos.length
+    ? conDatos.reduce((a, j) => (j.nSocios < a.nSocios ? j : a))
+    : null;
+  const asistenciaMedia = conDatos.length
+    ? Math.round(conDatos.reduce((a, j) => a + j.nSocios, 0) / conDatos.length)
+    : 0;
+
+  const jornadasConDatos = getPartidos().filter(
+    (j) => Object.keys(entradas[j] || {}).length,
+  ).length;
+
+  const activos = socios.filter((s) => s.activo !== false && asisteAlCampo(s.tipo));
+  const ranking = activos
+    .map((s) => {
+      const asistidas = getPartidos().filter((j) => entradas[j]?.[s.id]).length;
+      return {
+        socio: s,
+        asistidas,
+        pct: jornadasConDatos ? Math.round((asistidas / jornadasConDatos) * 100) : 0,
+      };
+    })
+    .sort((a, b) => b.asistidas - a.asistidas);
+
+  const porTipo = TIPOS_ABONO.filter((t) => t.asiste).map((t) => {
+    const deEsteTipo = activos.filter((s) => s.tipo === t.id);
+    const mediaAsistencia = deEsteTipo.length
+      ? Math.round(
+          (deEsteTipo.reduce(
+            (a, s) => a + getPartidos().filter((j) => entradas[j]?.[s.id]).length,
+            0,
+          ) /
+            deEsteTipo.length /
+            (jornadasConDatos || 1)) *
+            100,
+        )
+      : 0;
+    return { tipo: t.id, socios: deEsteTipo.length, mediaAsistencia };
+  });
+
+  return { jornadaMax, jornadaMin, asistenciaMedia, ranking, porTipo };
 }
 
 // ============================================================================
@@ -139,24 +176,19 @@ export function calcularAfluencia({ entradas = {}, salidas = {}, jornadas = [] }
 // ============================================================================
 
 /**
- * Partidos de un socio con hora de entrada, de salida y minutos dentro.
+ * Jornadas de un socio con hora de entrada.
  * Se indexa por el id INTERNO del socio, no por su nº de carnet: así el
  * historial sobrevive a las renumeraciones de temporada.
  *
- * @returns {{partidos:Array, asistidos:number, jornadasConDatos:number,
- *            pct:number, minutosMedios:number|null}}
+ * @returns {{partidos:Array, asistidos:number, jornadasConDatos:number, pct:number}}
  */
-export function historialSocio({ socioId, entradas = {}, salidas = {} }) {
+export function historialSocio({ socioId, entradas = {} }) {
   const labels = getPartidosLabel();
   const partidos = getPartidos()
     .map((j, i) => {
       const entrada = entradas[j]?.[socioId];
       if (!entrada) return null;
-      const salida = salidas[j]?.[socioId] || null;
-      const minutos = salida
-        ? Math.round((new Date(salida) - new Date(entrada)) / 60000)
-        : null;
-      return { jornada: j, label: labels[i], entrada, salida, minutos };
+      return { jornada: j, label: labels[i], entrada };
     })
     .filter(Boolean);
 
@@ -167,14 +199,10 @@ export function historialSocio({ socioId, entradas = {}, salidas = {} }) {
     (j) => Object.keys(entradas[j] || {}).length,
   ).length;
 
-  const conDuracion = partidos.filter((p) => p.minutos !== null && p.minutos >= 0);
   return {
     partidos,
     asistidos: partidos.length,
     jornadasConDatos,
     pct: jornadasConDatos ? Math.round((partidos.length / jornadasConDatos) * 100) : 0,
-    minutosMedios: conDuracion.length
-      ? Math.round(conDuracion.reduce((a, p) => a + p.minutos, 0) / conDuracion.length)
-      : null,
   };
 }

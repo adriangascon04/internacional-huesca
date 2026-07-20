@@ -4,7 +4,13 @@
 // ============================================================================
 import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
-import { QR_PREFIX, QR_SEPARADOR, carnetDe } from '../../config/app.config.js';
+import {
+  QR_PREFIX,
+  QR_SEPARADOR,
+  carnetDe,
+  TEMPORADA_ACTUAL,
+  jKey,
+} from '../../config/app.config.js';
 import * as socios from '../../services/socios.service.js';
 import * as roles from '../../services/roles.service.js';
 
@@ -33,15 +39,20 @@ export function rellenarSelect() {
 }
 
 /**
- * Texto del QR: "HUESCA:<nº carnet>:<token>".
+ * Texto del QR: "HUESCA:<nº carnet>:<token>:<temporada>".
  * Lleva el nº de CARNET, no el id interno, porque es el número que va impreso
  * al lado y el que el portero teclea si el QR no lee: un solo número visible,
  * sin dos numeraciones que confundir.
  * Que ese número se reutilice al renumerar es inofensivo porque el token va
  * dentro: el carnet del antiguo nº 3 no valida contra el nuevo nº 3.
+ * La temporada va también dentro, para que un QR de una temporada anterior
+ * se rechace en el escáner aunque, por lo que sea, el token no hubiera
+ * cambiado (ver acceso.service.js).
  */
-export const textoQr = (carnet, token) =>
-  token ? `${QR_PREFIX}${carnet}${QR_SEPARADOR}${token}` : `${QR_PREFIX}${carnet}`;
+export const textoQr = (carnet, token, temporada = jKey(TEMPORADA_ACTUAL)) =>
+  token
+    ? `${QR_PREFIX}${carnet}${QR_SEPARADOR}${token}${QR_SEPARADOR}${temporada}`
+    : `${QR_PREFIX}${carnet}`;
 
 /**
  * Token con el que emitir el carnet. Si el socio no tiene (viene de antes de

@@ -5,7 +5,7 @@
 // ============================================================================
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editarSocio } from '../src/services/socios.service.js';
+import { editarSocio, porDni } from '../src/services/socios.service.js';
 
 // DNI real válido para las pruebas: 12345678Z.
 const VALIDO = {
@@ -52,4 +52,14 @@ test('editarSocio: acepta datos válidos', async () => {
 test('editarSocio: el DNI en minúsculas se acepta (se normaliza)', async () => {
   const res = await editarSocio('1', { ...VALIDO, dni: '12345678z' });
   assert.equal(res.ok, true);
+});
+
+// --- porDni: fallback manual del escáner cuando el QR no lee ----------------
+// El stub de Firestore no dispara onSnapshot, así que aquí no hay forma de
+// poblar la lista de socios: se cubre solo que no revienta sin datos. El
+// comportamiento con datos reales lo ejercita el uso manual en el escáner.
+test('porDni: sin socios cargados, no revienta y no encuentra nada', () => {
+  assert.equal(porDni('12345678Z'), undefined);
+  assert.equal(porDni(''), undefined);
+  assert.equal(porDni(null), undefined);
 });
