@@ -19,7 +19,13 @@ import * as acceso from '../../services/acceso.service.js';
 import * as socios from '../../services/socios.service.js';
 import * as roles from '../../services/roles.service.js';
 import { playSonido, vibrar } from '../sonidos.js';
-import { iniciarCamara, pararCamara, camaraActiva } from '../camara.js';
+import {
+  iniciarCamara,
+  pararCamara,
+  camaraActiva,
+  pausarLectura,
+  reanudarLectura,
+} from '../camara.js';
 
 export function initScanner() {
   rellenarSelect();
@@ -118,18 +124,39 @@ export async function escanear(raw, opciones = {}) {
     case 'repetido':
       return mostrarPopup(
         'error',
-        `⚠️ YA HA ENTRADO`,
-        `Entrada registrada a las ${hora(res.hora)}. No puede volver a entrar en esta jornada.`,
+        `⛔ YA HA ENTRADO`,
+        datosSocio(res.socio, [
+          ['Abono', esc(res.socio.tipo)],
+          ['Ya entró a las', hora(res.hora)],
+        ]) +
+          `<div class="popup-motivo">Este carnet ya registró su entrada en esta jornada.
+           <strong>No puede volver a acceder.</strong></div>`,
         res.socio,
       );
     case 'valido':
       return mostrarPopup(
         'ok',
         `✅ ACCESO VÁLIDO`,
-        `${esc(res.socio.tipo)} · nº ${carnetDe(res.socio)} · ${hora(res.hora)}`,
+        datosSocio(res.socio, [
+          ['Abono', esc(res.socio.tipo)],
+          ['Nº de carnet', carnetDe(res.socio)],
+          ['Documento', esc(res.socio.dni || '—')],
+          ['Entrada', hora(res.hora)],
+        ]),
         res.socio,
       );
   }
+}
+
+/**
+ * Rejilla de datos del socio para el pop-up: pares etiqueta/valor grandes y
+ * legibles de un vistazo desde la puerta. `filas` ya viene escapada por quien
+ * la construye (arriba), así que aquí no se vuelve a escapar.
+ */
+function datosSocio(s, filas) {
+  return `<div class="popup-datos">${filas
+    .map(([k, v]) => `<div><span>${k}</span><strong>${v}</strong></div>`)
+    .join('')}</div>`;
 }
 
 function motivoQr(motivo) {
@@ -148,6 +175,9 @@ function motivoQr(motivo) {
 function mostrarPopup(tipo, titulo, detalle, s) {
   playSonido(tipo);
   vibrar(tipo);
+  // Mientras el resultado está en pantalla, el lector deja de leer: el pop-up
+  // es la señal de "ya está, léelo y cierra", no un escaneo que sigue corriendo.
+  pausarLectura();
   const cont = $('#popup-scanner');
   const box = $('#popup-scanner-box');
   box.className = `popup-box ${tipo === 'ok' ? 'popup-ok' : 'popup-error'}`;
@@ -162,6 +192,7 @@ function mostrarPopup(tipo, titulo, detalle, s) {
 
 function cerrarPopup() {
   $('#popup-scanner').style.display = 'none';
+  reanudarLectura();
 }
 
 export function renderLog() {
