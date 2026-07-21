@@ -10,9 +10,14 @@ import {
   calcularStats,
   calcularFacturacion,
   calcularAsistencia,
+  calcularDemografia,
 } from '../../services/stats.service.js';
 
 let chart = null;
+let chartFranjas = null;
+let chartFidelidad = null;
+
+const pct = (n, total) => (total ? Math.round((n / total) * 100) : 0);
 
 export function render() {
   const s = calcularStats({
@@ -45,8 +50,46 @@ export function render() {
 
   $('#stats-recaudacion').textContent = euros(s.recaudacionTotal);
   pintarGrafico(s);
+  renderDemografia();
   renderFacturacion(s);
   renderAsistencia(s);
+}
+
+// ============================================================================
+//  Demografía y calidad de datos: edad, contacto, documentos, fundadores.
+// ============================================================================
+
+function renderDemografia() {
+  const d = calcularDemografia({ socios: state.socios });
+
+  $('#demografia-cards').innerHTML = `
+    <div class="stat"><div class="stat-n">${d.totalActivos}</div><div class="stat-l">Socios activos</div></div>
+    <div class="stat"><div class="stat-n">${d.bajas}</div><div class="stat-l">Bajas</div></div>
+    <div class="stat"><div class="stat-n">${d.edadMedia || '—'}</div><div class="stat-l">Edad media</div></div>
+    <div class="stat"><div class="stat-n">${d.fundadores}</div><div class="stat-l">Socios fundadores</div></div>
+    <div class="stat"><div class="stat-n">${d.pendientes}</div><div class="stat-l">Pendientes de pago<br><small>${d.morosidadPct}% de morosidad</small></div></div>
+    <div class="stat"><div class="stat-n">${pct(d.conEmail, d.totalActivos)}%</div><div class="stat-l">Con email<br><small>${pct(d.conTel, d.totalActivos)}% con teléfono</small></div></div>`;
+
+  $('#demografia-edad-tabla').innerHTML =
+    d.edades
+      .map(
+        (g) =>
+          `<tr><td>${esc(g.label)} años</td><td>${g.socios}</td>
+           <td><span class="badge badge-ok">${pct(g.socios, d.totalActivos)}%</span></td></tr>`,
+      )
+      .join('') +
+    (d.sinFecha
+      ? `<tr><td>Sin fecha de nacimiento</td><td>${d.sinFecha}</td>
+         <td><span class="badge badge-warn">${pct(d.sinFecha, d.totalActivos)}%</span></td></tr>`
+      : '');
+
+  $('#demografia-doc-tabla').innerHTML =
+    d.porDoc
+      .map(
+        (t) =>
+          `<tr><td>${esc(t.doc)}</td><td>${t.n}</td><td>${pct(t.n, d.totalActivos)}%</td></tr>`,
+      )
+      .join('') || '<tr><td colspan="3">Sin datos</td></tr>';
 }
 
 // ============================================================================
@@ -61,9 +104,12 @@ function renderFacturacion(s) {
 
   $('#facturacion-cards').innerHTML = `
     <div class="stat"><div class="stat-n">${euros(f.cuotasCobradas)}</div><div class="stat-l">Cuotas cobradas</div></div>
-    <div class="stat"><div class="stat-n">${euros(f.cuotasPendientes)}</div><div class="stat-l">Cuotas pendientes</div></div>
+    <div class="stat"><div class="stat-n">${euros(f.cuotasPendientes)}</div><div class="stat-l">Cuotas pendientes<br><small>${f.morosidadPct}% de morosidad</small></div></div>
     <div class="stat"><div class="stat-n">${euros(f.recaudacionTaquilla)}</div><div class="stat-l">Taquilla</div></div>
     <div class="stat"><div class="stat-n">${euros(f.totalEstimado)}</div><div class="stat-l">Facturación total estimada<br><small>(cuotas cobradas + taquilla)</small></div></div>
+    <div class="stat"><div class="stat-n">${f.pctIngresoCuotas}% / ${f.pctIngresoTaquilla}%</div><div class="stat-l">Reparto del ingreso<br><small>cuotas / taquilla</small></div></div>
+    <div class="stat"><div class="stat-n">${euros(f.ticketMedioTaquilla)}</div><div class="stat-l">Ticket medio de taquilla</div></div>
+    <div class="stat"><div class="stat-n">${euros(f.recaudacionMediaJornada)}</div><div class="stat-l">Taquilla media por jornada</div></div>
     ${f.jornadaMax ? `<div class="stat"><div class="stat-n">${euros(f.jornadaMax.recaudacion)}</div><div class="stat-l">Mejor taquilla<br>${esc(f.jornadaMax.label)}</div></div>` : ''}
     ${f.jornadaMin ? `<div class="stat"><div class="stat-n">${euros(f.jornadaMin.recaudacion)}</div><div class="stat-l">Peor taquilla<br>${esc(f.jornadaMin.label)}</div></div>` : ''}`;
 
@@ -90,8 +136,16 @@ function renderAsistencia(s) {
 
   $('#asistencia-cards').innerHTML = `
     <div class="stat"><div class="stat-n">${a.asistenciaMedia}</div><div class="stat-l">Asistencia media por jornada (socios)</div></div>
+    <div class="stat"><div class="stat-n">${a.ocupacionMedia}%</div><div class="stat-l">Ocupación media<br><small>sobre ${a.base} socios que asisten</small></div></div>
+    <div class="stat"><div class="stat-n">${a.fieles}</div><div class="stat-l">Socios con asistencia perfecta</div></div>
+    <div class="stat"><div class="stat-n">${a.absentistas}</div><div class="stat-l">Absentistas<br><small>nunca han venido</small></div></div>
+    <div class="stat"><div class="stat-n">${a.totalFichajes}</div><div class="stat-l">Fichajes totales registrados</div></div>
+    ${a.horaPico ? `<div class="stat"><div class="stat-n">${String(a.horaPico.hora).padStart(2, '0')}:00</div><div class="stat-l">Hora punta de entrada<br><small>${a.horaPico.n} fichajes</small></div></div>` : ''}
     ${a.jornadaMax ? `<div class="stat"><div class="stat-n">${a.jornadaMax.nSocios}</div><div class="stat-l">Jornada con más asistencia<br>${esc(a.jornadaMax.label)}</div></div>` : ''}
     ${a.jornadaMin ? `<div class="stat"><div class="stat-n">${a.jornadaMin.nSocios}</div><div class="stat-l">Jornada con menos asistencia<br>${esc(a.jornadaMin.label)}</div></div>` : ''}`;
+
+  pintarFidelidad(a);
+  pintarFranjas(a);
 
   $('#asistencia-tipos-tabla').innerHTML =
     a.porTipo
@@ -158,6 +212,67 @@ function pintarGrafico(s) {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
+  });
+}
+
+/** Distribución de fidelidad: nº de socios según cuántas jornadas han venido. */
+function pintarFidelidad(a) {
+  const ctx = $('#chart-fidelidad');
+  if (!ctx || typeof Chart === 'undefined') return;
+  if (chartFidelidad) chartFidelidad.destroy();
+  // eslint-disable-next-line no-undef
+  chartFidelidad = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: a.distribucionFidelidad.map((d) => d.jornadas),
+      datasets: [
+        {
+          label: 'Socios',
+          data: a.distribucionFidelidad.map((d) => d.socios),
+          backgroundColor: a.distribucionFidelidad.map((d) =>
+            d.jornadas === 0 ? '#E8354A' : '#185FA5',
+          ),
+          borderRadius: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Jornadas asistidas' } },
+        y: { beginAtZero: true, ticks: { precision: 0 } },
+      },
+    },
+  });
+}
+
+/** Franjas horarias: a qué hora del día entra la gente por la puerta. */
+function pintarFranjas(a) {
+  const ctx = $('#chart-franjas');
+  if (!ctx || typeof Chart === 'undefined') return;
+  if (chartFranjas) chartFranjas.destroy();
+  // eslint-disable-next-line no-undef
+  chartFranjas = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: a.franjasHorarias.map((f) => String(f.hora).padStart(2, '0') + 'h'),
+      datasets: [
+        {
+          label: 'Fichajes',
+          data: a.franjasHorarias.map((f) => f.n),
+          backgroundColor: '#22c55e',
+          borderRadius: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
       scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
     },
   });

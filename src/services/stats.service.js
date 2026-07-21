@@ -7,9 +7,32 @@ import {
   getPartidos,
   getPartidosLabel,
   asisteAlCampo,
+  tipoDocDe,
+  esFundador,
   TIPOS_ABONO,
 } from '../config/app.config.js';
 import { recaudacion } from './taquilla.service.js';
+
+/** Edad en años a partir de la fecha de nacimiento (null si no hay fecha). */
+export function edadDe(fnac) {
+  if (!fnac) return null;
+  const f = new Date(fnac);
+  if (Number.isNaN(f.getTime())) return null;
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - f.getFullYear();
+  const m = hoy.getMonth() - f.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < f.getDate())) edad--;
+  return Math.max(0, edad);
+}
+
+/** Franjas de edad para el desglose demográfico. */
+const GRUPOS_EDAD = [
+  { label: '0–15', min: 0, max: 15 },
+  { label: '16–25', min: 16, max: 25 },
+  { label: '26–40', min: 26, max: 40 },
+  { label: '41–65', min: 41, max: 65 },
+  { label: '66+', min: 66, max: 200 },
+];
 
 export function calcularStats({ socios, entradas, taquilla }) {
   const partidos = getPartidos();
@@ -50,6 +73,71 @@ export function calcularStats({ socios, entradas, taquilla }) {
     tipos,
     recaudacionTotal: porJornada.reduce((a, j) => a + j.recaudacion, 0),
     baseAsistencia: conAsistencia.length,
+  };
+}
+
+// ============================================================================
+//  Demografía y calidad de datos: edad, sexo del abono, contacto, fundadores.
+//  Todo se calcula sobre socios ACTIVOS (los de baja no cuentan como base).
+// ============================================================================
+
+/**
+ * @returns {{totalActivos, bajas, pagados, pendientes, morosidadPct,
+ *            conEmail, conTel, conAmbos, edadMedia, sinFecha,
+ *            edades:Array, porDoc:Array, fundadores}}
+ */
+export function calcularDemografia({ socios }) {
+  const activos = socios.filter((s) => s.activo !== false);
+  const bajas = socios.length - activos.length;
+
+  const conEmail = activos.filter((s) => (s.email || '').trim()).length;
+  const conTel = activos.filter((s) => (s.tel || '').trim()).length;
+  const conAmbos = activos.filter(
+    (s) => (s.email || '').trim() && (s.tel || '').trim(),
+  ).length;
+  const pagados = activos.filter((s) => s.pagado).length;
+
+  const edades = GRUPOS_EDAD.map((g) => ({ ...g, socios: 0 }));
+  let sinFecha = 0;
+  let sumaEdades = 0;
+  let nConEdad = 0;
+  activos.forEach((s) => {
+    const e = edadDe(s.fnac);
+    if (e === null) {
+      sinFecha++;
+      return;
+    }
+    sumaEdades += e;
+    nConEdad++;
+    const g = edades.find((x) => e >= x.min && e <= x.max);
+    if (g) g.socios++;
+  });
+
+  const porDocMap = {};
+  activos.forEach((s) => {
+    const d = tipoDocDe(s);
+    porDocMap[d] = (porDocMap[d] || 0) + 1;
+  });
+  const porDoc = Object.entries(porDocMap)
+    .map(([doc, n]) => ({ doc, n }))
+    .sort((a, b) => b.n - a.n);
+
+  return {
+    totalActivos: activos.length,
+    bajas,
+    pagados,
+    pendientes: activos.length - pagados,
+    morosidadPct: activos.length
+      ? Math.round(((activos.length - pagados) / activos.length) * 100)
+      : 0,
+    conEmail,
+    conTel,
+    conAmbos,
+    edadMedia: nConEdad ? Math.round(sumaEdades / nConEdad) : 0,
+    sinFecha,
+    edades,
+    porDoc,
+    fundadores: activos.filter(esFundador).length,
   };
 }
 
@@ -105,14 +193,33 @@ export function calcularFacturacion({ socios, porJornada = [] }) {
     ? conRecaudacion.reduce((a, j) => (j.recaudacion < a.recaudacion ? j : a))
     : null;
 
+  // Métricas derivadas: ticket medio de taquilla, reparto del ingreso entre
+  // cuotas y taquilla, morosidad y recaudación media por jornada jugada.
+  const entradasTaquilla = porJornada.reduce((a, j) => a + (j.nTaquilla || 0), 0);
+  const totalCuotas = cuotasCobradas + cuotasPendientes;
+  const ingresoTotal = cuotasCobradas + recaudacionTaquilla;
+
   return {
     cuotasCobradas,
     cuotasPendientes,
     recaudacionTaquilla,
-    totalEstimado: cuotasCobradas + recaudacionTaquilla,
+    totalEstimado: ingresoTotal,
     porTipo,
     jornadaMax,
     jornadaMin,
+    ticketMedioTaquilla: entradasTaquilla
+      ? Math.round(recaudacionTaquilla / entradasTaquilla)
+      : 0,
+    morosidadPct: totalCuotas ? Math.round((cuotasPendientes / totalCuotas) * 100) : 0,
+    pctIngresoCuotas: ingresoTotal
+      ? Math.round((cuotasCobradas / ingresoTotal) * 100)
+      : 0,
+    pctIngresoTaquilla: ingresoTotal
+      ? Math.round((recaudacionTaquilla / ingresoTotal) * 100)
+      : 0,
+    recaudacionMediaJornada: conRecaudacion.length
+      ? Math.round(recaudacionTaquilla / conRecaudacion.length)
+      : 0,
   };
 }
 
@@ -168,7 +275,60 @@ export function calcularAsistencia({ socios, entradas, porJornada = [] }) {
     return { tipo: t.id, socios: deEsteTipo.length, mediaAsistencia };
   });
 
-  return { jornadaMax, jornadaMin, asistenciaMedia, ranking, porTipo };
+  // Distribución de fidelidad: cuántos socios han ido a exactamente k jornadas
+  // de las jugadas. El grupo k=0 son los absentistas (nunca han venido).
+  const distribucionFidelidad = [];
+  for (let k = 0; k <= jornadasConDatos; k++) {
+    distribucionFidelidad.push({
+      jornadas: k,
+      socios: ranking.filter((r) => r.asistidas === k).length,
+    });
+  }
+  const absentistas = jornadasConDatos
+    ? ranking.filter((r) => r.asistidas === 0).length
+    : 0;
+  const fieles = jornadasConDatos
+    ? ranking.filter((r) => r.asistidas === jornadasConDatos).length
+    : 0;
+
+  // Franjas horarias: a qué hora del día entra la gente. Útil para dimensionar
+  // el personal de puerta (¿llegan justos o repartidos?).
+  const franjasMap = {};
+  let totalFichajes = 0;
+  getPartidos().forEach((j) => {
+    Object.values(entradas[j] || {}).forEach((iso) => {
+      const h = new Date(iso).getHours();
+      if (!Number.isNaN(h)) {
+        franjasMap[h] = (franjasMap[h] || 0) + 1;
+        totalFichajes++;
+      }
+    });
+  });
+  const franjasHorarias = Object.entries(franjasMap)
+    .map(([hora, n]) => ({ hora: Number(hora), n }))
+    .sort((a, b) => a.hora - b.hora);
+  const horaPico = franjasHorarias.length
+    ? franjasHorarias.reduce((a, f) => (f.n > a.n ? f : a))
+    : null;
+
+  const base = activos.length; // activos que asisten al campo
+  const ocupacionMedia = base && conDatos.length ? Math.round((asistenciaMedia / base) * 100) : 0;
+
+  return {
+    jornadaMax,
+    jornadaMin,
+    asistenciaMedia,
+    ranking,
+    porTipo,
+    distribucionFidelidad,
+    absentistas,
+    fieles,
+    base,
+    ocupacionMedia,
+    franjasHorarias,
+    horaPico,
+    totalFichajes,
+  };
 }
 
 // ============================================================================

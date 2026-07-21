@@ -158,6 +158,9 @@ nav::-webkit-scrollbar{display:none}
 }
 .card h2 span{text-transform:none;letter-spacing:0;color:var(--verde)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:13px}
+/* Dos columnas que se apilan en móvil: tablas/gráficos enfrentados. */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
+@media(max-width:720px){.grid-2{grid-template-columns:1fr;gap:6px}}
 .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 
 /* ═══ Tablas ══════════════════════════════════════════════════════════════ */
@@ -213,22 +216,42 @@ code{
    dé tiempo a leer el motivo de un rechazo antes de que desaparezca. */
 .popup-scanner{
   display:none;position:fixed;inset:0;z-index:60;
-  align-items:center;justify-content:center;padding:18px;
+  align-items:center;justify-content:center;padding:16px;
+  background:rgba(4,5,7,.72);backdrop-filter:blur(6px);
 }
 .popup-box{
-  width:100%;max-width:480px;border-radius:20px;padding:34px 26px;text-align:center;
-  box-shadow:0 30px 80px -20px rgba(0,0,0,.95);
-  animation:surgir .18s cubic-bezier(.2,.8,.2,1);
+  width:100%;max-width:540px;border-radius:24px;padding:40px 30px;text-align:center;
+  display:flex;flex-direction:column;justify-content:center;
+  box-shadow:0 30px 90px -20px rgba(0,0,0,.95);
+  animation:popIn .22s cubic-bezier(.2,.9,.3,1.2);
 }
-.popup-ok{background:#0E2A18;border:2px solid var(--verde);color:#DFFFE9}
-.popup-error{background:#2B0E13;border:2px solid var(--rojo);color:#FFE1E4}
-.popup-titulo{font-size:26px;font-weight:800;letter-spacing:-.01em;line-height:1.25;margin-bottom:10px}
-.popup-nombre{font-size:19px;font-weight:700;margin-bottom:8px}
-.popup-detalle{font-size:15.5px;line-height:1.55;opacity:.92}
+@keyframes popIn{from{opacity:0;transform:scale(.9)}}
+.popup-ok{background:linear-gradient(180deg,#123a20,#0E2A18);border:3px solid var(--verde);color:#DFFFE9}
+.popup-error{background:linear-gradient(180deg,#3a1017,#2B0E13);border:3px solid var(--rojo);color:#FFE1E4}
+.popup-titulo{font-size:34px;font-weight:800;letter-spacing:-.01em;line-height:1.2;margin-bottom:14px}
+.popup-nombre{font-size:24px;font-weight:700;line-height:1.25;margin-bottom:18px}
+/* Rejilla de datos del socio: pares etiqueta/valor grandes y legibles. */
+.popup-datos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 4px}
+.popup-datos>div{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;padding:11px 12px;text-align:left;
+}
+.popup-datos span{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;opacity:.7;margin-bottom:3px}
+.popup-datos strong{font-size:18px;font-weight:700;word-break:break-word}
+.popup-motivo{
+  margin-top:16px;font-size:16px;line-height:1.5;
+  background:rgba(232,53,74,.16);border:1px solid rgba(232,53,74,.4);
+  border-radius:12px;padding:13px 15px;
+}
+.popup-detalle{font-size:16px;line-height:1.55;opacity:.92}
+#popup-cerrar{min-height:56px;font-size:17px}
 @media(max-width:600px){
-  .popup-box{padding:28px 20px}
-  .popup-titulo{font-size:22px}
-  .popup-nombre{font-size:17px}
+  .popup-scanner{padding:10px}
+  .popup-box{min-height:82vh;padding:32px 20px;border-radius:20px}
+  .popup-titulo{font-size:30px}
+  .popup-nombre{font-size:22px}
+  .popup-datos strong{font-size:17px}
 }
 
 /* ═══ Modal ═══════════════════════════════════════════════════════════════ */
@@ -252,6 +275,7 @@ code{
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 canvas#chart-taquilla{max-height:300px}
+canvas.chart-mini{max-height:240px}
 #qr-preview img,#qr-preview canvas{border-radius:10px;padding:12px;background:#fff}
 
 @media(max-width:768px){
@@ -262,10 +286,20 @@ canvas#chart-taquilla{max-height:300px}
 @media(max-width:600px){
   .panel{padding:14px 12px 40px}
   .card{padding:15px;border-radius:10px}
+  header{padding:10px 12px;gap:8px}
   header h1{font-size:14px}
-  #user-label{max-width:30vw}
+  #user-label{max-width:26vw}
   .grid{grid-template-columns:1fr 1fr;gap:10px}
+  .stat{padding:13px 10px}
+  .stat-n{font-size:22px}
+  .stat-l{font-size:10.5px}
+  .card h2{font-size:11px}
+  table{font-size:12.5px}
+  th,td{padding:9px 7px}
   .btn-grande{min-height:72px;font-size:18px}
+}
+@media(max-width:380px){
+  .grid{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -464,6 +498,27 @@ canvas#chart-taquilla{max-height:300px}
     </div>
 
     <div class="card">
+      <h2>Demografía y calidad de datos</h2>
+      <div class="grid" id="demografia-cards"></div>
+      <div class="grid-2">
+        <div style="overflow-x:auto">
+          <h2 style="margin-top:16px">Distribución por edad</h2>
+          <table>
+            <thead><tr><th>Franja</th><th>Socios</th><th>%</th></tr></thead>
+            <tbody id="demografia-edad-tabla"></tbody>
+          </table>
+        </div>
+        <div style="overflow-x:auto">
+          <h2 style="margin-top:16px">Tipo de documento</h2>
+          <table>
+            <thead><tr><th>Documento</th><th>Socios</th><th>%</th></tr></thead>
+            <tbody id="demografia-doc-tabla"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Facturación</h2>
       <div class="grid" id="facturacion-cards"></div>
       <div style="overflow-x:auto;margin-top:14px">
@@ -477,6 +532,16 @@ canvas#chart-taquilla{max-height:300px}
     <div class="card">
       <h2>Asistencia</h2>
       <div class="grid" id="asistencia-cards"></div>
+      <div class="grid-2" style="margin-top:16px">
+        <div>
+          <h2>Fidelidad · socios por nº de jornadas asistidas</h2>
+          <canvas id="chart-fidelidad" class="chart-mini"></canvas>
+        </div>
+        <div>
+          <h2>Franjas horarias de entrada</h2>
+          <canvas id="chart-franjas" class="chart-mini"></canvas>
+        </div>
+      </div>
       <div style="overflow-x:auto;margin-top:14px">
         <h2 style="margin-top:14px">Asistencia por tipo de abono</h2>
         <table>

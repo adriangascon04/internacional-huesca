@@ -9,6 +9,8 @@ import {
   historialSocio,
   calcularFacturacion,
   calcularAsistencia,
+  calcularDemografia,
+  edadDe,
 } from '../src/services/stats.service.js';
 import { getPartidos } from '../src/config/app.config.js';
 
@@ -109,4 +111,63 @@ test('asistencia: encuentra la jornada de mayor y menor asistencia de socios', (
   const a = calcularAsistencia({ socios: [], entradas: {}, porJornada });
   assert.equal(a.jornadaMax.label, 'J1');
   assert.equal(a.jornadaMin.label, 'J2');
+});
+
+test('asistencia: distribución de fidelidad y absentistas', () => {
+  const socios = [
+    { id: '1', activo: true, tipo: 'Abono General', nombre: 'A', ap1: 'x' },
+    { id: '2', activo: true, tipo: 'Abono General', nombre: 'B', ap1: 'x' },
+    { id: '3', activo: true, tipo: 'Abono General', nombre: 'C', ap1: 'x' }, // no viene
+  ];
+  const entradas = { [J[0]]: { 1: t(19, 0), 2: t(19, 0) }, [J[1]]: { 1: t(19, 0) } };
+  const a = calcularAsistencia({ socios, entradas, porJornada: [] });
+  assert.equal(a.absentistas, 1); // el socio 3
+  assert.equal(a.fieles, 1); // el socio 1 (2 de 2 jugadas)
+  // distribucionFidelidad[k] = socios que fueron a exactamente k jornadas
+  assert.equal(a.distribucionFidelidad[0].socios, 1); // 0 jornadas: socio 3
+  assert.equal(a.distribucionFidelidad[2].socios, 1); // 2 jornadas: socio 1
+});
+
+test('asistencia: franjas horarias y hora punta', () => {
+  const socios = [{ id: '1', activo: true, tipo: 'Abono General', nombre: 'A', ap1: 'x' }];
+  const entradas = { [J[0]]: { 1: t(19, 0) }, [J[1]]: { 1: t(19, 30) } };
+  const a = calcularAsistencia({ socios, entradas, porJornada: [] });
+  assert.equal(a.totalFichajes, 2);
+  assert.equal(a.horaPico.hora, 19);
+  assert.equal(a.horaPico.n, 2);
+});
+
+test('facturacion: ticket medio y morosidad', () => {
+  const socios = [
+    { id: '1', activo: true, tipo: 'Abono General', pagado: true }, // 95 cobrado
+    { id: '2', activo: true, tipo: 'Abono General', pagado: false }, // 95 pendiente
+  ];
+  const porJornada = [{ jornada: J[0], label: 'J1', recaudacion: 100, nTaquilla: 10 }];
+  const f = calcularFacturacion({ socios, porJornada });
+  assert.equal(f.ticketMedioTaquilla, 10); // 100€ / 10 entradas
+  assert.equal(f.morosidadPct, 50); // 95 pendiente de 190 total
+});
+
+// --- Demografía ----------------------------------------------------------------
+
+test('edadDe: calcula la edad y devuelve null sin fecha', () => {
+  assert.equal(edadDe(''), null);
+  const hace20 = new Date();
+  hace20.setFullYear(hace20.getFullYear() - 20);
+  assert.equal(edadDe(hace20.toISOString().slice(0, 10)), 20);
+});
+
+test('demografia: cuenta activos, bajas, contacto y morosidad', () => {
+  const socios = [
+    { id: '1', activo: true, tipo: 'Abono General', pagado: true, email: 'a@b.c', tel: '600100200' },
+    { id: '2', activo: true, tipo: 'Abono General', pagado: false, email: '', tel: '600100201' },
+    { id: '3', activo: false, tipo: 'Abono General', pagado: true },
+  ];
+  const d = calcularDemografia({ socios });
+  assert.equal(d.totalActivos, 2);
+  assert.equal(d.bajas, 1);
+  assert.equal(d.conEmail, 1);
+  assert.equal(d.conTel, 2);
+  assert.equal(d.pendientes, 1);
+  assert.equal(d.morosidadPct, 50);
 });
