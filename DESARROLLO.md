@@ -107,4 +107,4 @@ Cosas que **no** se han arreglado y por qué. Sé honesto contigo mismo aquí.
 | Dependencias CDN sin SRI | ⚠️ Parcial | Si un CDN se compromete, ejecuta código en tu app. Añadir `integrity="sha384-..."` a cada `<script>`. |
 | Sin tests automáticos | ✅ Cubierto lo crítico | `npm test` (runner nativo de Node, sin dependencias) cubre validadores, tokens, parseo de QR, accesos y taquilla. Falta cobertura de las páginas de UI. |
 | Ocultar el DNI a roles no-admin | ❌ Imposible con reglas | Las reglas de Firestore permiten o deniegan documentos enteros, no campos. Requeriría Cloud Functions. |
-| Cámara del escáner | ✅ Implementada | `src/ui/camara.js` captura vídeo y decodifica con jsQR desde `scanner.page.js`. Exige HTTPS y permiso del navegador. La validación manual sigue como alternativa. |
+| Cámara del escáner | ✅ Implementada | `src/ui/camara.js` captura vídeo desde `scanner.page.js`. Decodifica con `BarcodeDetector` nativo (Chrome/Android) y cae a jsQR sobre un fotograma reducido a 640 px donde no exista. Exige HTTPS y permiso del navegador. La validación manual sigue como alternativa. |

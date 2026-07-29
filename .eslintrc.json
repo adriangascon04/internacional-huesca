@@ -4,7 +4,8 @@
   "extends": "eslint:recommended",
   "globals": {
     "Chart": "readonly", "QRCode": "readonly", "JSZip": "readonly",
-    "saveAs": "readonly", "XLSX": "readonly", "jsQR": "readonly"
+    "saveAs": "readonly", "XLSX": "readonly", "jsQR": "readonly",
+    "BarcodeDetector": "readonly"
   },
   "rules": {
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
