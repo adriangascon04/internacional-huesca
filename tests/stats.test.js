@@ -160,6 +160,45 @@ test('stats: agrupa recaudación y asistentes por tipo de entrada y competición
   assert.equal(s.porCompeticion[0].asistentes, 2);
 });
 
+test('stats: los abonados cuentan como asistentes pero no como recaudación', () => {
+  // Es la diferencia entre los dos gráficos: quien llena el campo no es quien
+  // lo paga. Un abonado con su QR suma persona y 0 €; y el "Abono
+  // Internacional" no asiste, así que no suma ni siquiera persona.
+  const competiciones = [{ id: 'liga', nombre: 'Liga', partidos: [{ id: 'p1', nombre: 'Jornada 1', orden: 0 }] }];
+  const socios = [
+    { id: '1', tipo: 'Abono General', activo: true },
+    { id: '2', tipo: 'Abono Internacional', activo: true },
+  ];
+  const s = calcularStats({
+    socios,
+    competiciones,
+    entradas: { p1: { 1: t(19, 0), 2: t(19, 5) } },
+    taquilla: { p1: { historial: [{ tipo: 'general', nombreTipo: 'General', precio: 10 }] } },
+  });
+  const jornada = s.porJornada[0];
+  assert.equal(jornada.nSocios, 1); // el Internacional no cuenta como asistencia
+  assert.equal(jornada.totalAsistentes, 2);
+  assert.deepEqual(
+    jornada.asistentesPorTipo.map((f) => [f.tipo, f.asistentes]),
+    [['abonado', 1], ['general', 1]],
+  );
+  // El abonado aparece en asistencia y NO en el desglose de dinero.
+  assert.deepEqual(s.tiposAsistencia.map((f) => [f.tipo, f.asistentes]), [['abonado', 1], ['general', 1]]);
+  assert.deepEqual(s.tiposEntrada.map((f) => f.tipo), ['general']);
+  assert.equal(s.recaudacionTotal, 10);
+});
+
+test('stats: una jornada sin abonados no inventa una franja de abonados', () => {
+  const competiciones = [{ id: 'liga', nombre: 'Liga', partidos: [{ id: 'p1', nombre: 'Jornada 1', orden: 0 }] }];
+  const s = calcularStats({
+    socios: [],
+    competiciones,
+    entradas: {},
+    taquilla: { p1: { historial: [{ tipo: 'general', nombreTipo: 'General', precio: 10 }] } },
+  });
+  assert.deepEqual(s.porJornada[0].asistentesPorTipo.map((f) => f.tipo), ['general']);
+});
+
 test('altas: conserva el importe cobrado y no mezcla taquilla', () => {
   const altas = calcularAltasSocios({ socios: [
     { tipo: 'Abono General', importeAbono: 80, pagado: true, alta: '2026-08-02T10:00:00Z' },

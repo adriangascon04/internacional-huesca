@@ -15,6 +15,7 @@ import {
 } from '../../services/stats.service.js';
 
 let chart = null;
+let chartAsistencia = null;
 let chartFranjas = null;
 let chartFidelidad = null;
 let chartAltas = null;
@@ -71,6 +72,7 @@ export function render() {
   const altas = calcularAltasSocios({ socios: state.socios });
 
   pintarGrafico(s);
+  pintarGraficoAsistencia(s);
   renderEconomia(s, altas);
   renderDemografia();
   renderAltasSocios(altas);
@@ -201,26 +203,37 @@ function renderAsistencia(s) {
       .join('') || '<tr><td colspan="4">Sin datos</td></tr>';
 }
 
-function pintarGrafico(s) {
-  const ctx = $('#chart-taquilla');
-  if (!ctx || typeof Chart === 'undefined') return;
-  if (chart) chart.destroy();
-  const tipos = [
-    ...new Map(s.tiposEntrada.map((t) => [t.tipo, t.nombre || t.tipo])).entries(),
-  ];
-  const colores = ['#185FA5', '#22c55e', '#eab308', '#E8354A', '#7c3aed', '#f97316'];
+const COLORES_TIPO = ['#185FA5', '#22c55e', '#eab308', '#E8354A', '#7c3aed', '#f97316'];
+
+/**
+ * Barras apiladas: una barra por partido, un color por tipo.
+ *
+ * Los dos desgloses (dinero y personas) son el MISMO dibujo con distinta
+ * unidad, así que comparten esta función en vez de duplicar la configuración de
+ * Chart.js. Solo cambian de dónde salen las filas de cada jornada, qué campo se
+ * apila y cómo se escribe el número en el tooltip.
+ *
+ * @param {string} selector      Canvas donde pintar.
+ * @param {object} cfg
+ * @param {Array}  cfg.porJornada
+ * @param {Array}  cfg.tipos     Series a pintar: {tipo, nombre}.
+ * @param {Function} cfg.filas   (jornada) => filas de esa jornada.
+ * @param {string} cfg.campo     Campo numérico de la fila que se apila.
+ * @param {Function} cfg.formato Cómo se lee el valor en el tooltip.
+ */
+function graficoApilado(selector, { porJornada, tipos, filas, campo, formato }) {
+  const ctx = $(selector);
+  if (!ctx || typeof Chart === 'undefined') return null;
 
   // eslint-disable-next-line no-undef
-  chart = new Chart(ctx, {
+  return new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: s.porJornada.map((j) => j.label),
-      datasets: tipos.map(([tipo, nombre], i) => ({
-        label: nombre,
-        data: s.porJornada.map(
-          (j) => j.porTipo.find((t) => t.tipo === tipo)?.recaudacion || 0,
-        ),
-        backgroundColor: colores[i % colores.length],
+      labels: porJornada.map((j) => j.label),
+      datasets: tipos.map((t, i) => ({
+        label: t.nombre || t.tipo,
+        data: porJornada.map((j) => filas(j).find((f) => f.tipo === t.tipo)?.[campo] || 0),
+        backgroundColor: COLORES_TIPO[i % COLORES_TIPO.length],
         borderRadius: 4,
       })),
     },
@@ -228,11 +241,44 @@ function pintarGrafico(s) {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      plugins: {
+        tooltip: {
+          callbacks: { label: (c) => `${c.dataset.label}: ${formato(c.parsed.y)}` },
+        },
+      },
       scales: {
         x: { stacked: true },
         y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
       },
     },
+  });
+}
+
+/** De dónde sale el dinero de cada partido. */
+function pintarGrafico(s) {
+  if (chart) chart.destroy();
+  chart = graficoApilado('#chart-taquilla', {
+    porJornada: s.porJornada,
+    tipos: s.tiposEntrada,
+    filas: (j) => j.porTipo,
+    campo: 'recaudacion',
+    formato: euros,
+  });
+}
+
+/**
+ * Quién llena el campo. No es la misma foto que la recaudación: los abonados
+ * son la mayor parte de la asistencia y aportan 0 € en la puerta, así que en el
+ * gráfico de dinero no se les ve.
+ */
+function pintarGraficoAsistencia(s) {
+  if (chartAsistencia) chartAsistencia.destroy();
+  chartAsistencia = graficoApilado('#chart-asistencia', {
+    porJornada: s.porJornada,
+    tipos: s.tiposAsistencia,
+    filas: (j) => j.asistentesPorTipo,
+    campo: 'asistentes',
+    formato: (n) => `${n} ${n === 1 ? 'persona' : 'personas'}`,
   });
 }
 

@@ -34,6 +34,32 @@ const GRUPOS_EDAD = [
   { label: '66+', min: 66, max: 200 },
 ];
 
+/**
+ * Pseudo-tipo de los abonados que entran con su QR. No pasan por taquilla ni
+ * pagan en la puerta, así que no aparecen en el desglose de recaudación — pero
+ * son la mayor parte de la gente que hay en el campo, y sin ellos un gráfico de
+ * asistentes por tipo estaría contando justo lo que menos pesa.
+ */
+export const TIPO_ABONADO = { id: 'abonado', nombre: 'Abonados (entrada incluida)' };
+
+/** Suma filas {tipo, nombre, ...campos} de varias jornadas en una sola lista. */
+function agregarPorTipo(filas, campos) {
+  return Object.values(
+    filas.reduce((m, fila) => {
+      const actual = m[fila.tipo] || {
+        tipo: fila.tipo,
+        nombre: fila.nombre || fila.tipo,
+        ...Object.fromEntries(campos.map((c) => [c, 0])),
+      };
+      campos.forEach((c) => {
+        actual[c] += Number(fila[c] || 0);
+      });
+      m[fila.tipo] = actual;
+      return m;
+    }, {}),
+  );
+}
+
 export function calcularStats({ socios, entradas, taquilla, competiciones = [] }) {
   const partidos = partidosDisponibles(competiciones, [
     ...Object.keys(entradas),
@@ -53,6 +79,21 @@ export function calcularStats({ socios, entradas, taquilla, competiciones = [] }
     const d = taquilla[p.id] || {};
     const ventas = ventasDe(d);
     const nTaquilla = ventas.length;
+    const porTipo = Object.values(
+      ventas.reduce((m, v) => {
+        const tipo = v.tipo || 'otro';
+        const x = m[tipo] || {
+          tipo,
+          nombre: v.nombreTipo || tipo,
+          asistentes: 0,
+          recaudacion: 0,
+        };
+        x.asistentes++;
+        x.recaudacion += Number(v.precio || 0);
+        m[tipo] = x;
+        return m;
+      }, {}),
+    );
     return {
       jornada: p.id,
       label: `${p.competicion ? p.competicion + ' · ' : ''}${p.nombre}`,
@@ -61,21 +102,14 @@ export function calcularStats({ socios, entradas, taquilla, competiciones = [] }
       nTaquilla,
       totalAsistentes: nSocios + nTaquilla,
       recaudacion: recaudacion(d),
-      porTipo: Object.values(
-        ventas.reduce((m, v) => {
-          const tipo = v.tipo || 'otro';
-          const x = m[tipo] || {
-            tipo,
-            nombre: v.nombreTipo || tipo,
-            asistentes: 0,
-            recaudacion: 0,
-          };
-          x.asistentes++;
-          x.recaudacion += Number(v.precio || 0);
-          m[tipo] = x;
-          return m;
-        }, {}),
-      ),
+      porTipo,
+      // Mismo desglose que `porTipo` pero contando PERSONAS y con los abonados
+      // delante: es la foto de quién llena el campo, que no coincide con la de
+      // quién lo paga.
+      asistentesPorTipo: [
+        { tipo: TIPO_ABONADO.id, nombre: TIPO_ABONADO.nombre, asistentes: nSocios },
+        ...porTipo.map(({ tipo, nombre, asistentes }) => ({ tipo, nombre, asistentes })),
+      ].filter((x) => x.asistentes > 0),
     };
   });
 
@@ -92,16 +126,16 @@ export function calcularStats({ socios, entradas, taquilla, competiciones = [] }
     tipos,
     recaudacionTotal: porJornada.reduce((a, j) => a + j.recaudacion, 0),
     baseAsistencia: conAsistencia.length,
-    tiposEntrada: Object.values(
-      porJornada
-        .flatMap((j) => j.porTipo)
-        .reduce((m, fila) => {
-          const actual = m[fila.tipo] || { ...fila, asistentes: 0, recaudacion: 0 };
-          actual.asistentes += fila.asistentes;
-          actual.recaudacion += fila.recaudacion;
-          m[fila.tipo] = actual;
-          return m;
-        }, {}),
+    tiposEntrada: agregarPorTipo(
+      porJornada.flatMap((j) => j.porTipo),
+      ['asistentes', 'recaudacion'],
+    ),
+    // Los mismos tipos contados en personas, abonados incluidos. Va aparte de
+    // `tiposEntrada` a propósito: mezclar euros y personas en una sola lista
+    // es justo lo que hace que un gráfico mienta.
+    tiposAsistencia: agregarPorTipo(
+      porJornada.flatMap((j) => j.asistentesPorTipo),
+      ['asistentes'],
     ),
     porCompeticion: Object.values(
       porJornada.reduce((m, j) => {
