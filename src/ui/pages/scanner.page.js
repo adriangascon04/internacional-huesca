@@ -14,18 +14,13 @@ import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
 import { hora } from '../../utils/format.js';
 import { state, estaBloqueada } from '../../core/state.js';
-import { getPartidos, getPartidosLabel, carnetDe } from '../../config/app.config.js';
+import { carnetDe } from '../../config/app.config.js';
+import { partidosDisponibles } from '../../services/competiciones.service.js';
 import * as acceso from '../../services/acceso.service.js';
 import * as socios from '../../services/socios.service.js';
 import * as roles from '../../services/roles.service.js';
 import { playSonido, vibrar } from '../sonidos.js';
-import {
-  iniciarCamara,
-  pararCamara,
-  camaraActiva,
-  pausarLectura,
-  reanudarLectura,
-} from '../camara.js';
+import { iniciarCamara, pararCamara, camaraActiva, CamaraError } from '../camara.js';
 
 export function initScanner() {
   rellenarSelect();
@@ -70,14 +65,19 @@ export function rellenarSelect() {
       state.partidoScanner = jornada || '';
     }
   } else {
-    const partidos = getPartidos();
-    const labels = getPartidosLabel();
+    const partidos = partidosDisponibles(state.competiciones, [
+      ...Object.keys(state.entradas),
+      ...Object.keys(state.taquilla),
+    ]);
     const previo = sel.value;
     sel.disabled = false;
     sel.innerHTML =
       '<option value="">— Selecciona jornada —</option>' +
       partidos
-        .map((p, i) => `<option value="${esc(p)}">${esc(labels[i])}</option>`)
+        .map(
+          (p) =>
+            `<option value="${esc(p.id)}">${esc(`${p.competicion ? p.competicion + ' · ' : ''}${p.nombre}`)}</option>`,
+        )
         .join('');
     sel.value = previo;
     state.partidoScanner = sel.value;
@@ -175,9 +175,8 @@ function motivoQr(motivo) {
 function mostrarPopup(tipo, titulo, detalle, s) {
   playSonido(tipo);
   vibrar(tipo);
-  // Mientras el resultado está en pantalla, el lector deja de leer: el pop-up
-  // es la señal de "ya está, léelo y cierra", no un escaneo que sigue corriendo.
-  pausarLectura();
+  // La cámara continúa leyendo: el resultado se actualiza con cada QR y el
+  // operador no necesita cerrar este aviso para atender a la siguiente persona.
   const cont = $('#popup-scanner');
   const box = $('#popup-scanner-box');
   box.className = `popup-box ${tipo === 'ok' ? 'popup-ok' : 'popup-error'}`;
@@ -192,7 +191,6 @@ function mostrarPopup(tipo, titulo, detalle, s) {
 
 function cerrarPopup() {
   $('#popup-scanner').style.display = 'none';
-  reanudarLectura();
 }
 
 export function renderLog() {
@@ -254,9 +252,15 @@ async function toggleCamara() {
     wrap.style.display = 'block';
     await iniciarCamara(video, $('#camara-canvas'), escanear);
     btn.textContent = '⏹ Parar cámara';
-  } catch {
+  } catch (e) {
     wrap.style.display = 'none';
-    alert('No se pudo acceder a la cámara. Requiere HTTPS y permiso del navegador.');
+    // Un fallo del lector no es lo mismo que un fallo de la cámara, y el
+    // mensaje genérico mandaba a revisar permisos que estaban bien.
+    alert(
+      e instanceof CamaraError
+        ? e.message
+        : 'No se pudo acceder a la cámara. Requiere HTTPS y permiso del navegador.',
+    );
   }
 }
 
