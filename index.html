@@ -218,7 +218,21 @@ code{
   color:var(--ambar);padding:11px 13px;border-radius:var(--r-s);
   font-size:12.5px;margin:10px 0;display:none;
 }
-#camara-wrap video{box-shadow:var(--sombra)}
+/* Visor de la cámara. El recuadro central NO es decorativo: marca exactamente
+   el trozo de imagen que el lector está analizando (ver src/ui/camara.js), así
+   que el operador apunta el carnet ahí en vez de adivinar. Lo de fuera se
+   oscurece con un box-shadow enorme, recortado por el overflow del visor. */
+#camara-visor{
+  position:relative;width:100%;max-width:420px;overflow:hidden;
+  border-radius:10px;box-shadow:var(--sombra)
+}
+#camara-visor video{display:block;width:100%;background:#000}
+#camara-mira{
+  position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);
+  aspect-ratio:1/1;max-width:100%;pointer-events:none;
+  border:2px solid rgba(255,255,255,.6);border-radius:12px;
+  box-shadow:0 0 0 100vmax rgba(0,0,0,.3)
+}
 .btn-grande{width:100%;min-height:64px;font-size:17px;font-weight:700;letter-spacing:.02em}
 
 /* ═══ Pop-up de resultado del escáner ═══════════════════════════════════════ */
@@ -448,8 +462,12 @@ canvas.chart-mini{max-height:240px}
         <button class="btn btn-primary btn-grande" id="btn-camara">📷 Escanear QR</button>
       </div>
       <div id="camara-wrap" style="display:none;margin-top:12px">
-        <video id="camara-video" playsinline muted autoplay
-              style="width:100%;max-width:420px;border-radius:10px;background:#000"></video>
+        <div id="camara-visor">
+          <video id="camara-video" playsinline muted autoplay></video>
+          <div id="camara-mira"></div>
+        </div>
+        <p class="nota">Encuadra el QR dentro del recuadro. Lee solo, no hay que pulsar nada.</p>
+        <button class="btn" id="btn-leer-ahora" style="width:100%;max-width:420px">🔍 Leer ahora</button>
         <canvas id="camara-canvas" style="display:none"></canvas>
       </div>
 

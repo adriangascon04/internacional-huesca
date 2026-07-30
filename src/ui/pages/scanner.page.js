@@ -20,7 +20,13 @@ import * as acceso from '../../services/acceso.service.js';
 import * as socios from '../../services/socios.service.js';
 import * as roles from '../../services/roles.service.js';
 import { playSonido, vibrar } from '../sonidos.js';
-import { iniciarCamara, pararCamara, camaraActiva, CamaraError } from '../camara.js';
+import {
+  iniciarCamara,
+  pararCamara,
+  camaraActiva,
+  leerFotogramaActual,
+  CamaraError,
+} from '../camara.js';
 
 export function initScanner() {
   rellenarSelect();
@@ -35,6 +41,7 @@ export function initScanner() {
     $('#manual-id').value = '';
   });
   on($('#btn-camara'), 'click', toggleCamara);
+  on($('#btn-leer-ahora'), 'click', leerAhora);
   on($('#popup-cerrar'), 'click', cerrarPopup);
   on($('#popup-scanner'), 'click', (e) => {
     if (e.target.id === 'popup-scanner') cerrarPopup();
@@ -261,6 +268,28 @@ async function toggleCamara() {
         ? e.message
         : 'No se pudo acceder a la cámara. Requiere HTTPS y permiso del navegador.',
     );
+  }
+}
+
+/**
+ * Intento manual sobre el fotograma actual. El bucle ya está leyendo solo; esto
+ * es la red de seguridad para el QR que se le resiste: mira el encuadre entero
+ * y a resolución completa, que es demasiado caro para hacerlo en continuo.
+ */
+async function leerAhora() {
+  const btn = $('#btn-leer-ahora');
+  btn.disabled = true;
+  btn.textContent = '🔍 Leyendo…';
+  try {
+    const leido = await leerFotogramaActual();
+    if (!leido)
+      alert(
+        'No se ha visto ningún QR en la imagen.\n\nAcerca el carnet, busca más luz ' +
+          'o valida a mano con el nº de carnet.',
+      );
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Leer ahora';
   }
 }
 
