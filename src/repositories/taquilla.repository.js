@@ -30,7 +30,11 @@ export async function sumarVenta(jornadaKey, tipo, venta) {
   try {
     await updateDoc(ref(jornadaKey), cambios);
   } catch {
-    await setDoc(ref(jornadaKey), { general: 0, menor: 0 }, { merge: true });
+    await setDoc(
+      ref(jornadaKey),
+      { general: 0, menor: 0, historial: [] },
+      { merge: true },
+    );
     await updateDoc(ref(jornadaKey), cambios);
   }
 }

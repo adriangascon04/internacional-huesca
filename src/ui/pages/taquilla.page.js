@@ -1,56 +1,94 @@
-// ============================================================================
-//  src/ui/pages/taquilla.page.js  ·  Venta de entradas en taquilla.
-// ============================================================================
 import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
 import { euros } from '../../utils/format.js';
 import { state, estaBloqueada } from '../../core/state.js';
+import { METODOS_PAGO } from '../../config/app.config.js';
 import {
-  getPartidos,
-  getPartidosLabel,
-  PRECIOS_TAQUILLA,
-} from '../../config/app.config.js';
+  etiquetaPartido,
+  partidosDisponibles,
+  preciosDePartido,
+  tiposDePartido,
+} from '../../services/competiciones.service.js';
 import * as taquilla from '../../services/taquilla.service.js';
+import { pintarTarifasEntradas } from '../tarifas.view.js';
 
 export function initTaquilla() {
-  const partidos = getPartidos();
-  const labels = getPartidosLabel();
-  $('#taquilla-partido-sel').innerHTML =
-    '<option value="">— Selecciona jornada —</option>' +
-    partidos
-      .map((p, i) => `<option value="${esc(p)}">${esc(labels[i])}</option>`)
-      .join('');
-
-  // Precios visibles desde config (antes escritos a mano en el HTML).
-  $('#precio-general').textContent = euros(PRECIOS_TAQUILLA.general);
-  $('#precio-menor').textContent = euros(PRECIOS_TAQUILLA.menor);
-
+  rellenarSelect();
+  $('#taquilla-pago').innerHTML = METODOS_PAGO.map(
+    (m) => `<option>${esc(m)}</option>`,
+  ).join('');
   on($('#taquilla-partido-sel'), 'change', () => {
     state.partidoTaquilla = $('#taquilla-partido-sel').value;
+    rellenarTipos();
+    actualizarPrecio();
     render();
   });
-  on($('#btn-vender-general'), 'click', () => vender('general'));
-  on($('#btn-vender-menor'), 'click', () => vender('menor'));
+  on($('#taquilla-tipo'), 'change', actualizarPrecio);
+  on($('#btn-vender-entrada'), 'click', () => vender($('#taquilla-tipo').value));
   on($('#btn-deshacer-venta'), 'click', async () => {
     const j = state.partidoTaquilla;
-    if (estaBloqueada(j)) return alert('Jornada cerrada.');
+    if (estaBloqueada(j)) return alert('Partido cerrado.');
     await taquilla.deshacerVenta(j);
   });
 }
 
+export function rellenarSelect() {
+  const sel = $('#taquilla-partido-sel');
+  if (!sel) return;
+  const previo = sel.value;
+  const partidos = partidosDisponibles(state.competiciones, [
+    ...Object.keys(state.entradas),
+    ...Object.keys(state.taquilla),
+  ]);
+  sel.innerHTML =
+    '<option value="">— Selecciona partido —</option>' +
+    partidos
+      .map(
+        (p) =>
+          `<option value="${esc(p.id)}">${esc(`${p.competicion ? p.competicion + ' · ' : ''}${p.nombre}`)}</option>`,
+      )
+      .join('');
+  sel.value = previo;
+  state.partidoTaquilla = sel.value;
+  rellenarTipos();
+  actualizarPrecio();
+}
+function rellenarTipos() {
+  const sel = $('#taquilla-tipo');
+  if (!sel) return;
+  const previo = sel.value;
+  sel.innerHTML = tiposDePartido(state.competiciones, state.partidoTaquilla)
+    .map((t) => `<option value="${esc(t.id)}">${esc(t.nombre)}</option>`)
+    .join('');
+  sel.value =
+    previo && [...sel.options].some((o) => o.value === previo)
+      ? previo
+      : sel.options[0]?.value || '';
+}
+/**
+ * Sincroniza el importe a cobrar y el recordatorio de tarifas con el partido y
+ * el tipo elegidos. El precio queda EDITABLE: es la tarifa de partida, no una
+ * imposición (invitación, descuento o suplemento se teclean encima).
+ */
+function actualizarPrecio() {
+  const precios = preciosDePartido(state.competiciones, state.partidoTaquilla);
+  const input = $('#taquilla-precio');
+  if (input) input.value = precios[$('#taquilla-tipo').value] ?? 0;
+  pintarTarifasEntradas($('#tarifas-entradas'), state.partidoTaquilla ? precios : {});
+}
 async function vender(tipo) {
   const j = state.partidoTaquilla;
-  if (!j) return alert('Selecciona una jornada antes de vender entradas.');
-  if (estaBloqueada(j)) return alert('Esta jornada está cerrada.');
-  await taquilla.venderEntrada(j, tipo);
+  if (!j) return alert('Selecciona un partido antes de vender entradas.');
+  if (estaBloqueada(j)) return alert('Este partido está cerrado.');
+  await taquilla.venderEntrada(j, tipo, {
+    precio: $('#taquilla-precio').value,
+    metodoPago: $('#taquilla-pago').value,
+    nombreTipo: $('#taquilla-tipo').selectedOptions[0]?.textContent,
+  });
 }
-
 export function render() {
   const j = state.partidoTaquilla;
-  const d = state.taquilla[j] || { general: 0, menor: 0, historial: [] };
-  $('#contador-general').textContent = d.general || 0;
-  $('#contador-menor').textContent = d.menor || 0;
-
+  const d = state.taquilla[j] || { historial: [] };
   const resumen = $('#taquilla-resumen');
   const btnDeshacer = $('#btn-deshacer-venta');
   if (!j) {
@@ -58,12 +96,7 @@ export function render() {
     btnDeshacer.style.display = 'none';
     return;
   }
-
-  const total = (d.general || 0) + (d.menor || 0);
-  const labels = getPartidosLabel();
-  const label = labels[getPartidos().indexOf(j)] || j;
-  resumen.innerHTML = `
-    <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Entradas vendidas — ${esc(label)}</div></div>
-    <div class="stat"><div class="stat-n">${euros(taquilla.recaudacion(d))}</div><div class="stat-l">Recaudación de taquilla</div></div>`;
+  const ventas = taquilla.ventasDe(d);
+  resumen.innerHTML = `<div class="stat"><div class="stat-n">${ventas.length}</div><div class="stat-l">Entradas vendidas — ${esc(etiquetaPartido(state.competiciones, j))}</div></div><div class="stat"><div class="stat-n">${euros(taquilla.recaudacion(d))}</div><div class="stat-l">Recaudación de taquilla</div></div>`;
   btnDeshacer.style.display = d.historial?.length ? 'inline-block' : 'none';
 }
