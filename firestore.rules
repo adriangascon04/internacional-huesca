@@ -27,11 +27,31 @@ service cloud.firestore {
     function datosUsuario() {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
-    function rol() { return datosUsuario().rol; }
 
-    function esAdmin()       { return autenticado() && rol() == 'admin'; }
-    function puedeVender()   { return autenticado() && rol() in ['admin', 'taquillero']; }
-    function puedeEscanear() { return autenticado() && rol() in ['admin', 'control_acceso']; }
+    // ÚNICA normalización de rol del servidor, gemela de core/roles.js.
+    //
+    // Antes cada función repetía a mano la lista
+    // ['admin','Admin','ADMIN','main','Main','MAIN', ...]: una grafía que no
+    // estuviera en la lista ("MAIn") o un espacio de más al teclear el rol en la
+    // consola de Firebase colaba por el cliente (que hace trim + lower) y NO por
+    // el servidor. De ahí venían los "necesitas ser Main" teniendo la sesión de
+    // Main abierta: la UI te dejaba pulsar y la escritura la rechazaba el
+    // servidor. El lenguaje de reglas no tiene trim(), así que los espacios se
+    // absorben con la propia expresión regular.
+    //
+    // Los roles de /usuarios los pone una persona a mano en la consola: esto
+    // tiene que ser tolerante con cómo los escriba.
+    function rolCrudo() {
+      return datosUsuario().rol is string ? datosUsuario().rol.lower() : '';
+    }
+    function esRol(nombre) { return rolCrudo().matches('\\s*' + nombre + '\\s*'); }
+
+    // "main" es sinónimo histórico de "admin".
+    // puedeVender/puedeEscanear DERIVAN de esAdmin en vez de volver a nombrarlo:
+    // así es imposible añadir un permiso nuevo y olvidarse de dárselo a Main.
+    function esAdmin()       { return autenticado() && (esRol('admin') || esRol('main')); }
+    function puedeVender()   { return esAdmin() || (autenticado() && esRol('taquillero')); }
+    function puedeEscanear() { return esAdmin() || (autenticado() && esRol('control_acceso')); }
 
     // ¿Está cerrada el acta de esta jornada? Antes solo se comprobaba en el
     // cliente: bastaba la consola del navegador para escribir en una jornada
@@ -39,6 +59,13 @@ service cloud.firestore {
     function jornadaAbierta(jornadaId) {
       return !exists(/databases/$(database)/documents/jornadas_bloqueadas/$(jornadaId))
         || get(/databases/$(database)/documents/jornadas_bloqueadas/$(jornadaId)).data.bloqueada != true;
+    }
+
+    // Nº de ventas registradas en un doc de taquilla. Los documentos anteriores
+    // a que existiera el historial NO tienen el campo, y `historial.size()` a
+    // secas reventaba la regla (y con ella la venta) en esas jornadas.
+    function nVentas(datos) {
+      return datos.historial is list ? datos.historial.size() : 0;
     }
 
     // Campos que solo el servidor/admin debería fijar.
@@ -112,31 +139,41 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------- taquilla
-    // Un doc por jornada: { general, menor, historial:[...] }.
+    // Un doc por jornada: { <tipo>: <contador>, historial:[{tipo,precio,...}] }.
+    // Los tipos de entrada son CONFIGURABLES por partido, así que aquí no se
+    // puede dar por hecho que solo existan `general` y `menor`.
     match /taquilla/{jornada} {
       allow read: if autenticado();
 
-      // El doc SOLO puede nacer a cero. Antes el `create` no acotaba nada: la
-      // primera venta de la jornada podía crearlo con general: 999999 y saltarse
-      // el límite de ±1 del `update`. La app lo crea así (taquilla.repository).
+      // El doc solo puede nacer sin ventas. Así la primera venta de la jornada
+      // no puede crearlo ya con el historial falseado, saltándose el límite de
+      // una venta por escritura del `update`.
       allow create: if puedeVender() && jornadaAbierta(jornada)
-        && request.resource.data.general == 0
-        && request.resource.data.menor == 0;
+        && request.resource.data.historial is list
+        && request.resource.data.historial.size() == 0;
 
-      // El contador solo puede moverse de uno en uno. Antes, un taquillero
-      // podía escribir general: 999999 y falsear la recaudación de un plumazo.
+      // Un taquillero solo puede mover UNA venta por escritura: la que acaba de
+      // cobrar, o la que deshace. Antes el tope se expresaba sobre los
+      // contadores `general`/`menor` (±1), de forma que al pasar los tipos a ser
+      // configurables cualquier tipo nuevo (`vip`, `invitacion`…) se quedaba sin
+      // tope y se podía escribir de una vez la cifra que se quisiera. Acotar el
+      // TAMAÑO del historial vale para cualquier tipo, presente o futuro.
       allow update: if jornadaAbierta(jornada) && (
         esAdmin()
         || (puedeVender()
-            && request.resource.data.general >= 0
-            && request.resource.data.menor >= 0
-            && request.resource.data.general <= resource.data.general + 1
-            && request.resource.data.menor <= resource.data.menor + 1
-            && request.resource.data.general >= resource.data.general - 1
-            && request.resource.data.menor >= resource.data.menor - 1)
+            && request.resource.data.historial is list
+            && (request.resource.data.historial.size() == nVentas(resource.data) + 1
+                || request.resource.data.historial.size() == nVentas(resource.data) - 1))
       );
 
       allow delete: if esAdmin();
+    }
+
+    // Calendario editable: cada competición contiene sus partidos ordenados y
+    // las tarifas específicas de cada uno. Solo administración lo modifica.
+    match /competiciones/{id} {
+      allow read: if autenticado();
+      allow create, update, delete: if esAdmin();
     }
 
     // ---------------------------------------------------- jornadas_bloqueadas
