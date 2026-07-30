@@ -86,9 +86,20 @@ async function borrarCompeticion(id) {
   )
     await repo.borrarCompeticion(id);
 }
-async function borrarPartido(comp, id) {
+async function borrarPartido(comp, partido) {
+  // Con confirmación como el resto de borrados: el botón está pegado a los de
+  // reordenar, que son inocuos, y un resbalón se llevaba por delante el partido
+  // y sus precios sin preguntar ni dejar forma de deshacerlo.
+  if (
+    !confirm(
+      `¿Eliminar «${partido.nombre}» de ${comp.nombre}?\n\n` +
+        'Los accesos y las ventas ya registrados en ese partido NO se borran: ' +
+        'seguirán apareciendo en las estadísticas como histórico.',
+    )
+  )
+    return;
   await repo.guardarCompeticion(comp.id, {
-    partidos: conOrden(ordenar(comp.partidos).filter((p) => p.id !== id)),
+    partidos: conOrden(ordenar(comp.partidos).filter((p) => p.id !== partido.id)),
   });
 }
 async function moverPartido(comp, id, delta) {
@@ -193,7 +204,7 @@ export function render() {
     on($('[data-mover="-1"]', bloque), 'click', () => moverPartido(comp, partidoId, -1));
     on($('[data-mover="1"]', bloque), 'click', () => moverPartido(comp, partidoId, 1));
     on($('[data-editar-partido]', bloque), 'click', () => editarPartido(comp, partido));
-    on($('[data-borrar-partido]', bloque), 'click', () => borrarPartido(comp, partidoId));
+    on($('[data-borrar-partido]', bloque), 'click', () => borrarPartido(comp, partido));
     on($('[data-guardar-precios]', bloque), 'click', () =>
       guardarPrecios(comp, partido, bloque),
     );
