@@ -11,6 +11,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { obtenerUsuario } from '../repositories/usuarios.repository.js';
 import { setSession, clearSession } from './session.js';
+import { normalizarRol } from './roles.js';
 
 export const login = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
 export const logout = () => signOut(auth);
@@ -32,7 +33,7 @@ export function observarSesion(callback) {
     } catch (e) {
       console.error('No se pudo leer el rol del usuario:', e);
     }
-    setSession({ uid: user.uid, email: user.email, rol });
+    setSession({ uid: user.uid, email: user.email, rol: normalizarRol(rol) });
     callback(user);
   });
 }
