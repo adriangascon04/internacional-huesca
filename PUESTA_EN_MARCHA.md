@@ -342,7 +342,7 @@ En GitHub → tu repo → **Settings** → **Pages**:
 
 - **Source:** Deploy from a branch
 - **Branch:** `main`
-- **Folder:** `/public` ← ⚠️ importante, no `/root`
+- **Folder:** `/ (root)` ← el `index.html` está en la raíz del repositorio; no existe ninguna carpeta `public/`
 - **Save**
 
 En 1–2 minutos tendrás: `https://TU_USUARIO.github.io/TU_REPO/`

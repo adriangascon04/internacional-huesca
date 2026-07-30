@@ -41,8 +41,9 @@ u otras:
 | **Socios** | Dar de alta, buscar, editar y dar de baja socios. |
 | **QRs** | Generar e imprimir el carnet con código QR de cada socio. |
 | **Escáner** | Leer el QR en la puerta y registrar la entrada. |
-| **Taquilla** | Vender entradas sueltas (general y menor) el día del partido. |
-| **Estadísticas** | Ver asistencia, facturación y datos de los socios. |
+| **Taquilla** | Vender entradas sueltas el día del partido, con su precio y método de pago. |
+| **Competiciones** | Crear el calendario (competiciones y partidos) y fijar el precio de cada partido. |
+| **Estadísticas** | Ver asistencia, recaudación de taquilla, recaudación por altas de socios y datos de los socios. |
 | **Importar** | Cargar muchos socios de golpe desde un Excel. |
 | **Backup** | Guardar copias de seguridad de todos los datos. |
 
@@ -146,13 +147,19 @@ Pestaña **Socios** (solo **admin**).
      opcional.
    - **Tipo de documento**: DNI/NIE, Pasaporte u Otro. Para DNI/NIE se comprueba
      que la letra sea correcta.
-   - **Nº de documento**, **fecha de nacimiento**, **teléfono** y **email**.
+   - **Nº de documento** y **fecha de nacimiento**, obligatorios.
+   - **Teléfono** y **email**, opcionales: hay socios que no tienen, y
+     inventárselos es peor que dejarlos vacíos.
    - **Tipo de abono** (Familiar, General, Internacional, Academia, Jubilado,
      -16 años).
+   - **Método de pago** e **importe cobrado**. El importe en blanco significa
+     "la tarifa de su abono"; un 0 escrito a mano sí es gratis. Queda congelado
+     en la ficha, así que cambiar tarifas después no reescribe lo ya facturado.
 2. Pulsa **Añadir socio**.
 
 El programa asigna automáticamente el **número de carnet**. Si el abono es
-gratuito (Academia), queda marcado como pagado.
+gratuito (Academia), queda marcado como pagado; el resto nace **pendiente de
+cobro** hasta que se marque la casilla *Pagado*.
 
 ### Buscar, ver y editar
 
@@ -421,8 +428,10 @@ Ninguna página importa Firestore directamente.
 
 | Quiero… | Archivo |
 |---|---|
-| Cambiar el precio de las entradas | `config/app.config.js` → `PRECIOS_TAQUILLA` |
-| Cambiar la temporada o nº de jornadas | `config/app.config.js` → `TEMPORADA_ACTUAL`, `NUM_JORNADAS` |
+| Cambiar el precio de las entradas | **Desde la app** (Competiciones → precios de cada partido). En código solo viven los valores de partida: `config/app.config.js` → `TIPOS_ENTRADA_POR_DEFECTO` |
+| Añadir o quitar partidos y competiciones | **Desde la app** (pestaña Competiciones). Ya no hay calendario fijo en el código |
+| Cambiar la temporada | `config/app.config.js` → `TEMPORADA_ACTUAL` |
+| Cambiar los métodos de pago | `config/app.config.js` → `METODOS_PAGO` |
 | Añadir/quitar un tipo de abono | `config/app.config.js` → `TIPOS_ABONO` |
 | Cambiar la fecha de Socio Fundador | `config/app.config.js` → `FECHA_LIMITE_FUNDADOR` |
 | Tocar la tabla de socios | `ui/pages/socios.page.js` |

@@ -96,7 +96,7 @@ Authentication → Sign-in method → Email/contraseña → Activar.
 
 GitHub repo → Settings → Pages:
 - Source: `main` branch
-- Folder: `/public`
+- Folder: `/ (root)` ← el `index.html` está en la raíz, no hay carpeta `public/`
 - Save
 
 En 2 min: `https://TU_USUARIO.github.io/internacional-huesca/`
@@ -202,7 +202,7 @@ git init && git add . && git commit -m "init" && git push -u origin main
 # 4. Firebase → contadores/socios → {ultimo:0}
 # 5. Firestore → Reglas → pega firestore.rules → Publicar
 
-# 6. GitHub Pages activo en /public
+# 6. GitHub Pages activo en / (root)
 # 7. La app está en https://tu-usuario.github.io/internacional-huesca/
 ```
 

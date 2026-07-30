@@ -2,6 +2,63 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.2.0] — Calendario configurable, dinero real y escáner que lee
+
+### Añadido
+- **Competiciones y partidos configurables.** Desaparece el calendario fijo de 17
+  jornadas: se crean competiciones (Liga, Copa, torneos…) con sus partidos, y se
+  pueden renombrar, reordenar y eliminar sin tocar código. Eliminar un partido no
+  borra su asistencia ni su taquilla: se conservan como histórico.
+- **Precios por partido y por venta.** Cada partido guarda su tarifa, y en cada
+  venta se puede cobrar un importe distinto (invitación, descuento, suplemento).
+  Los tipos de entrada nuevos (`vip`, `peña`…) aparecen solos en taquilla y en las
+  estadísticas.
+- **Método de pago** (Bizum / TPV / Efectivo) en la venta de entradas y en el alta
+  de socios.
+- **Recuadros de tarifas** en el alta de socios y en taquilla, pintados desde la
+  configuración real. Antes eran texto fijo en el HTML y mentían en cuanto alguien
+  cambiaba un precio.
+- **Estadísticas económicas completas:** recaudación por partido y tipo, por
+  competición, y un apartado **independiente** para la recaudación por altas de
+  socios (nuevos socios, ingresos, desglose por abono, evolución mensual).
+- **Dos gráficos apilados** por partido: uno de dinero y otro de personas. El de
+  personas incluye a los abonados que entran con QR, que en el de dinero no se ven
+  porque aportan 0 €.
+- **Botón "Leer ahora"** en el escáner: un intento a fondo sobre el fotograma
+  completo a resolución nativa, para el QR que se resiste.
+- **Indicador de ritmo de lectura** ("N lecturas/s") bajo la cámara: distingue "no
+  entra este QR" de "el lector está parado", que desde fuera se veían igual.
+
+### Corregido
+- **El escáner no leía en Android.** `BarcodeDetector` se usaba como camino rápido
+  y solo se descartaba si lanzaba excepción; hay navegadores que lo exponen sin
+  tenerlo operativo (depende de un módulo de Google Play Services) y entonces
+  resuelve vacío en cada fotograma. En iOS funcionaba porque no existe esa API. Se
+  elimina el camino nativo.
+- **El bucle de lectura moría en silencio** si fallaba el fichaje: la excepción se
+  comía el `requestAnimationFrame` y la cámara seguía viéndose sin leer.
+- **Una jornada con fichajes Y ventas salía duplicada** en todos los selectores y
+  en las estadísticas: las claves históricas de `entradas` y `taquilla` se
+  concatenaban sin deduplicar.
+- **El rol "Main" no tenía permisos en el servidor.** El cliente normalizaba el rol
+  (trim + minúsculas) y las reglas comparaban con `==`, así que la interfaz dejaba
+  pulsar y la escritura se rechazaba. Ahora hay una única normalización, gemela en
+  `core/roles.js` y en `firestore.rules`.
+- **La recaudación se recalculaba con las tarifas vigentes**, reescribiendo hacia
+  atrás lo facturado en partidos ya jugados. Cada venta guarda su importe.
+- **Un importe en blanco se cobraba como 0 €** (`Number('')`) en el alta y en la
+  venta. Ahora cae a la tarifa; el 0 explícito sigue valiendo.
+- **El tope de una venta por escritura** se expresaba sobre los contadores
+  `general`/`menor`, así que los tipos nuevos quedaban sin límite. Ahora se acota
+  el tamaño del historial.
+- **Eliminar un partido no pedía confirmación**, con el botón pegado a las flechas
+  de reordenar.
+- **El gráfico de asistentes crecía sin tope** en pantallas estrechas.
+
+### Cambiado
+- **Email y teléfono dejan de ser obligatorios** en el alta de socios.
+- La documentación decía que Pages sirve `/public`; sirve la raíz.
+
 ## [1.1.0] — Auditoría de bugs y endurecimiento
 
 ### Seguridad
