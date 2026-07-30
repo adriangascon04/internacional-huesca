@@ -14,6 +14,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   increment,
   arrayUnion,
   arrayRemove,
@@ -42,6 +43,9 @@ export async function sumarVenta(jornadaKey, tipo, venta) {
 /** Resta 1 y quita esa venta concreta del historial. */
 export const restarVenta = (jornadaKey, tipo, venta) =>
   updateDoc(ref(jornadaKey), { [tipo]: increment(-1), historial: arrayRemove(venta) });
+
+/** Borra TODAS las ventas de una jornada. Solo lo usa el reinicio de datos. */
+export const borrarJornada = (jornadaKey) => deleteDoc(ref(jornadaKey));
 
 export function suscribirTaquilla(callback) {
   return onSnapshot(collection(db, COLECCIONES.taquilla), (snap) => {

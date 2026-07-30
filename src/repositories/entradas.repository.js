@@ -15,6 +15,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   deleteField,
   onSnapshot,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -39,6 +40,9 @@ export async function registrarEntrada(jornadaKey, socioId, iso) {
 /** Borra el acceso de UN socio sin tocar los demás. */
 export const borrarEntrada = (jornadaKey, socioId) =>
   updateDoc(ref(jornadaKey), { [socioId]: deleteField() });
+
+/** Borra TODOS los accesos de una jornada. Solo lo usa el reinicio de datos. */
+export const borrarJornada = (jornadaKey) => deleteDoc(ref(jornadaKey));
 
 export function suscribirEntradas(callback) {
   return onSnapshot(collection(db, COLECCIONES.entradas), (snap) => {

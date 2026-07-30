@@ -670,6 +670,24 @@ canvas.chart-mini{max-height:240px}
       </div>
     </div>
     <div class="card"><div id="backup-lista" style="overflow-x:auto"></div></div>
+
+    <div class="card" id="zona-reinicio" style="display:none;border-color:rgba(232,53,74,.4)">
+      <h2>Reiniciar los datos de partido</h2>
+      <p class="nota">
+        Borra <strong>todas las entradas fichadas en la puerta y todas las ventas de taquilla</strong>,
+        de todas las jornadas, y reabre las que estuvieran cerradas. Pensado para dejar la
+        aplicación limpia al terminar las pruebas.
+      </p>
+      <p class="nota">
+        <strong>No se tocan</strong> los socios, el calendario de competiciones, los precios,
+        los usuarios ni las copias de seguridad. Se guarda una copia automática antes de borrar,
+        pero <strong>la operación no se puede deshacer</strong>.
+      </p>
+      <div class="row">
+        <button class="btn btn-danger" id="btn-reiniciar-jornadas">Reiniciar todas las jornadas</button>
+        <span class="msg" id="reinicio-msg"></span>
+      </div>
+    </div>
   </section>
 </div>
 

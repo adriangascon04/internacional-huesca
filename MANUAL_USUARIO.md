@@ -609,6 +609,41 @@ borra sola.
 >   crees que la necesitas, **no toques nada más** y pide ayuda antes de seguir
 >   usando la aplicación, para no sobrescribir lo que habría que recuperar.
 
+### 11.1. Reiniciar los datos de partido
+
+Abajo del todo de la misma pestaña, en un recuadro rojo, está **Reiniciar todas
+las jornadas** (solo admin).
+
+Sirve para **dejar la aplicación limpia al terminar las pruebas**: durante los
+ensayos se ficha gente inventada y se venden entradas de mentira, y eso ensucia
+las estadísticas de toda la temporada.
+
+**Qué borra:**
+
+- todas las **entradas fichadas** en la puerta, de todas las jornadas
+- todas las **ventas de taquilla**, de todas las jornadas
+- reabre las jornadas que estuvieran **cerradas**
+
+**Qué NO toca:** los socios, el calendario de competiciones, los precios, los
+usuarios y las copias de seguridad. Todo eso se queda como está.
+
+**Cómo funciona:**
+
+1. Te enseña **exactamente lo que va a borrar**, contado: cuántas entradas,
+   cuántas ventas y cuántas jornadas cerradas.
+2. Te pide escribir la palabra **BORRAR**. Es a propósito: un "¿estás seguro?"
+   normal se acepta sin leerlo.
+3. **Guarda una copia de seguridad automáticamente** antes de tocar nada, y si
+   esa copia falla no borra nada.
+
+> ⚠️ **No se puede deshacer.** La copia previa queda en la lista de arriba y
+> puedes descargarla, pero volver a meterla en la aplicación no es un botón (ver
+> el aviso de arriba). Úsalo cuando de verdad quieras empezar de cero.
+
+**Si lo que quieres es borrar también los socios de prueba**, eso no se puede
+hacer desde la aplicación a propósito: los socios nunca se borran de verdad, solo
+se dan de baja. Pídeselo a quien lleva el mantenimiento técnico.
+
 ---
 
 ## 12. Dar acceso a la gente del club
@@ -746,6 +781,10 @@ cambie si de verdad lo necesitas.
 **Como personal de la puerta, no puedo elegir el partido.**
 Es a propósito (8.1): solo puedes fichar en el que el admin haya fijado como
 jornada actual. Si es el equivocado, avisa a un admin.
+
+**Hemos estado probando y quiero dejarlo todo limpio para empezar de verdad.**
+Pestaña **Backup** → **Reiniciar todas las jornadas** (apartado 11.1). Borra los
+fichajes y las ventas de prueba y deja intactos los socios y el calendario.
 
 **Veo un partido repetido en las listas.**
 No debería pasar. Si ocurre, avisa al mantenimiento técnico.

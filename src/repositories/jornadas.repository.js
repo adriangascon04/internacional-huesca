@@ -8,6 +8,7 @@ import {
   collection,
   doc,
   setDoc,
+  deleteDoc,
   onSnapshot,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
@@ -19,6 +20,10 @@ export const bloquearJornada = (jornadaKey, bloqueada) =>
     // sensible del sistema; sin esto no se sabía quién la había reabierto.
     bloqueadaPor: session.email ?? null,
   });
+
+/** Quita el cierre de una jornada dejándola como si nunca se hubiera cerrado. */
+export const borrarBloqueo = (jornadaKey) =>
+  deleteDoc(doc(db, COLECCIONES.jornadasBloqueadas, jornadaKey));
 
 export function suscribirBloqueos(callback) {
   return onSnapshot(collection(db, COLECCIONES.jornadasBloqueadas), (snap) => {

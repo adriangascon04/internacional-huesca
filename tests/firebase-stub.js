@@ -22,6 +22,7 @@ export const onAuthStateChanged = noop;
 export const collection = fake('collection');
 export const doc = fake('doc');
 export const getDoc = fake('getDoc');
+export const getDocs = fake('getDocs');
 export const setDoc = fake('setDoc');
 export const updateDoc = fake('updateDoc');
 export const deleteDoc = fake('deleteDoc');

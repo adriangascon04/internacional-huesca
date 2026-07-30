@@ -6,6 +6,14 @@ import { esc } from '../../utils/sanitize.js';
 import { state } from '../../core/state.js';
 import { MAX_BACKUPS } from '../../config/app.config.js';
 import * as backup from '../../services/backup.service.js';
+import * as roles from '../../services/roles.service.js';
+import {
+  resumenReinicio,
+  reiniciarJornadas,
+} from '../../services/mantenimiento.service.js';
+
+/** Palabra que hay que teclear para confirmar el reinicio. */
+const PALABRA_CONFIRMACION = 'BORRAR';
 
 export function initBackup() {
   on($('#btn-crear-backup'), 'click', async () => {
@@ -18,9 +26,68 @@ export function initBackup() {
       msg.textContent = 'Error al crear la copia. Revisa tus permisos.';
     }
   });
+  on($('#btn-reiniciar-jornadas'), 'click', reiniciar);
+}
+
+/**
+ * Reinicio de los datos de partido. No se puede deshacer, así que:
+ *   1. se enseña exactamente lo que se va a borrar, contado;
+ *   2. se pide teclear una palabra — un `confirm()` a secas se acepta sin leer;
+ *   3. el servicio guarda una copia de seguridad antes de tocar nada.
+ */
+async function reiniciar() {
+  const msg = $('#reinicio-msg');
+  const r = resumenReinicio(state);
+
+  if (!r.jornadasConFichajes && !r.jornadasConVentas && !r.jornadasCerradas) {
+    msg.className = 'msg';
+    msg.textContent = 'No hay datos de partido que borrar: ya está todo a cero.';
+    return;
+  }
+
+  const respuesta = prompt(
+    `Se van a BORRAR los datos de partido de todas las jornadas:\n\n` +
+      `  · ${r.fichajes} entradas fichadas en la puerta (${r.jornadasConFichajes} jornadas)\n` +
+      `  · ${r.ventas} ventas de taquilla (${r.jornadasConVentas} jornadas)\n` +
+      `  · ${r.jornadasCerradas} jornadas cerradas volverán a abrirse\n\n` +
+      `NO se tocan los socios, ni el calendario, ni los precios, ni los usuarios.\n` +
+      `Se guardará una copia de seguridad antes de borrar.\n\n` +
+      `Esto NO se puede deshacer.\n\n` +
+      `Escribe ${PALABRA_CONFIRMACION} para continuar:`,
+  );
+  if (respuesta?.trim().toUpperCase() !== PALABRA_CONFIRMACION) {
+    msg.className = 'msg';
+    msg.textContent = 'Reinicio cancelado. No se ha borrado nada.';
+    return;
+  }
+
+  const btn = $('#btn-reiniciar-jornadas');
+  btn.disabled = true;
+  msg.className = 'msg';
+  msg.textContent = 'Guardando copia de seguridad y borrando…';
+  try {
+    const { resumen } = await reiniciarJornadas(state);
+    msg.className = 'msg msg-ok';
+    msg.textContent =
+      `Listo: borradas ${resumen.fichajes} entradas y ${resumen.ventas} ventas. ` +
+      `La copia de seguridad previa está en la lista de abajo.`;
+  } catch (e) {
+    console.error('Error al reiniciar las jornadas:', e);
+    msg.className = 'msg msg-err';
+    msg.textContent =
+      'No se ha podido completar el reinicio. Comprueba que sigues como admin y ' +
+      'que hay conexión. Revisa los datos antes de volver a intentarlo.';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 export function render() {
+  // El servidor ya lo impide, pero un botón de borrado masivo no debería ni
+  // verse si no puedes usarlo.
+  const zona = $('#zona-reinicio');
+  if (zona) zona.style.display = roles.esAdmin() ? 'block' : 'none';
+
   const cont = $('#backup-lista');
   if (!cont) return;
   const lista = state.backups;
