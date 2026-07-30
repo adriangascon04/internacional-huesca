@@ -21,6 +21,7 @@ import { suscribirEntradas } from './repositories/entradas.repository.js';
 import { suscribirTaquilla } from './repositories/taquilla.repository.js';
 import { suscribirBloqueos } from './repositories/jornadas.repository.js';
 import { suscribirJornadaActual } from './repositories/config.repository.js';
+import { suscribirCompeticiones } from './repositories/competiciones.repository.js';
 
 import * as sociosPage from './ui/pages/socios.page.js';
 import * as qrPage from './ui/pages/qr.page.js';
@@ -30,6 +31,7 @@ import * as statsPage from './ui/pages/stats.page.js';
 import * as importarPage from './ui/pages/importar.page.js';
 import * as backupPage from './ui/pages/backup.page.js';
 import * as jornadasPage from './ui/pages/jornadas.page.js';
+import * as competicionesPage from './ui/pages/competiciones.page.js';
 
 let suscripciones = [];
 let appIniciada = false;
@@ -56,6 +58,7 @@ function iniciarApp() {
   importarPage.initImportar();
   backupPage.initBackup();
   jornadasPage.initJornadas();
+  competicionesPage.initCompeticiones();
 
   // Suscripciones en tiempo real -> estado -> re-render de lo visible.
   suscripciones = [
@@ -73,6 +76,14 @@ function iniciarApp() {
     suscribirTaquilla((map) => {
       setState({ taquilla: map });
       taquillaPage.render();
+      if (state.tabActiva === 'stats') statsPage.render();
+    }),
+    suscribirCompeticiones((lista) => {
+      setState({ competiciones: lista });
+      competicionesPage.render();
+      scannerPage.rellenarSelect();
+      taquillaPage.rellenarSelect();
+      jornadasPage.rellenarSelectJornadaActual();
       if (state.tabActiva === 'stats') statsPage.render();
     }),
     suscribirBloqueos((map) => {
@@ -96,6 +107,7 @@ function onTabChange(tab) {
   if (tab !== 'scanner') scannerPage.pararCamaraSiActiva();
   if (tab === 'stats') statsPage.render();
   if (tab === 'taquilla') taquillaPage.render();
+  if (tab === 'competiciones') competicionesPage.render();
   if (tab === 'backup') backupPage.render();
   if (tab === 'taquilla' || tab === 'scanner') jornadasPage.render();
 }

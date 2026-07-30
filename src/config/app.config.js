@@ -8,27 +8,30 @@
 // --- Temporada activa (antes en un <option> y en localStorage) -------------
 export const TEMPORADA_ACTUAL = localStorage.getItem('hue_temporada') || '2026/27';
 
-// --- Jornadas ---------------------------------------------------------------
-export const NUM_JORNADAS = 17;
-
-// Firestore no admite '/' en los IDs de documento: por eso se sustituye por '-'.
+// Solo compatibilidad de migración para documentos y pruebas de la versión
+// anterior. La aplicación ya no usa esta lista para configurar su calendario.
 export const jKey = (j) => j.replace(/\//g, '-');
-
-/** Etiquetas visibles de las jornadas: "2026/27 - Jornada 01" */
-export function getPartidosLabel(temporada = TEMPORADA_ACTUAL) {
-  return Array.from(
-    { length: NUM_JORNADAS },
+export const getPartidosLabel = (temporada = TEMPORADA_ACTUAL) =>
+  Array.from(
+    { length: 17 },
     (_, i) => `${temporada} - Jornada ${String(i + 1).padStart(2, '0')}`,
   );
-}
+export const getPartidos = (temporada = TEMPORADA_ACTUAL) =>
+  getPartidosLabel(temporada).map(jKey);
 
-/** IDs de jornada (clave de Firestore, con '/' -> '-') */
-export function getPartidos(temporada = TEMPORADA_ACTUAL) {
-  return getPartidosLabel(temporada).map(jKey);
-}
-
-// --- Precios de taquilla (antes: window.PRECIOS y texto en el HTML) ---------
-export const PRECIOS_TAQUILLA = { general: 10, menor: 5 };
+// --- Precios por defecto ----------------------------------------------------
+// Son valores iniciales, no una lista cerrada: cada partido guarda su propia
+// tarifa y cada venta conserva el importe que realmente se cobró.
+export const TIPOS_ENTRADA_POR_DEFECTO = [
+  { id: 'general', nombre: 'Entrada general', precio: 10, nota: 'incluye sorteo' },
+  { id: 'menor', nombre: 'Entrada infantil', precio: 5 },
+  { id: 'socio', nombre: 'Socio con entrada incluida', precio: 0 },
+  { id: 'invitacion', nombre: 'Invitación', precio: 0 },
+];
+export const METODOS_PAGO = ['Bizum', 'TPV', 'Efectivo'];
+export const PRECIOS_TAQUILLA = { general: 10, menor: 5 }; // compatibilidad legacy
+export const tipoEntradaPorId = (id) =>
+  TIPOS_ENTRADA_POR_DEFECTO.find((tipo) => tipo.id === id);
 
 // --- Documento identificativo -----------------------------------------------
 // El club admite socios extranjeros, así que el DNI/NIE no puede ser el único
@@ -46,16 +49,46 @@ export const tipoDocDe = (socio) => socio?.tipoDoc || TIPO_DOC_DNI;
 // Los precios son de referencia (verifícalos con el club); no se usaban en la
 // lógica original salvo como texto, así que quedan centralizados aquí.
 export const TIPOS_ABONO = [
-  { id: 'Abono Familiar', precio: 170, asiste: true, gratuito: false },
-  { id: 'Abono General', precio: 95, asiste: true, gratuito: false },
-  { id: 'Abono Internacional', precio: 80, asiste: false, gratuito: false },
-  { id: 'Abono Academia', precio: 0, asiste: true, gratuito: true },
+  {
+    id: 'Abono Familiar',
+    nombre: 'Pack Familiar (2 adultos + hasta 3 hijos)',
+    precio: 170,
+    asiste: true,
+    gratuito: false,
+  },
+  {
+    id: 'Abono General',
+    nombre: 'Abono Normal',
+    precio: 95,
+    asiste: true,
+    gratuito: false,
+  },
+  {
+    id: 'Abono Internacional',
+    nombre: 'Internacional',
+    precio: 80,
+    asiste: false,
+    gratuito: false,
+  },
+  {
+    id: 'Abono Academia',
+    nombre: 'Jugadores de la escuela',
+    precio: 0,
+    asiste: true,
+    gratuito: true,
+  },
   { id: 'Abono Jubilado', precio: 75, asiste: true, gratuito: false },
   { id: 'Abono -16 años', precio: 50, asiste: true, gratuito: false },
 ];
 
+/** Etiqueta legible de un abono. Varios tipos no traen `nombre`: su id ya lo es. */
+export const nombreAbono = (tipo) =>
+  TIPOS_ABONO.find((t) => t.id === tipo)?.nombre || tipo;
+
 export const esGratuito = (tipo) =>
   TIPOS_ABONO.find((t) => t.id === tipo)?.gratuito === true;
+export const precioAbonoPorDefecto = (tipo) =>
+  TIPOS_ABONO.find((t) => t.id === tipo)?.precio ?? 0;
 export const asisteAlCampo = (tipo) =>
   TIPOS_ABONO.find((t) => t.id === tipo)?.asiste !== false;
 
@@ -112,6 +145,7 @@ export const COLECCIONES = {
   jornadasBloqueadas: 'jornadas_bloqueadas',
   backups: 'backups',
   usuarios: 'usuarios',
+  competiciones: 'competiciones',
   contadores: 'contadores',
   // Documento único (config/jornada_actual): cuál es la jornada "de hoy". El
   // portero solo puede escanear en ella; el admin puede elegir cualquiera

@@ -10,7 +10,16 @@ import { session } from '../core/session.js';
 import { setState } from '../core/state.js';
 import * as roles from '../services/roles.service.js';
 
-const TABS = ['socios', 'qr', 'scanner', 'taquilla', 'stats', 'import', 'backup'];
+const TABS = [
+  'socios',
+  'qr',
+  'scanner',
+  'taquilla',
+  'competiciones',
+  'stats',
+  'import',
+  'backup',
+];
 
 export function initLayout(onTabChange) {
   $('#user-label').textContent =
@@ -45,4 +54,5 @@ function aplicarPermisos() {
   ocultar('#form-alta', roles.puedeGestionarSocios());
   ocultar('.tab[data-tab="taquilla"]', roles.puedeVender());
   ocultar('.tab[data-tab="scanner"]', roles.puedeEscanear());
+  ocultar('.tab[data-tab="competiciones"]', roles.esAdmin());
 }

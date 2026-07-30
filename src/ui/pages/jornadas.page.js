@@ -11,7 +11,7 @@ import { state, estaBloqueada } from '../../core/state.js';
 import { bloquearJornada } from '../../repositories/jornadas.repository.js';
 import { fijarJornadaActual } from '../../repositories/config.repository.js';
 import { esAdmin } from '../../services/roles.service.js';
-import { getPartidos, getPartidosLabel } from '../../config/app.config.js';
+import { partidosDisponibles } from '../../services/competiciones.service.js';
 
 export function initJornadas() {
   on($('#btn-bloqueo-scanner'), 'click', () => toggle(state.partidoScanner));
@@ -35,15 +35,20 @@ async function toggle(jornada) {
   }
 }
 
-function rellenarSelectJornadaActual() {
+export function rellenarSelectJornadaActual() {
   const sel = $('#jornada-actual-sel');
   if (!sel) return;
-  const partidos = getPartidos();
-  const labels = getPartidosLabel();
+  const partidos = partidosDisponibles(state.competiciones, [
+    ...Object.keys(state.entradas),
+    ...Object.keys(state.taquilla),
+  ]);
   sel.innerHTML =
     '<option value="">— Selecciona jornada —</option>' +
     partidos
-      .map((p, i) => `<option value="${esc(p)}">${esc(labels[i])}</option>`)
+      .map(
+        (p) =>
+          `<option value="${esc(p.id)}">${esc(`${p.competicion ? p.competicion + ' · ' : ''}${p.nombre}`)}</option>`,
+      )
       .join('');
 }
 

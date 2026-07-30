@@ -13,6 +13,7 @@ export const state = {
   socios: [],
   entradas: {},
   taquilla: {},
+  competiciones: [],
   jornadasBloqueadas: {},
   jornadaActual: '', // jornada "de hoy": la fija el admin (ver jornadas.page.js)
   backups: [],

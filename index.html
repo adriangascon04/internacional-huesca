@@ -85,6 +85,17 @@ label{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-tra
   border-radius:20px;padding:1px 6px;margin-left:5px;
 }
 
+/* Recordatorio de tarifas (alta de socios y taquilla) · ui/tarifas.view.js */
+ul.tarifas{list-style:none;margin:10px 0;display:grid;gap:1px}
+ul.tarifas li{
+  display:flex;align-items:baseline;gap:8px;padding:5px 0;
+  border-bottom:1px solid var(--borde);
+}
+ul.tarifas li:last-child{border-bottom:0}
+ul.tarifas li span{flex:1;min-width:0}
+ul.tarifas li strong{font-variant-numeric:tabular-nums;white-space:nowrap}
+ul.tarifas li small{color:var(--txt3)}
+
 /* ═══ Botones ═════════════════════════════════════════════════════════════ */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:6px;
@@ -334,6 +345,7 @@ canvas.chart-mini{max-height:240px}
     <button class="tab" data-tab="qr">QRs</button>
     <button class="tab" data-tab="scanner">Escáner</button>
     <button class="tab" data-tab="taquilla">Taquilla</button>
+    <button class="tab" data-tab="competiciones">Competiciones</button>
     <button class="tab" data-tab="stats">Estadísticas</button>
     <button class="tab" data-tab="import">Importar</button>
     <button class="tab" data-tab="backup">Backup</button>
@@ -350,10 +362,13 @@ canvas.chart-mini{max-height:240px}
         <div><label for="f-tipodoc">Tipo de documento</label><select id="f-tipodoc"></select></div>
         <div><label for="f-dni">Nº de documento</label><input id="f-dni"></div>
         <div><label for="f-fnac">Fecha de nacimiento</label><input type="date" id="f-fnac"></div>
-        <div><label for="f-tel">Teléfono</label><input id="f-tel"></div>
-        <div><label for="f-email">Email</label><input type="email" id="f-email"></div>
+        <div><label for="f-tel">Teléfono <span class="opcional">opcional</span></label><input id="f-tel"></div>
+        <div><label for="f-email">Email <span class="opcional">opcional</span></label><input type="email" id="f-email"></div>
         <div><label for="f-tipo">Tipo de abono</label><select id="f-tipo"></select></div>
+        <div><label for="f-pago">Método de pago</label><select id="f-pago"></select></div>
+        <div><label for="f-importe">Importe cobrado (€)</label><input type="number" id="f-importe" min="0" step="0.01"></div>
       </div>
+      <div class="aviso" style="display:block;margin-top:14px" id="tarifas-abonos"></div>
       <div class="row" style="margin-top:14px">
         <button class="btn btn-primary" id="btn-alta">Añadir socio</button>
         <span class="spinner" id="add-spinner"></span>
@@ -471,17 +486,12 @@ canvas.chart-mini{max-height:240px}
       </div>
       <div class="aviso" id="aviso-bloqueada-taquilla">🔒 Esta jornada está cerrada. No se pueden vender entradas.</div>
       <div class="grid" style="margin-top:14px">
-        <div class="stat">
-          <div class="stat-n" id="contador-general">0</div>
-          <div class="stat-l">General · <span id="precio-general"></span></div>
-          <button class="btn btn-primary" id="btn-vender-general" style="margin-top:10px;width:100%">+1 General</button>
-        </div>
-        <div class="stat">
-          <div class="stat-n" id="contador-menor">0</div>
-          <div class="stat-l">Menor · <span id="precio-menor"></span></div>
-          <button class="btn btn-primary" id="btn-vender-menor" style="margin-top:10px;width:100%">+1 Menor</button>
-        </div>
+        <div><label for="taquilla-tipo">Tipo de entrada</label><select id="taquilla-tipo"></select></div>
+        <div><label for="taquilla-precio">Precio cobrado (€)</label><input type="number" id="taquilla-precio" min="0" step="0.01"></div>
+        <div><label for="taquilla-pago">Método de pago</label><select id="taquilla-pago"></select></div>
       </div>
+      <div class="aviso" style="display:block;margin-top:14px" id="tarifas-entradas"></div>
+      <div class="row" style="margin-top:14px"><button class="btn btn-primary" id="btn-vender-entrada">Cobrar entrada</button></div>
       <div class="row" style="margin-top:12px">
         <button class="btn" id="btn-deshacer-venta" style="display:none">↩ Deshacer última venta</button>
       </div>
@@ -489,12 +499,34 @@ canvas.chart-mini{max-height:240px}
     <div class="card"><div class="grid" id="taquilla-resumen"></div></div>
   </section>
 
+  <!-- ---------- COMPETICIONES ---------- -->
+  <section class="panel" id="panel-competiciones">
+    <div class="card" id="bloque-migrar-calendario" style="display:none">
+      <h2>Todavía no hay calendario</h2>
+      <p class="nota">Puedes crear las competiciones a mano abajo, o adoptar de una vez el calendario anterior de 17 jornadas. Los accesos y la taquilla ya registrados se conservan: los partidos se crean con la misma clave con la que están guardados.</p>
+      <div class="row"><button class="btn btn-primary" id="btn-migrar-calendario">Adoptar el calendario anterior</button></div>
+    </div>
+    <div class="card" id="gestion-competiciones">
+      <h2>Calendario configurable</h2>
+      <p class="nota">Crea competiciones y organiza sus partidos. Cada partido conserva sus precios propios.</p>
+      <div class="row"><input id="competicion-nombre" placeholder="Ej. Liga Territorial"><button class="btn btn-primary" id="btn-crear-competicion">Crear competición</button></div>
+      <div class="grid" style="margin-top:14px">
+        <div><label for="competicion-sel">Competición</label><select id="competicion-sel"></select></div>
+        <div><label for="partido-nombre">Partido / jornada</label><input id="partido-nombre" placeholder="Ej. Jornada 1 vs. Rival"></div>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="btn btn-primary" id="btn-anadir-partido">Añadir partido</button></div>
+    </div>
+    <div id="competiciones-lista"></div>
+  </section>
+
   <!-- ---------- ESTADÍSTICAS ---------- -->
   <section class="panel" id="panel-stats">
     <div class="card"><div class="grid" id="stats-cards"></div></div>
     <div class="card">
-      <h2>Asistencia por jornada</h2>
+      <h2>Recaudación de entradas por partido y tipo</h2>
+      <p class="nota">Cada barra es un partido; cada color, un tipo de entrada. La altura es el dinero, no el número de personas.</p>
       <canvas id="chart-taquilla"></canvas>
+      <div class="grid" id="economia-cards" style="margin-top:16px"></div>
     </div>
 
     <div class="card">
@@ -519,14 +551,15 @@ canvas.chart-mini{max-height:240px}
     </div>
 
     <div class="card">
-      <h2>Facturación</h2>
-      <div class="grid" id="facturacion-cards"></div>
+      <h2>Altas de socios · recaudación independiente</h2>
+      <div class="grid" id="altas-cards"></div>
       <div style="overflow-x:auto;margin-top:14px">
         <table>
-          <thead><tr><th>Tipo de abono</th><th>Socios</th><th>Cobrado</th><th>Pendiente</th></tr></thead>
-          <tbody id="facturacion-tabla"></tbody>
+          <thead><tr><th>Tipo de abono</th><th>Nuevos socios</th><th>Ingresos</th><th>Pendiente</th></tr></thead>
+          <tbody id="altas-tabla"></tbody>
         </table>
       </div>
+      <div style="margin-top:16px"><h2>Evolución temporal de altas</h2><canvas id="chart-altas" class="chart-mini"></canvas></div>
     </div>
 
     <div class="card">
@@ -566,6 +599,12 @@ canvas.chart-mini{max-height:240px}
           <tbody id="stats-tabla"></tbody>
         </table>
       </div>
+    </div>
+    <div class="card">
+      <h2>Recaudación por tipo de entrada</h2>
+      <div style="overflow-x:auto"><table><thead><tr><th>Tipo</th><th>Asistentes</th><th>Recaudación</th></tr></thead><tbody id="stats-entradas-tipos"></tbody></table></div>
+      <h2 style="margin-top:18px">Resumen por competición</h2>
+      <div style="overflow-x:auto"><table><thead><tr><th>Competición</th><th>Partidos</th><th>Asistentes</th><th>Recaudación</th></tr></thead><tbody id="stats-competiciones"></tbody></table></div>
     </div>
     <div class="card">
       <h2>Socios por tipo de abono</h2>
@@ -636,8 +675,8 @@ canvas.chart-mini{max-height:240px}
           <div><label for="e-tipodoc">Tipo de documento</label><select id="e-tipodoc"></select></div>
           <div><label for="e-dni">Nº de documento</label><input id="e-dni"></div>
           <div><label for="e-fnac">Fecha de nacimiento</label><input type="date" id="e-fnac"></div>
-          <div><label for="e-tel">Teléfono</label><input id="e-tel"></div>
-          <div><label for="e-email">Email</label><input type="email" id="e-email"></div>
+          <div><label for="e-tel">Teléfono <span class="opcional">opcional</span></label><input id="e-tel"></div>
+          <div><label for="e-email">Email <span class="opcional">opcional</span></label><input type="email" id="e-email"></div>
           <div><label for="e-tipo">Tipo de abono</label><select id="e-tipo"></select></div>
         </div>
         <div class="row" style="margin-top:12px">
