@@ -11,7 +11,13 @@ import * as repo from '../repositories/socios.repository.js';
 import { siguienteNumeroSocio } from '../repositories/contadores.repository.js';
 import { validarSocio, normalizarDoc } from '../utils/validators.js';
 import { generarTokenQR } from '../utils/token.js';
-import { esGratuito, carnetDe, TIPO_DOC_DNI } from '../config/app.config.js';
+import {
+  esGratuito,
+  carnetDe,
+  TIPO_DOC_DNI,
+  precioAbonoPorDefecto,
+  METODOS_PAGO,
+} from '../config/app.config.js';
 import { session } from '../core/session.js';
 
 let _socios = [];
@@ -53,6 +59,18 @@ export async function altaSocio(datos) {
     ap2: String(datos.ap2 || '').trim(), // opcional: mucha gente no tiene
   };
   const errores = validarSocio(datos);
+  // Un importe en blanco significa "cóbrale la tarifa de su abono", no 0 €.
+  // Con `??` a secas el '' del <input> vacío pasaba a Number('') = 0 y el alta
+  // se registraba como gratuita.
+  const importeIndicado = String(datos.importeAbono ?? '').trim();
+  const importeAbono =
+    importeIndicado === ''
+      ? precioAbonoPorDefecto(datos.tipo)
+      : Number(importeIndicado);
+  if (!Number.isFinite(importeAbono) || importeAbono < 0)
+    errores.push('El importe del abono no es válido.');
+  if (datos.metodoPago && !METODOS_PAGO.includes(datos.metodoPago))
+    errores.push('El método de pago no es válido.');
   if (errores.length) return { ok: false, errores };
   if (_socios.some((s) => s.dni === datos.dni && s.activo !== false)) {
     return { ok: false, errores: ['Ya existe un socio con ese documento.'] };
@@ -69,7 +87,11 @@ export async function altaSocio(datos) {
     numerico: num,
     carnet, // nº visible; se recalcula al renumerar la temporada
     alta: ahora,
-    pagado: esGratuito(datos.tipo),
+    // El importe y método quedan congelados en el alta. Así una modificación
+    // futura de tarifas no altera la recaudación histórica de socios.
+    importeAbono,
+    metodoPago: datos.metodoPago || null,
+    pagado: esGratuito(datos.tipo) || datos.pagado === true,
     activo: true,
     tokenQR: generarTokenQR(), // credencial del carnet (Upgrades #5)
     creadoPor: session.email, // auditoría

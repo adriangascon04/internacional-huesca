@@ -14,9 +14,12 @@ import {
   esFundador,
   TIPOS_ABONO,
   TIPOS_DOCUMENTO,
+  METODOS_PAGO,
+  precioAbonoPorDefecto,
   tipoDocDe,
   carnetDe,
 } from '../../config/app.config.js';
+import { pintarTarifasAbonos } from '../tarifas.view.js';
 import * as socios from '../../services/socios.service.js';
 import { historialSocio } from '../../services/stats.service.js';
 import * as roles from '../../services/roles.service.js';
@@ -35,6 +38,11 @@ export function initSocios() {
   $('#e-tipo').innerHTML = OPCIONES_TIPO;
   $('#f-tipodoc').innerHTML = OPCIONES_DOC;
   $('#e-tipodoc').innerHTML = OPCIONES_DOC;
+  $('#f-pago').innerHTML = METODOS_PAGO.map((m) => `<option>${esc(m)}</option>`).join('');
+  pintarTarifasAbonos($('#tarifas-abonos'));
+  on($('#f-tipo'), 'change', () => {
+    $('#f-importe').value = precioAbonoPorDefecto($('#f-tipo').value);
+  });
 
   on($('#buscador'), 'input', render);
   on($('#btn-alta'), 'click', onAlta);
@@ -172,6 +180,8 @@ async function onAlta() {
     tel: $('#f-tel').value.trim(),
     email: $('#f-email').value.trim(),
     tipo: $('#f-tipo').value,
+    metodoPago: $('#f-pago').value,
+    importeAbono: $('#f-importe').value,
   };
   $('#add-spinner').style.display = 'inline-flex';
   try {
@@ -188,6 +198,7 @@ async function onAlta() {
         },
       );
       $('#f-tipo').value = '';
+      $('#f-importe').value = '';
     }
   } catch {
     msg.className = 'msg msg-err';
@@ -221,6 +232,7 @@ function verPerfil(id) {
   const h = historialSocio({
     socioId: id,
     entradas: state.entradas,
+    competiciones: state.competiciones,
   });
 
   $('#perfil-nombre').textContent = `${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim();

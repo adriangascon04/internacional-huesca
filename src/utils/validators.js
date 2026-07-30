@@ -83,7 +83,7 @@ export function esTelefonoValido(valor) {
 
 // El segundo apellido NO entra aquí: mucha gente no tiene (extranjeros, y
 // españoles con un solo apellido registral). Exigirlo obligaba a inventárselo.
-const CAMPOS_OBLIGATORIOS = ['nombre', 'ap1', 'dni', 'fnac', 'tel', 'email', 'tipo'];
+const CAMPOS_OBLIGATORIOS = ['nombre', 'ap1', 'dni', 'fnac', 'tipo'];
 
 const ETIQUETA_CAMPO = {
   nombre: 'Nombre',

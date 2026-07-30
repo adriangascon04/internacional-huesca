@@ -140,8 +140,8 @@ test('validarSocio: el primer apellido SÍ sigue siendo obligatorio', () => {
   assert.ok(validarSocio({ ...SOCIO_OK, ap1: '' }).length > 0);
 });
 
-test('validarSocio: los errores nombran el campo en cristiano', () => {
-  const errores = validarSocio({ ...SOCIO_OK, tel: '' });
-  assert.ok(errores.some((e) => e.includes('Teléfono')));
+test('validarSocio: los errores nombran el campo en cristiano si se informa un teléfono inválido', () => {
+  const errores = validarSocio({ ...SOCIO_OK, tel: '123' });
+  assert.ok(errores.some((e) => e.toLowerCase().includes('teléfono')));
   assert.ok(!errores.some((e) => e.includes('"tel"')));
 });
