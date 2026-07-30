@@ -4,14 +4,14 @@
 //  puros; el pintado (tablas/gráfico) lo hace la página de stats.
 // ============================================================================
 import {
-  getPartidos,
-  getPartidosLabel,
   asisteAlCampo,
   tipoDocDe,
   esFundador,
+  precioAbonoPorDefecto,
   TIPOS_ABONO,
 } from '../config/app.config.js';
-import { recaudacion } from './taquilla.service.js';
+import { recaudacion, ventasDe } from './taquilla.service.js';
+import { partidosDisponibles } from './competiciones.service.js';
 
 /** Edad en años a partir de la fecha de nacimiento (null si no hay fecha). */
 export function edadDe(fnac) {
@@ -34,9 +34,11 @@ const GRUPOS_EDAD = [
   { label: '66+', min: 66, max: 200 },
 ];
 
-export function calcularStats({ socios, entradas, taquilla }) {
-  const partidos = getPartidos();
-  const labels = getPartidosLabel();
+export function calcularStats({ socios, entradas, taquilla, competiciones = [] }) {
+  const partidos = partidosDisponibles(competiciones, [
+    ...Object.keys(entradas),
+    ...Object.keys(taquilla),
+  ]);
   const conAsistencia = socios.filter((s) => asisteAlCampo(s.tipo)); // excluye Internacional
   const idsExcluidos = new Set(
     socios.filter((s) => !asisteAlCampo(s.tipo)).map((s) => s.id),
@@ -45,18 +47,35 @@ export function calcularStats({ socios, entradas, taquilla }) {
   const totalSocios = socios.length;
   const pendientesPago = socios.filter((s) => !s.pagado).length;
 
-  const porJornada = partidos.map((p, i) => {
-    const e = entradas[p] || {};
+  const porJornada = partidos.map((p) => {
+    const e = entradas[p.id] || {};
     const nSocios = Object.keys(e).filter((id) => !idsExcluidos.has(id)).length;
-    const d = taquilla[p] || {};
-    const nTaquilla = (d.general || 0) + (d.menor || 0);
+    const d = taquilla[p.id] || {};
+    const ventas = ventasDe(d);
+    const nTaquilla = ventas.length;
     return {
-      jornada: p,
-      label: labels[i],
+      jornada: p.id,
+      label: `${p.competicion ? p.competicion + ' · ' : ''}${p.nombre}`,
+      competicion: p.competicion || 'Histórico',
       nSocios,
       nTaquilla,
       totalAsistentes: nSocios + nTaquilla,
       recaudacion: recaudacion(d),
+      porTipo: Object.values(
+        ventas.reduce((m, v) => {
+          const tipo = v.tipo || 'otro';
+          const x = m[tipo] || {
+            tipo,
+            nombre: v.nombreTipo || tipo,
+            asistentes: 0,
+            recaudacion: 0,
+          };
+          x.asistentes++;
+          x.recaudacion += Number(v.precio || 0);
+          m[tipo] = x;
+          return m;
+        }, {}),
+      ),
     };
   });
 
@@ -68,11 +87,87 @@ export function calcularStats({ socios, entradas, taquilla }) {
   return {
     totalSocios,
     pendientesPago,
-    jornadasConDatos: Object.keys(entradas).length,
+    jornadasConDatos: porJornada.filter((j) => j.nSocios || j.nTaquilla).length,
     porJornada,
     tipos,
     recaudacionTotal: porJornada.reduce((a, j) => a + j.recaudacion, 0),
     baseAsistencia: conAsistencia.length,
+    tiposEntrada: Object.values(
+      porJornada
+        .flatMap((j) => j.porTipo)
+        .reduce((m, fila) => {
+          const actual = m[fila.tipo] || { ...fila, asistentes: 0, recaudacion: 0 };
+          actual.asistentes += fila.asistentes;
+          actual.recaudacion += fila.recaudacion;
+          m[fila.tipo] = actual;
+          return m;
+        }, {}),
+    ),
+    porCompeticion: Object.values(
+      porJornada.reduce((m, j) => {
+        const nombre = j.competicion || 'Histórico';
+        const actual = m[nombre] || {
+          competicion: nombre,
+          partidos: 0,
+          asistentes: 0,
+          recaudacion: 0,
+        };
+        actual.partidos++;
+        actual.asistentes += j.totalAsistentes;
+        actual.recaudacion += j.recaudacion;
+        m[nombre] = actual;
+        return m;
+      }, {}),
+    ),
+  };
+}
+
+/** Recaudación de altas, deliberadamente separada de la venta de entradas. */
+export function calcularAltasSocios({ socios = [] }) {
+  const porTipoMap = {};
+  const porMesMap = {};
+  let nuevosSocios = 0;
+  let ingresos = 0;
+  let pendientes = 0;
+  socios.forEach((s) => {
+    // Una baja no borra una alta ni el dinero cobrado en ese momento.
+    nuevosSocios++;
+    // Importe REALMENTE cobrado en el alta. Los socios anteriores a que se
+    // guardara ese campo caen a la tarifa de referencia de su tipo de abono.
+    const importe = Number.isFinite(Number(s.importeAbono))
+      ? Number(s.importeAbono)
+      : precioAbonoPorDefecto(s.tipo);
+    const fila = porTipoMap[s.tipo] || {
+      tipo: s.tipo || 'Sin tipo',
+      socios: 0,
+      ingresos: 0,
+      pendiente: 0,
+    };
+    fila.socios++;
+    if (s.pagado) {
+      fila.ingresos += importe;
+      ingresos += importe;
+    } else {
+      fila.pendiente += importe;
+      pendientes += importe;
+    }
+    porTipoMap[s.tipo] = fila;
+    if (s.alta) {
+      const mes = String(s.alta).slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(mes)) {
+        const dato = porMesMap[mes] || { mes, socios: 0, ingresos: 0 };
+        dato.socios++;
+        if (s.pagado) dato.ingresos += importe;
+        porMesMap[mes] = dato;
+      }
+    }
+  });
+  return {
+    nuevosSocios,
+    ingresos,
+    pendientes,
+    porTipo: Object.values(porTipoMap),
+    evolucion: Object.values(porMesMap).sort((a, b) => a.mes.localeCompare(b.mes)),
   };
 }
 
@@ -142,49 +237,33 @@ export function calcularDemografia({ socios }) {
 }
 
 // ============================================================================
-//  Facturación: ingreso de cuotas de socio + taquilla.
+//  Economía de la venta de entradas.
+//
+//  Deliberadamente NO toca las cuotas de socio: de eso se ocupa
+//  `calcularAltasSocios`, que es la única fuente de la recaudación por altas.
+//  Antes había aquí una `calcularFacturacion` que recalculaba las cuotas a
+//  partir de la tarifa de `TIPOS_ABONO`, así que ignoraba el importe que
+//  REALMENTE se cobró en el alta (`importeAbono`) y daba una cifra distinta a
+//  la del apartado de altas. `ingresoAltas` se recibe ya calculado para poder
+//  repartir el ingreso total entre las dos vías sin duplicar el cálculo.
 // ============================================================================
 
-const precioDe = (tipo) => TIPOS_ABONO.find((t) => t.id === tipo)?.precio || 0;
-
 /**
- * Ingresos por cuotas de socio (activos), desglosados en cobrado/pendiente
- * según el campo `pagado`, más el total de taquilla ya calculado en
- * `calcularStats`. Los precios de `TIPOS_ABONO` son de referencia (verifícalos
- * con el club) y hasta ahora no se usaban para nada: es la primera vez que se
- * traducen a una cifra de facturación.
- * @returns {{cuotasCobradas:number, cuotasPendientes:number,
- *            recaudacionTaquilla:number, totalEstimado:number,
- *            porTipo:Array, jornadaMax:object|null, jornadaMin:object|null}}
+ * @param {object} p
+ * @param {Array}  p.porJornada    Filas de `calcularStats`.
+ * @param {number} p.ingresoAltas  Cobrado por altas (`calcularAltasSocios().ingresos`).
+ * @returns {{recaudacionTaquilla:number, entradasVendidas:number,
+ *            ticketMedioTaquilla:number, recaudacionMediaJornada:number,
+ *            jornadaMax:object|null, jornadaMin:object|null,
+ *            ingresoTotal:number, pctIngresoAltas:number,
+ *            pctIngresoTaquilla:number}}
  */
-export function calcularFacturacion({ socios, porJornada = [] }) {
-  const activos = socios.filter((s) => s.activo !== false);
+export function calcularEconomiaEntradas({ porJornada = [], ingresoAltas = 0 } = {}) {
+  const recaudacionTaquilla = porJornada.reduce((a, j) => a + (j.recaudacion || 0), 0);
+  const entradasVendidas = porJornada.reduce((a, j) => a + (j.nTaquilla || 0), 0);
 
-  let cuotasCobradas = 0;
-  let cuotasPendientes = 0;
-  const porTipo = TIPOS_ABONO.map((t) => ({
-    tipo: t.id,
-    socios: 0,
-    cobrado: 0,
-    pendiente: 0,
-  }));
-  const idxPorTipo = new Map(porTipo.map((t, i) => [t.tipo, i]));
-
-  activos.forEach((s) => {
-    const precio = precioDe(s.tipo);
-    const fila = porTipo[idxPorTipo.get(s.tipo)];
-    if (!fila) return; // tipo desconocido/legacy: no se contabiliza
-    fila.socios += 1;
-    if (s.pagado) {
-      fila.cobrado += precio;
-      cuotasCobradas += precio;
-    } else {
-      fila.pendiente += precio;
-      cuotasPendientes += precio;
-    }
-  });
-
-  const recaudacionTaquilla = porJornada.reduce((a, j) => a + j.recaudacion, 0);
+  // "Jornada con más/menos taquilla" solo tiene sentido entre las que han
+  // recaudado algo: si no, la mínima sería siempre una jornada sin jugar.
   const conRecaudacion = porJornada.filter((j) => j.recaudacion > 0);
   const jornadaMax = conRecaudacion.length
     ? conRecaudacion.reduce((a, j) => (j.recaudacion > a.recaudacion ? j : a))
@@ -193,33 +272,23 @@ export function calcularFacturacion({ socios, porJornada = [] }) {
     ? conRecaudacion.reduce((a, j) => (j.recaudacion < a.recaudacion ? j : a))
     : null;
 
-  // Métricas derivadas: ticket medio de taquilla, reparto del ingreso entre
-  // cuotas y taquilla, morosidad y recaudación media por jornada jugada.
-  const entradasTaquilla = porJornada.reduce((a, j) => a + (j.nTaquilla || 0), 0);
-  const totalCuotas = cuotasCobradas + cuotasPendientes;
-  const ingresoTotal = cuotasCobradas + recaudacionTaquilla;
+  const ingresoTotal = ingresoAltas + recaudacionTaquilla;
+  const reparto = (parte) => (ingresoTotal ? Math.round((parte / ingresoTotal) * 100) : 0);
 
   return {
-    cuotasCobradas,
-    cuotasPendientes,
     recaudacionTaquilla,
-    totalEstimado: ingresoTotal,
-    porTipo,
-    jornadaMax,
-    jornadaMin,
-    ticketMedioTaquilla: entradasTaquilla
-      ? Math.round(recaudacionTaquilla / entradasTaquilla)
-      : 0,
-    morosidadPct: totalCuotas ? Math.round((cuotasPendientes / totalCuotas) * 100) : 0,
-    pctIngresoCuotas: ingresoTotal
-      ? Math.round((cuotasCobradas / ingresoTotal) * 100)
-      : 0,
-    pctIngresoTaquilla: ingresoTotal
-      ? Math.round((recaudacionTaquilla / ingresoTotal) * 100)
+    entradasVendidas,
+    ticketMedioTaquilla: entradasVendidas
+      ? Math.round(recaudacionTaquilla / entradasVendidas)
       : 0,
     recaudacionMediaJornada: conRecaudacion.length
       ? Math.round(recaudacionTaquilla / conRecaudacion.length)
       : 0,
+    jornadaMax,
+    jornadaMin,
+    ingresoTotal,
+    pctIngresoAltas: reparto(ingresoAltas),
+    pctIngresoTaquilla: reparto(recaudacionTaquilla),
   };
 }
 
@@ -243,14 +312,17 @@ export function calcularAsistencia({ socios, entradas, porJornada = [] }) {
     ? Math.round(conDatos.reduce((a, j) => a + j.nSocios, 0) / conDatos.length)
     : 0;
 
-  const jornadasConDatos = getPartidos().filter(
+  const partidos = porJornada.length
+    ? porJornada.map((j) => j.jornada)
+    : partidosDisponibles([], Object.keys(entradas)).map((p) => p.id);
+  const jornadasConDatos = partidos.filter(
     (j) => Object.keys(entradas[j] || {}).length,
   ).length;
 
   const activos = socios.filter((s) => s.activo !== false && asisteAlCampo(s.tipo));
   const ranking = activos
     .map((s) => {
-      const asistidas = getPartidos().filter((j) => entradas[j]?.[s.id]).length;
+      const asistidas = partidos.filter((j) => entradas[j]?.[s.id]).length;
       return {
         socio: s,
         asistidas,
@@ -264,7 +336,7 @@ export function calcularAsistencia({ socios, entradas, porJornada = [] }) {
     const mediaAsistencia = deEsteTipo.length
       ? Math.round(
           (deEsteTipo.reduce(
-            (a, s) => a + getPartidos().filter((j) => entradas[j]?.[s.id]).length,
+            (a, s) => a + partidos.filter((j) => entradas[j]?.[s.id]).length,
             0,
           ) /
             deEsteTipo.length /
@@ -295,7 +367,7 @@ export function calcularAsistencia({ socios, entradas, porJornada = [] }) {
   // el personal de puerta (¿llegan justos o repartidos?).
   const franjasMap = {};
   let totalFichajes = 0;
-  getPartidos().forEach((j) => {
+  partidos.forEach((j) => {
     Object.values(entradas[j] || {}).forEach((iso) => {
       const h = new Date(iso).getHours();
       if (!Number.isNaN(h)) {
@@ -312,7 +384,8 @@ export function calcularAsistencia({ socios, entradas, porJornada = [] }) {
     : null;
 
   const base = activos.length; // activos que asisten al campo
-  const ocupacionMedia = base && conDatos.length ? Math.round((asistenciaMedia / base) * 100) : 0;
+  const ocupacionMedia =
+    base && conDatos.length ? Math.round((asistenciaMedia / base) * 100) : 0;
 
   return {
     jornadaMax,
@@ -342,21 +415,26 @@ export function calcularAsistencia({ socios, entradas, porJornada = [] }) {
  *
  * @returns {{partidos:Array, asistidos:number, jornadasConDatos:number, pct:number}}
  */
-export function historialSocio({ socioId, entradas = {} }) {
-  const labels = getPartidosLabel();
-  const partidos = getPartidos()
-    .map((j, i) => {
+export function historialSocio({ socioId, entradas = {}, competiciones = [] }) {
+  const partidosConfigurados = partidosDisponibles(competiciones, Object.keys(entradas));
+  const partidos = partidosConfigurados
+    .map((p) => {
+      const j = p.id;
       const entrada = entradas[j]?.[socioId];
       if (!entrada) return null;
-      return { jornada: j, label: labels[i], entrada };
+      return {
+        jornada: j,
+        label: p.competicion ? `${p.competicion} · ${p.nombre}` : p.nombre,
+        entrada,
+      };
     })
     .filter(Boolean);
 
   // El % se calcula sobre las jornadas que YA se han jugado (las que tienen
   // algún registro), no sobre las 17 de la temporada: en la jornada 3 nadie
   // tiene un 18% de asistencia, tiene un 100% de lo jugado.
-  const jornadasConDatos = getPartidos().filter(
-    (j) => Object.keys(entradas[j] || {}).length,
+  const jornadasConDatos = partidosConfigurados.filter(
+    (p) => Object.keys(entradas[p.id] || {}).length,
   ).length;
 
   return {

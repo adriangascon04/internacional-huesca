@@ -8,7 +8,8 @@ import { state } from '../../core/state.js';
 import { claseAsistencia, carnetDe } from '../../config/app.config.js';
 import {
   calcularStats,
-  calcularFacturacion,
+  calcularAltasSocios,
+  calcularEconomiaEntradas,
   calcularAsistencia,
   calcularDemografia,
 } from '../../services/stats.service.js';
@@ -16,6 +17,7 @@ import {
 let chart = null;
 let chartFranjas = null;
 let chartFidelidad = null;
+let chartAltas = null;
 
 const pct = (n, total) => (total ? Math.round((n / total) * 100) : 0);
 
@@ -24,6 +26,7 @@ export function render() {
     socios: state.socios,
     entradas: state.entradas,
     taquilla: state.taquilla,
+    competiciones: state.competiciones,
   });
 
   $('#stats-cards').innerHTML = `
@@ -49,10 +52,50 @@ export function render() {
       .join('') || '<tr><td colspan="2">Sin datos</td></tr>';
 
   $('#stats-recaudacion').textContent = euros(s.recaudacionTotal);
+  $('#stats-entradas-tipos').innerHTML =
+    s.tiposEntrada
+      .map(
+        (t) =>
+          `<tr><td>${esc(t.nombre || t.tipo)}</td><td>${t.asistentes}</td><td>${euros(t.recaudacion)}</td></tr>`,
+      )
+      .join('') || '<tr><td colspan="3">Sin ventas</td></tr>';
+  $('#stats-competiciones').innerHTML =
+    s.porCompeticion
+      .map(
+        (c) =>
+          `<tr><td>${esc(c.competicion)}</td><td>${c.partidos}</td><td>${c.asistentes}</td><td>${euros(c.recaudacion)}</td></tr>`,
+      )
+      .join('') || '<tr><td colspan="4">Sin datos</td></tr>';
+  // Las altas se calculan UNA vez: las pinta su propio apartado y además
+  // aportan el ingreso real por cuotas con el que se reparte el total.
+  const altas = calcularAltasSocios({ socios: state.socios });
+
   pintarGrafico(s);
+  renderEconomia(s, altas);
   renderDemografia();
-  renderFacturacion(s);
+  renderAltasSocios(altas);
   renderAsistencia(s);
+}
+
+/**
+ * Cifras globales de la venta de entradas. No repite las cuotas de socio: solo
+ * recibe su total ya calculado para poder mostrar el reparto del ingreso.
+ */
+function renderEconomia(s, altas) {
+  const cont = $('#economia-cards');
+  if (!cont) return;
+  const e = calcularEconomiaEntradas({
+    porJornada: s.porJornada,
+    ingresoAltas: altas.ingresos,
+  });
+
+  cont.innerHTML = `
+    <div class="stat"><div class="stat-n">${euros(e.recaudacionTaquilla)}</div><div class="stat-l">Recaudación por entradas<br><small>${e.entradasVendidas} entradas vendidas</small></div></div>
+    <div class="stat"><div class="stat-n">${euros(e.ticketMedioTaquilla)}</div><div class="stat-l">Ticket medio por entrada</div></div>
+    <div class="stat"><div class="stat-n">${euros(e.recaudacionMediaJornada)}</div><div class="stat-l">Recaudación media por partido jugado</div></div>
+    <div class="stat"><div class="stat-n">${euros(e.ingresoTotal)}</div><div class="stat-l">Ingreso total de la temporada<br><small>${e.pctIngresoAltas}% altas · ${e.pctIngresoTaquilla}% entradas</small></div></div>
+    ${e.jornadaMax ? `<div class="stat"><div class="stat-n">${euros(e.jornadaMax.recaudacion)}</div><div class="stat-l">Mejor taquilla<br>${esc(e.jornadaMax.label)}</div></div>` : ''}
+    ${e.jornadaMin ? `<div class="stat"><div class="stat-n">${euros(e.jornadaMin.recaudacion)}</div><div class="stat-l">Peor taquilla<br>${esc(e.jornadaMin.label)}</div></div>` : ''}`;
 }
 
 // ============================================================================
@@ -93,34 +136,24 @@ function renderDemografia() {
 }
 
 // ============================================================================
-//  Facturación: cuotas de socio (cobrado/pendiente) + taquilla.
+//  Recaudación por altas de socios. Apartado independiente de la venta de
+//  entradas: aquí solo entra el dinero de las cuotas de abono.
 // ============================================================================
 
-function renderFacturacion(s) {
-  const f = calcularFacturacion({
-    socios: state.socios,
-    porJornada: s.porJornada,
-  });
+function renderAltasSocios(f) {
+  $('#altas-cards').innerHTML = `
+    <div class="stat"><div class="stat-n">${f.nuevosSocios}</div><div class="stat-l">Nuevos socios</div></div>
+    <div class="stat"><div class="stat-n">${euros(f.ingresos)}</div><div class="stat-l">Ingresos cobrados</div></div>
+    <div class="stat"><div class="stat-n">${euros(f.pendientes)}</div><div class="stat-l">Pendiente de cobro</div></div>`;
 
-  $('#facturacion-cards').innerHTML = `
-    <div class="stat"><div class="stat-n">${euros(f.cuotasCobradas)}</div><div class="stat-l">Cuotas cobradas</div></div>
-    <div class="stat"><div class="stat-n">${euros(f.cuotasPendientes)}</div><div class="stat-l">Cuotas pendientes<br><small>${f.morosidadPct}% de morosidad</small></div></div>
-    <div class="stat"><div class="stat-n">${euros(f.recaudacionTaquilla)}</div><div class="stat-l">Taquilla</div></div>
-    <div class="stat"><div class="stat-n">${euros(f.totalEstimado)}</div><div class="stat-l">Facturación total estimada<br><small>(cuotas cobradas + taquilla)</small></div></div>
-    <div class="stat"><div class="stat-n">${f.pctIngresoCuotas}% / ${f.pctIngresoTaquilla}%</div><div class="stat-l">Reparto del ingreso<br><small>cuotas / taquilla</small></div></div>
-    <div class="stat"><div class="stat-n">${euros(f.ticketMedioTaquilla)}</div><div class="stat-l">Ticket medio de taquilla</div></div>
-    <div class="stat"><div class="stat-n">${euros(f.recaudacionMediaJornada)}</div><div class="stat-l">Taquilla media por jornada</div></div>
-    ${f.jornadaMax ? `<div class="stat"><div class="stat-n">${euros(f.jornadaMax.recaudacion)}</div><div class="stat-l">Mejor taquilla<br>${esc(f.jornadaMax.label)}</div></div>` : ''}
-    ${f.jornadaMin ? `<div class="stat"><div class="stat-n">${euros(f.jornadaMin.recaudacion)}</div><div class="stat-l">Peor taquilla<br>${esc(f.jornadaMin.label)}</div></div>` : ''}`;
-
-  $('#facturacion-tabla').innerHTML =
+  $('#altas-tabla').innerHTML =
     f.porTipo
-      .filter((t) => t.socios > 0)
       .map(
         (t) =>
-          `<tr><td>${esc(t.tipo)}</td><td>${t.socios}</td><td>${euros(t.cobrado)}</td><td>${euros(t.pendiente)}</td></tr>`,
+          `<tr><td>${esc(t.tipo)}</td><td>${t.socios}</td><td>${euros(t.ingresos)}</td><td>${euros(t.pendiente)}</td></tr>`,
       )
       .join('') || '<tr><td colspan="4">Sin datos</td></tr>';
+  pintarAltas(f);
 }
 
 // ============================================================================
@@ -172,47 +205,69 @@ function pintarGrafico(s) {
   const ctx = $('#chart-taquilla');
   if (!ctx || typeof Chart === 'undefined') return;
   if (chart) chart.destroy();
-  // Tendencia: media móvil simple de 3 jornadas.
-  const totales = s.porJornada.map((j) => j.totalAsistentes);
-  const tendencia = totales.map((_, i) => {
-    const ventana = totales.slice(Math.max(0, i - 2), i + 1);
-    return Math.round(ventana.reduce((a, b) => a + b, 0) / ventana.length);
-  });
+  const tipos = [
+    ...new Map(s.tiposEntrada.map((t) => [t.tipo, t.nombre || t.tipo])).entries(),
+  ];
+  const colores = ['#185FA5', '#22c55e', '#eab308', '#E8354A', '#7c3aed', '#f97316'];
 
   // eslint-disable-next-line no-undef
   chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: s.porJornada.map((j) => 'J' + j.label.split('Jornada ')[1]),
+      labels: s.porJornada.map((j) => j.label),
+      datasets: tipos.map(([tipo, nombre], i) => ({
+        label: nombre,
+        data: s.porJornada.map(
+          (j) => j.porTipo.find((t) => t.tipo === tipo)?.recaudacion || 0,
+        ),
+        backgroundColor: colores[i % colores.length],
+        borderRadius: 4,
+      })),
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
+      },
+    },
+  });
+}
+
+function pintarAltas(f) {
+  const ctx = $('#chart-altas');
+  if (!ctx || typeof Chart === 'undefined') return;
+  if (chartAltas) chartAltas.destroy();
+  // eslint-disable-next-line no-undef
+  chartAltas = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: f.evolucion.map((e) => e.mes),
       datasets: [
         {
-          label: 'Socios',
-          data: s.porJornada.map((j) => j.nSocios),
+          label: 'Nuevos socios',
+          data: f.evolucion.map((e) => e.socios),
           backgroundColor: '#185FA5',
-          borderRadius: 4,
+          yAxisID: 'y',
         },
         {
-          label: 'Taquilla',
-          data: s.porJornada.map((j) => j.nTaquilla),
-          backgroundColor: '#888',
-          borderRadius: 4,
-        },
-        {
-          label: 'Tendencia (media 3)',
-          data: tendencia,
+          label: 'Ingresos (€)',
+          data: f.evolucion.map((e) => e.ingresos),
           type: 'line',
-          borderColor: '#eab308',
-          tension: 0.35,
-          pointRadius: 3,
-          fill: false,
+          borderColor: '#22c55e',
+          yAxisID: 'y1',
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      scales: {
+        y: { beginAtZero: true },
+        y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } },
+      },
     },
   });
 }

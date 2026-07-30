@@ -7,9 +7,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   historialSocio,
-  calcularFacturacion,
+  calcularEconomiaEntradas,
   calcularAsistencia,
   calcularDemografia,
+  calcularStats,
+  calcularAltasSocios,
   edadDe,
 } from '../src/services/stats.service.js';
 import { getPartidos } from '../src/config/app.config.js';
@@ -58,35 +60,44 @@ test('historial: se indexa por id interno, así que renumerar no lo descoloca', 
   assert.equal(h.asistidos, 1);
 });
 
-// --- Facturación --------------------------------------------------------------
+// --- Economía de la venta de entradas ----------------------------------------
 
-test('facturacion: separa cuotas cobradas de pendientes por tipo de abono', () => {
-  const socios = [
-    { id: '1', activo: true, tipo: 'Abono General', pagado: true },
-    { id: '2', activo: true, tipo: 'Abono General', pagado: false },
-    { id: '3', activo: true, tipo: 'Abono Familiar', pagado: true },
-  ];
-  const f = calcularFacturacion({ socios, taquilla: {}, porJornada: [] });
-  assert.equal(f.cuotasCobradas, 95 + 170);
-  assert.equal(f.cuotasPendientes, 95);
-  assert.equal(f.totalEstimado, f.cuotasCobradas); // sin taquilla
-});
-
-test('facturacion: ignora socios dados de baja', () => {
-  const socios = [{ id: '1', activo: false, tipo: 'Abono General', pagado: true }];
-  const f = calcularFacturacion({ socios, taquilla: {}, porJornada: [] });
-  assert.equal(f.cuotasCobradas, 0);
-});
-
-test('facturacion: encuentra la jornada de mejor y peor taquilla', () => {
+test('economia: encuentra la jornada de mejor y peor taquilla', () => {
   const porJornada = [
     { jornada: J[0], label: 'J1', recaudacion: 100 },
     { jornada: J[1], label: 'J2', recaudacion: 40 },
   ];
-  const f = calcularFacturacion({ socios: [], taquilla: {}, porJornada });
-  assert.equal(f.jornadaMax.label, 'J1');
-  assert.equal(f.jornadaMin.label, 'J2');
-  assert.equal(f.recaudacionTaquilla, 140);
+  const e = calcularEconomiaEntradas({ porJornada });
+  assert.equal(e.jornadaMax.label, 'J1');
+  assert.equal(e.jornadaMin.label, 'J2');
+  assert.equal(e.recaudacionTaquilla, 140);
+});
+
+test('economia: las jornadas sin recaudar no cuentan como "peor taquilla"', () => {
+  const porJornada = [
+    { jornada: J[0], label: 'J1', recaudacion: 100 },
+    { jornada: J[1], label: 'J2 sin jugar', recaudacion: 0 },
+  ];
+  const e = calcularEconomiaEntradas({ porJornada });
+  assert.equal(e.jornadaMin.label, 'J1');
+  assert.equal(e.recaudacionMediaJornada, 100); // media de LO jugado
+});
+
+test('economia: ticket medio y reparto del ingreso frente a las altas', () => {
+  const porJornada = [{ jornada: J[0], label: 'J1', recaudacion: 100, nTaquilla: 10 }];
+  const e = calcularEconomiaEntradas({ porJornada, ingresoAltas: 300 });
+  assert.equal(e.ticketMedioTaquilla, 10); // 100 € / 10 entradas
+  assert.equal(e.ingresoTotal, 400);
+  assert.equal(e.pctIngresoAltas, 75);
+  assert.equal(e.pctIngresoTaquilla, 25);
+});
+
+test('economia: sin datos no divide por cero', () => {
+  const e = calcularEconomiaEntradas();
+  assert.equal(e.ingresoTotal, 0);
+  assert.equal(e.ticketMedioTaquilla, 0);
+  assert.equal(e.pctIngresoAltas, 0);
+  assert.equal(e.jornadaMax, null);
 });
 
 // --- Asistencia ----------------------------------------------------------------
@@ -137,15 +148,43 @@ test('asistencia: franjas horarias y hora punta', () => {
   assert.equal(a.horaPico.n, 2);
 });
 
-test('facturacion: ticket medio y morosidad', () => {
-  const socios = [
-    { id: '1', activo: true, tipo: 'Abono General', pagado: true }, // 95 cobrado
-    { id: '2', activo: true, tipo: 'Abono General', pagado: false }, // 95 pendiente
-  ];
-  const porJornada = [{ jornada: J[0], label: 'J1', recaudacion: 100, nTaquilla: 10 }];
-  const f = calcularFacturacion({ socios, porJornada });
-  assert.equal(f.ticketMedioTaquilla, 10); // 100€ / 10 entradas
-  assert.equal(f.morosidadPct, 50); // 95 pendiente de 190 total
+test('stats: agrupa recaudación y asistentes por tipo de entrada y competición', () => {
+  const competiciones = [{ id: 'liga', nombre: 'Liga', partidos: [{ id: 'p1', nombre: 'Jornada 1', orden: 0 }] }];
+  const s = calcularStats({ socios: [], entradas: {}, competiciones, taquilla: { p1: { historial: [
+    { tipo: 'general', nombreTipo: 'General', precio: 12 },
+    { tipo: 'invitacion', nombreTipo: 'Invitación', precio: 0 },
+  ] } } });
+  assert.equal(s.recaudacionTotal, 12);
+  assert.deepEqual(s.tiposEntrada.map((t) => [t.tipo, t.asistentes, t.recaudacion]), [['general', 1, 12], ['invitacion', 1, 0]]);
+  assert.equal(s.porCompeticion[0].competicion, 'Liga');
+  assert.equal(s.porCompeticion[0].asistentes, 2);
+});
+
+test('altas: conserva el importe cobrado y no mezcla taquilla', () => {
+  const altas = calcularAltasSocios({ socios: [
+    { tipo: 'Abono General', importeAbono: 80, pagado: true, alta: '2026-08-02T10:00:00Z' },
+    { tipo: 'Abono General', importeAbono: 95, pagado: false, alta: '2026-08-05T10:00:00Z' },
+  ] });
+  assert.equal(altas.nuevosSocios, 2);
+  assert.equal(altas.ingresos, 80);
+  assert.equal(altas.pendientes, 95);
+  assert.deepEqual(altas.evolucion, [{ mes: '2026-08', socios: 2, ingresos: 80 }]);
+});
+
+test('altas: un socio anterior a importeAbono cae a la tarifa de su abono', () => {
+  // Socios dados de alta antes de que se guardara el importe: no tienen el
+  // campo, y su cuota debe valorarse con el precio de referencia de su tipo.
+  const altas = calcularAltasSocios({
+    socios: [{ tipo: 'Abono General', pagado: true }],
+  });
+  assert.equal(altas.ingresos, 95);
+});
+
+test('altas: un importe de 0 € se respeta y no se confunde con "sin dato"', () => {
+  const altas = calcularAltasSocios({
+    socios: [{ tipo: 'Abono General', importeAbono: 0, pagado: true }],
+  });
+  assert.equal(altas.ingresos, 0);
 });
 
 // --- Demografía ----------------------------------------------------------------
