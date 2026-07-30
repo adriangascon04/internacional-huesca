@@ -299,7 +299,11 @@ code{
   border-top-color:var(--azul-claro);border-radius:50%;animation:spin .7s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-canvas#chart-taquilla{max-height:300px}
+/* Los gráficos usan maintainAspectRatio:false, así que SIN un tope de altura
+   crecen hasta donde les deje el contenedor: en el móvil eso son barras
+   kilométricas. Es una clase y no un #id a propósito — con la regla atada al
+   id, el siguiente gráfico que se añada vuelve a nacer sin tope. */
+canvas.chart-grande{max-height:300px}
 canvas.chart-mini{max-height:240px}
 #qr-preview img,#qr-preview canvas{border-radius:10px;padding:12px;background:#fff}
 
@@ -544,14 +548,14 @@ canvas.chart-mini{max-height:240px}
     <div class="card">
       <h2>Recaudación de entradas por partido y tipo</h2>
       <p class="nota">Cada barra es un partido; cada color, un tipo de entrada. La altura es el dinero, no el número de personas.</p>
-      <canvas id="chart-taquilla"></canvas>
+      <canvas id="chart-taquilla" class="chart-grande"></canvas>
       <div class="grid" id="economia-cards" style="margin-top:16px"></div>
     </div>
 
     <div class="card">
       <h2>Asistentes por partido y tipo</h2>
       <p class="nota">El mismo desglose contando <strong>personas</strong> en vez de dinero. Aquí sí salen los abonados que entran con su QR: no pagan en la puerta, pero son la mayoría de la gente que hay en el campo.</p>
-      <canvas id="chart-asistencia"></canvas>
+      <canvas id="chart-asistencia" class="chart-grande"></canvas>
     </div>
 
     <div class="card">
