@@ -40,9 +40,14 @@ export const tiposDePartido = (competiciones, id) => {
   }));
 };
 
-/** Convierte claves históricas de Firestore en partidos editables sin perder datos. */
+/**
+ * Convierte claves históricas de Firestore en partidos editables sin perder
+ * datos. Deduplica: quien llama junta las claves de `entradas` y las de
+ * `taquilla`, así que una jornada en la que se ha fichado Y vendido llega dos
+ * veces y salía repetida en los selectores y en las estadísticas.
+ */
 export function migrarPartidosLegacy(claves = []) {
-  return claves.sort().map((id, orden) => ({
+  return [...new Set(claves)].sort().map((id, orden) => ({
     id,
     nombre: id.replace(/-/g, '/'),
     orden,

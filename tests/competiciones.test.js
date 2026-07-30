@@ -100,6 +100,17 @@ test('disponibles: una clave con datos que ya no está en el calendario sigue vi
   assert.equal(p.at(-1).id, '2026-27 - Jornada 09');
 });
 
+test('disponibles: una jornada con fichajes Y ventas no sale dos veces', () => {
+  // Quien llama junta las claves de `entradas` con las de `taquilla`, así que
+  // la jornada donde se ha hecho de todo llega repetida. Salía dos veces en
+  // los selectores y en la tabla de estadísticas.
+  const p = partidosDisponibles([], ['2026-27 - Jornada 01', '2026-27 - Jornada 01']);
+  assert.deepEqual(
+    p.map((x) => x.id),
+    ['2026-27 - Jornada 01'],
+  );
+});
+
 test('disponibles: una clave que YA está configurada no se duplica', () => {
   const p = partidosDisponibles([liga], ['p1', 'p2']);
   assert.deepEqual(
