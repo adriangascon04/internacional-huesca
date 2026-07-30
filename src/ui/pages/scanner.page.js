@@ -257,7 +257,7 @@ async function toggleCamara() {
   }
   try {
     wrap.style.display = 'block';
-    await iniciarCamara(video, $('#camara-canvas'), escanear);
+    await iniciarCamara(video, $('#camara-canvas'), escanear, mostrarEstado);
     btn.textContent = '⏹ Parar cámara';
   } catch (e) {
     wrap.style.display = 'none';
@@ -269,6 +269,20 @@ async function toggleCamara() {
         : 'No se pudo acceder a la cámara. Requiere HTTPS y permiso del navegador.',
     );
   }
+}
+
+/**
+ * Ritmo real de lectura, debajo del vídeo. Parece un detalle y no lo es: sin
+ * esto, "la cámara está mirando y este QR no entra" y "el lector está parado"
+ * se ven exactamente igual desde fuera, y no hay forma de saber cuál de las dos
+ * cosas está pasando sin abrir la consola del navegador.
+ */
+function mostrarEstado({ intentosPorSegundo }) {
+  const el = $('#camara-estado');
+  if (!el) return;
+  el.textContent = intentosPorSegundo
+    ? `🔎 Buscando QR · ${intentosPorSegundo} lecturas/s`
+    : '⏳ Esperando imagen de la cámara…';
 }
 
 /**

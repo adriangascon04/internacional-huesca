@@ -218,10 +218,10 @@ code{
   color:var(--ambar);padding:11px 13px;border-radius:var(--r-s);
   font-size:12.5px;margin:10px 0;display:none;
 }
-/* Visor de la cámara. El recuadro central NO es decorativo: marca exactamente
-   el trozo de imagen que el lector está analizando (ver src/ui/camara.js), así
-   que el operador apunta el carnet ahí en vez de adivinar. Lo de fuera se
-   oscurece con un box-shadow enorme, recortado por el overflow del visor. */
+/* Visor de la cámara. El recuadro es una GUÍA, no un límite: el lector alterna
+   entre el encuadre completo y este cuadrado central (ver src/ui/camara.js), así
+   que centrar el carnet ahí ayuda a que entre antes, pero un QR fuera también
+   se lee. Por eso no se oscurece lo de fuera: sería mentir sobre lo que mira. */
 #camara-visor{
   position:relative;width:100%;max-width:420px;overflow:hidden;
   border-radius:10px;box-shadow:var(--sombra)
@@ -230,9 +230,9 @@ code{
 #camara-mira{
   position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);
   aspect-ratio:1/1;max-width:100%;pointer-events:none;
-  border:2px solid rgba(255,255,255,.6);border-radius:12px;
-  box-shadow:0 0 0 100vmax rgba(0,0,0,.3)
+  border:2px dashed rgba(255,255,255,.45);border-radius:12px
 }
+#camara-estado{font-size:12px;color:var(--txt3);margin:8px 0;min-height:16px}
 .btn-grande{width:100%;min-height:64px;font-size:17px;font-weight:700;letter-spacing:.02em}
 
 /* ═══ Pop-up de resultado del escáner ═══════════════════════════════════════ */
@@ -466,7 +466,8 @@ canvas.chart-mini{max-height:240px}
           <video id="camara-video" playsinline muted autoplay></video>
           <div id="camara-mira"></div>
         </div>
-        <p class="nota">Encuadra el QR dentro del recuadro. Lee solo, no hay que pulsar nada.</p>
+        <p class="nota">Lee solo, no hay que pulsar nada. Centrar el QR en el recuadro ayuda a que entre antes, pero también lee fuera de él.</p>
+        <div id="camara-estado"></div>
         <button class="btn" id="btn-leer-ahora" style="width:100%;max-width:420px">🔍 Leer ahora</button>
         <canvas id="camara-canvas" style="display:none"></canvas>
       </div>
