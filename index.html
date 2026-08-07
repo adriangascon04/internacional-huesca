@@ -777,22 +777,39 @@ canvas.chart-mini{max-height:240px}
     </div>
     <div class="card"><div id="backup-lista" style="overflow-x:auto"></div></div>
 
+    <!-- Dos reinicios distintos y en la misma tarjeta a propósito: así se ve de
+         un vistazo cuál es cuál y nadie pulsa el grande creyendo que es el
+         pequeño. Ambos guardan una copia de seguridad antes de borrar. -->
     <div class="card" id="zona-reinicio" style="display:none;border-color:rgba(232,53,74,.4)">
-      <h2>Reiniciar los datos de partido</h2>
+      <h2>Zona peligrosa · reiniciar datos</h2>
+
+      <h2 style="margin-top:4px">1 · Reiniciar los datos de partido</h2>
       <p class="nota">
         Borra <strong>todas las entradas fichadas en la puerta y todas las ventas de taquilla</strong>,
-        de todas las jornadas, y reabre las que estuvieran cerradas. Pensado para dejar la
-        aplicación limpia al terminar las pruebas.
-      </p>
-      <p class="nota">
-        <strong>No se tocan</strong> los socios, el calendario de competiciones, los precios,
-        los usuarios ni las copias de seguridad. Se guarda una copia automática antes de borrar,
-        pero <strong>la operación no se puede deshacer</strong>.
+        de todas las jornadas, y reabre las que estuvieran cerradas.
+        <strong>Los socios se quedan.</strong> Es el reinicio de "empieza una temporada nueva".
       </p>
       <div class="row">
         <button class="btn btn-danger" id="btn-reiniciar-jornadas">Reiniciar todas las jornadas</button>
-        <span class="msg" id="reinicio-msg"></span>
       </div>
+
+      <h2 style="margin-top:22px">2 · Empezar de cero</h2>
+      <p class="nota">
+        Lo anterior <strong>y además todos los socios</strong>: fichas, carnets y cuotas.
+        Todas las estadísticas quedan a cero. Es el reinicio de "se acabaron las pruebas,
+        empezamos a trabajar de verdad". Todos los carnets impresos dejarán de funcionar
+        y habrá que dar de alta a los socios otra vez.
+      </p>
+      <p class="nota">
+        <strong>No se tocan</strong> el calendario de competiciones, los precios,
+        los usuarios de la aplicación ni las copias de seguridad. Se guarda una copia
+        automática antes de borrar, pero <strong>la operación no se puede deshacer</strong>.
+      </p>
+      <div class="row">
+        <button class="btn btn-danger" id="btn-reiniciar-todo">🧨 Borrarlo todo y empezar de cero</button>
+      </div>
+
+      <p class="msg" id="reinicio-msg"></p>
     </div>
   </section>
 </div>

@@ -9,11 +9,14 @@ import * as backup from '../../services/backup.service.js';
 import * as roles from '../../services/roles.service.js';
 import {
   resumenReinicio,
+  hayDatosDePartido,
   reiniciarJornadas,
+  reiniciarTodo,
 } from '../../services/mantenimiento.service.js';
 
-/** Palabra que hay que teclear para confirmar el reinicio. */
-const PALABRA_CONFIRMACION = 'BORRAR';
+/** Palabras que hay que teclear para confirmar cada reinicio. */
+const PALABRA_JORNADAS = 'BORRAR';
+const PALABRA_TODO = 'EMPEZAR DE CERO';
 
 export function initBackup() {
   on($('#btn-crear-backup'), 'click', async () => {
@@ -27,52 +30,38 @@ export function initBackup() {
     }
   });
   on($('#btn-reiniciar-jornadas'), 'click', reiniciar);
+  on($('#btn-reiniciar-todo'), 'click', reiniciarDelTodo);
 }
 
 /**
- * Reinicio de los datos de partido. No se puede deshacer, así que:
+ * Ejecuta un reinicio. Es lo mismo para los dos botones y por eso está en un
+ * solo sitio: la diferencia entre borrar los partidos y borrarlo todo no puede
+ * ser que uno de los dos se olvide de pedir confirmación o de avisar del fallo.
+ *
+ * No se puede deshacer, así que:
  *   1. se enseña exactamente lo que se va a borrar, contado;
  *   2. se pide teclear una palabra — un `confirm()` a secas se acepta sin leer;
  *   3. el servicio guarda una copia de seguridad antes de tocar nada.
  */
-async function reiniciar() {
+async function ejecutarReinicio({ boton, aviso, palabra, accion, exito }) {
   const msg = $('#reinicio-msg');
-  const r = resumenReinicio(state);
-
-  if (!r.jornadasConFichajes && !r.jornadasConVentas && !r.jornadasCerradas) {
-    msg.className = 'msg';
-    msg.textContent = 'No hay datos de partido que borrar: ya está todo a cero.';
-    return;
-  }
-
-  const respuesta = prompt(
-    `Se van a BORRAR los datos de partido de todas las jornadas:\n\n` +
-      `  · ${r.fichajes} entradas fichadas en la puerta (${r.jornadasConFichajes} jornadas)\n` +
-      `  · ${r.ventas} ventas de taquilla (${r.jornadasConVentas} jornadas)\n` +
-      `  · ${r.jornadasCerradas} jornadas cerradas volverán a abrirse\n\n` +
-      `NO se tocan los socios, ni el calendario, ni los precios, ni los usuarios.\n` +
-      `Se guardará una copia de seguridad antes de borrar.\n\n` +
-      `Esto NO se puede deshacer.\n\n` +
-      `Escribe ${PALABRA_CONFIRMACION} para continuar:`,
-  );
-  if (respuesta?.trim().toUpperCase() !== PALABRA_CONFIRMACION) {
+  const btn = $(boton);
+  const respuesta = prompt(aviso);
+  if (respuesta?.trim().toUpperCase() !== palabra) {
     msg.className = 'msg';
     msg.textContent = 'Reinicio cancelado. No se ha borrado nada.';
     return;
   }
 
-  const btn = $('#btn-reiniciar-jornadas');
   btn.disabled = true;
   msg.className = 'msg';
   msg.textContent = 'Guardando copia de seguridad y borrando…';
   try {
-    const { resumen } = await reiniciarJornadas(state);
+    const { resumen } = await accion(state);
     msg.className = 'msg msg-ok';
-    msg.textContent =
-      `Listo: borradas ${resumen.fichajes} entradas y ${resumen.ventas} ventas. ` +
-      `La copia de seguridad previa está en la lista de abajo.`;
+    msg.textContent = `${exito(resumen)} La copia de seguridad previa está en la lista de arriba.`;
   } catch (e) {
-    console.error('Error al reiniciar las jornadas:', e);
+    console.error('Error al reiniciar:', e);
     msg.className = 'msg msg-err';
     msg.textContent =
       'No se ha podido completar el reinicio. Comprueba que sigues como admin y ' +
@@ -80,6 +69,65 @@ async function reiniciar() {
   } finally {
     btn.disabled = false;
   }
+}
+
+/** Reinicio de los datos de partido: los socios se quedan. */
+function reiniciar() {
+  const r = resumenReinicio(state);
+  if (!hayDatosDePartido(r)) {
+    const msg = $('#reinicio-msg');
+    msg.className = 'msg';
+    msg.textContent = 'No hay datos de partido que borrar: ya está todo a cero.';
+    return;
+  }
+  return ejecutarReinicio({
+    boton: '#btn-reiniciar-jornadas',
+    palabra: PALABRA_JORNADAS,
+    accion: reiniciarJornadas,
+    aviso:
+      `Se van a BORRAR los datos de partido de todas las jornadas:\n\n` +
+      `  · ${r.fichajes} entradas fichadas en la puerta (${r.jornadasConFichajes} jornadas)\n` +
+      `  · ${r.ventas} ventas de taquilla (${r.jornadasConVentas} jornadas)\n` +
+      `  · ${r.jornadasCerradas} jornadas cerradas volverán a abrirse\n\n` +
+      `Los ${r.socios} socios NO se tocan, ni el calendario, ni los precios, ni los usuarios.\n` +
+      `Se guardará una copia de seguridad antes de borrar.\n\n` +
+      `Esto NO se puede deshacer.\n\n` +
+      `Escribe ${PALABRA_JORNADAS} para continuar:`,
+    exito: (resumen) =>
+      `Listo: borradas ${resumen.fichajes} entradas y ${resumen.ventas} ventas.`,
+  });
+}
+
+/** Borrón y cuenta nueva: datos de partido MÁS todos los socios. */
+function reiniciarDelTodo() {
+  const r = resumenReinicio(state);
+  if (!hayDatosDePartido(r) && !r.socios) {
+    const msg = $('#reinicio-msg');
+    msg.className = 'msg';
+    msg.textContent = 'No hay nada que borrar: la aplicación ya está vacía.';
+    return;
+  }
+  return ejecutarReinicio({
+    boton: '#btn-reiniciar-todo',
+    palabra: PALABRA_TODO,
+    accion: reiniciarTodo,
+    aviso:
+      `BORRÓN Y CUENTA NUEVA. Se va a borrar TODO lo siguiente:\n\n` +
+      `  · ${r.socios} socios, con sus fichas, sus carnets y sus cuotas\n` +
+      `  · ${r.fichajes} entradas fichadas en la puerta (${r.jornadasConFichajes} jornadas)\n` +
+      `  · ${r.ventas} ventas de taquilla (${r.jornadasConVentas} jornadas)\n` +
+      `  · ${r.jornadasCerradas} jornadas cerradas volverán a abrirse\n\n` +
+      `Todas las estadísticas quedarán a cero y TODOS los carnets impresos dejarán\n` +
+      `de funcionar. Los socios habrá que darlos de alta otra vez.\n\n` +
+      `NO se tocan el calendario de competiciones, los precios, los usuarios de la\n` +
+      `aplicación ni las copias de seguridad.\n` +
+      `Se guardará una copia de seguridad antes de borrar.\n\n` +
+      `Esto NO se puede deshacer.\n\n` +
+      `Escribe exactamente «${PALABRA_TODO}» para continuar:`,
+    exito: (resumen) =>
+      `Listo: borrados ${resumen.socios} socios, ${resumen.fichajes} entradas y ` +
+      `${resumen.ventas} ventas. La aplicación está lista para empezar de cero.`,
+  });
 }
 
 export function render() {

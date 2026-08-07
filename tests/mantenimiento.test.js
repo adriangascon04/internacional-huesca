@@ -6,9 +6,12 @@
 // ============================================================================
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resumenReinicio } from '../src/services/mantenimiento.service.js';
+import {
+  resumenReinicio,
+  hayDatosDePartido,
+} from '../src/services/mantenimiento.service.js';
 
-test('resumen: cuenta fichajes, ventas y jornadas cerradas', () => {
+test('resumen: cuenta fichajes, ventas, jornadas cerradas y socios', () => {
   const r = resumenReinicio({
     entradas: {
       j1: { 1: '2026-09-12T19:00:00Z', 2: '2026-09-12T19:05:00Z' },
@@ -18,6 +21,7 @@ test('resumen: cuenta fichajes, ventas y jornadas cerradas', () => {
       j1: { general: 2, historial: [{ tipo: 'general' }, { tipo: 'menor' }] },
     },
     jornadasBloqueadas: { j1: true, j2: false },
+    socios: [{ id: '1' }, { id: '2' }, { id: '3' }],
   });
 
   assert.equal(r.jornadasConFichajes, 2);
@@ -25,6 +29,7 @@ test('resumen: cuenta fichajes, ventas y jornadas cerradas', () => {
   assert.equal(r.jornadasConVentas, 1);
   assert.equal(r.ventas, 2);
   assert.equal(r.jornadasCerradas, 1); // j2 está desbloqueada, no cuenta
+  assert.equal(r.socios, 3);
 });
 
 test('resumen: sin datos no anuncia ningún borrado', () => {
@@ -35,7 +40,22 @@ test('resumen: sin datos no anuncia ningún borrado', () => {
     jornadasConVentas: 0,
     ventas: 0,
     jornadasCerradas: 0,
+    socios: 0,
   });
+});
+
+test('hayDatosDePartido: los socios NO cuentan como datos de partido', () => {
+  // Es lo que decide si el botón de "reiniciar jornadas" dice "no hay nada que
+  // borrar". Con socios pero sin partidos jugados, no hay nada que borrar ahí.
+  assert.equal(hayDatosDePartido(resumenReinicio({ socios: [{ id: '1' }] })), false);
+  assert.equal(
+    hayDatosDePartido(resumenReinicio({ entradas: { j1: { 1: 'x' } } })),
+    true,
+  );
+  assert.equal(
+    hayDatosDePartido(resumenReinicio({ jornadasBloqueadas: { j1: true } })),
+    true,
+  );
 });
 
 test('resumen: una jornada de taquilla sin historial no revienta el recuento', () => {
