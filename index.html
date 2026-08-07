@@ -211,6 +211,9 @@ code{
   padding:2px 7px;border-radius:5px;font-size:12px;font-weight:600;color:var(--azul-claro);
   font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
 }
+/* Paginación del listado de socios: con cientos de socios la tabla no cabe. */
+.paginacion{display:flex;gap:9px;align-items:center;justify-content:center;margin-top:14px}
+.paginacion .nota{padding:0;font-variant-numeric:tabular-nums}
 
 /* ═══ Métricas ════════════════════════════════════════════════════════════ */
 .stat{
@@ -404,7 +407,11 @@ canvas.chart-mini{max-height:240px}
         <div><label for="f-email">Email <span class="opcional">opcional</span></label><input type="email" id="f-email"></div>
         <div><label for="f-tipo">Tipo de abono</label><select id="f-tipo"></select></div>
         <div><label for="f-pago">Método de pago</label><select id="f-pago"></select></div>
-        <div><label for="f-importe">Importe cobrado (€)</label><input type="number" id="f-importe" min="0" step="0.01"></div>
+        <div>
+          <label for="f-importe">Importe cobrado (€)</label>
+          <input type="number" id="f-importe" min="0" step="0.01">
+          <p class="nota" id="f-importe-nota"></p>
+        </div>
       </div>
       <div class="aviso" style="display:block;margin-top:14px" id="tarifas-abonos"></div>
       <div class="row" style="margin-top:14px">
@@ -422,11 +429,18 @@ canvas.chart-mini{max-height:240px}
       </div>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>Nº carnet</th><th>Nombre</th><th>Documento</th><th>Abono</th><th>Pagado</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Nº carnet</th><th>Nombre</th><th>Documento</th><th>Abono</th><th>Importe</th><th>Pagado</th><th>Acciones</th></tr></thead>
           <tbody id="tabla-socios"></tbody>
         </table>
       </div>
       <p class="empty" id="tabla-empty" style="display:none">No se han encontrado socios.</p>
+      <!-- La lista se pagina: con cientos de socios la página crecía sin fin.
+           El buscador de arriba sigue filtrando sobre TODOS los socios. -->
+      <div class="paginacion" id="paginacion-socios" style="display:none">
+        <button class="btn" id="btn-pag-anterior">← Anterior</button>
+        <span class="nota" id="paginacion-info"></span>
+        <button class="btn" id="btn-pag-siguiente">Siguiente →</button>
+      </div>
     </div>
 
     <!-- Renumeración de temporada. Solo admin: se oculta por rol. -->
@@ -817,6 +831,15 @@ canvas.chart-mini{max-height:240px}
           <div><label for="e-tel">Teléfono <span class="opcional">opcional</span></label><input id="e-tel"></div>
           <div><label for="e-email">Email <span class="opcional">opcional</span></label><input type="email" id="e-email"></div>
           <div><label for="e-tipo">Tipo de abono</label><select id="e-tipo"></select></div>
+          <div><label for="e-pago">Método de pago</label><select id="e-pago"></select></div>
+          <!-- El importe del abono es editable: la tarifa es un valor de
+               partida, no un precio cerrado (descuentos, altas a mitad de
+               temporada y, sobre todo, el Socio Colaborador de cuota libre). -->
+          <div>
+            <label for="e-importe">Importe del abono (€)</label>
+            <input type="number" id="e-importe" min="0" step="0.01">
+            <p class="nota" id="e-importe-nota"></p>
+          </div>
         </div>
         <div class="row" style="margin-top:12px">
           <button class="btn btn-primary" id="btn-guardar-socio">Guardar cambios</button>

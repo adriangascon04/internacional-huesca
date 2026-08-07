@@ -10,15 +10,35 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   writeBatch,
   onSnapshot,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const TAMANO_LOTE = 450; // margen bajo el límite duro de 500 de Firestore
 
 const col = () => collection(db, COLECCIONES.socios);
 const ref = (id) => doc(db, COLECCIONES.socios, String(id));
 
 export const guardarSocio = (id, datos) => setDoc(ref(id), datos);
 export const actualizarSocio = (id, campos) => updateDoc(ref(id), campos);
+
+/** Borrado real de un socio. Ya no hay baja lógica (ver socios.service.js). */
+export const borrarSocio = (id) => deleteDoc(ref(id));
+
+/**
+ * Borra varios socios en lotes. Lo usa el reinicio total de la aplicación.
+ * En lote y no en un bucle de deleteDoc: son cientos de escrituras y así se
+ * envían en unas pocas peticiones en vez de una por socio.
+ * @param {string[]} ids
+ */
+export async function borrarSocios(ids = []) {
+  for (let i = 0; i < ids.length; i += TAMANO_LOTE) {
+    const lote = writeBatch(db);
+    for (const id of ids.slice(i, i + TAMANO_LOTE)) lote.delete(ref(id));
+    await lote.commit();
+  }
+}
 
 /**
  * Aplica de golpe la renumeración de carnets.
@@ -29,7 +49,6 @@ export const actualizarSocio = (id, campos) => updateDoc(ref(id), campos);
  * @param {Array<{id:string, campos:object}>} cambios
  */
 export async function aplicarRenumeracion(cambios) {
-  const TAMANO_LOTE = 450; // margen bajo el límite duro de 500
   for (let i = 0; i < cambios.length; i += TAMANO_LOTE) {
     const lote = writeBatch(db);
     for (const { id, campos } of cambios.slice(i, i + TAMANO_LOTE)) {

@@ -8,29 +8,34 @@
 // ============================================================================
 import { $, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
-import { fecha, antiguedad, horaCorta } from '../../utils/format.js';
+import { fecha, antiguedad, horaCorta, euros } from '../../utils/format.js';
 import { state } from '../../core/state.js';
 import {
   esFundador,
   TIPOS_ABONO,
   TIPOS_DOCUMENTO,
   METODOS_PAGO,
+  SOCIOS_POR_PAGINA,
   precioAbonoPorDefecto,
+  esAportacionLibre,
+  descripcionAbono,
   tipoDocDe,
   carnetDe,
 } from '../../config/app.config.js';
 import { pintarTarifasAbonos } from '../tarifas.view.js';
 import * as socios from '../../services/socios.service.js';
-import { historialSocio } from '../../services/stats.service.js';
+import { historialSocio, importeAbonoDe } from '../../services/stats.service.js';
 import * as roles from '../../services/roles.service.js';
 
 let perfilActualId = null;
+let pagina = 1;
 
 const OPCIONES_TIPO =
   '<option value="">— Selecciona —</option>' +
   TIPOS_ABONO.map((t) => `<option>${esc(t.id)}</option>`).join('');
 
 const OPCIONES_DOC = TIPOS_DOCUMENTO.map((t) => `<option>${esc(t)}</option>`).join('');
+const OPCIONES_PAGO = METODOS_PAGO.map((m) => `<option>${esc(m)}</option>`).join('');
 
 export function initSocios() {
   // Rellenar los selects desde la config (antes estaban en el HTML).
@@ -38,13 +43,22 @@ export function initSocios() {
   $('#e-tipo').innerHTML = OPCIONES_TIPO;
   $('#f-tipodoc').innerHTML = OPCIONES_DOC;
   $('#e-tipodoc').innerHTML = OPCIONES_DOC;
-  $('#f-pago').innerHTML = METODOS_PAGO.map((m) => `<option>${esc(m)}</option>`).join('');
+  $('#f-pago').innerHTML = OPCIONES_PAGO;
+  $('#e-pago').innerHTML = OPCIONES_PAGO;
   pintarTarifasAbonos($('#tarifas-abonos'));
-  on($('#f-tipo'), 'change', () => {
-    $('#f-importe').value = precioAbonoPorDefecto($('#f-tipo').value);
-  });
+  on($('#f-tipo'), 'change', () =>
+    sincronizarImporte('#f-tipo', '#f-importe', '#f-importe-nota'),
+  );
+  on($('#e-tipo'), 'change', () =>
+    sincronizarImporte('#e-tipo', '#e-importe', '#e-importe-nota'),
+  );
 
-  on($('#buscador'), 'input', render);
+  // Cualquier búsqueda nueva vuelve a la primera página: si no, buscar desde
+  // la página 4 dejaba la tabla en blanco porque el filtro ya no llega ahí.
+  on($('#buscador'), 'input', () => {
+    pagina = 1;
+    render();
+  });
   on($('#btn-alta'), 'click', onAlta);
   on($('#btn-guardar-obs'), 'click', onGuardarObs);
   on($('#btn-cerrar-perfil'), 'click', () => {
@@ -55,18 +69,63 @@ export function initSocios() {
   on($('#btn-cancelar-edicion'), 'click', () => mostrarFormEdicion(false));
   on($('#btn-guardar-socio'), 'click', onGuardarSocio);
   on($('#btn-renumerar'), 'click', onRenumerar);
+  on($('#btn-pag-anterior'), 'click', () => irAPagina(pagina - 1));
+  on($('#btn-pag-siguiente'), 'click', () => irAPagina(pagina + 1));
+}
+
+/**
+ * Pone en el campo de importe la tarifa del abono elegido y explica de dónde
+ * sale. Con aportación libre no hay tarifa que poner: se deja vacío a
+ * propósito, porque un 0 € precargado se guarda tal cual sin que nadie lo note.
+ */
+function sincronizarImporte(selTipo, selImporte, selNota) {
+  const tipo = $(selTipo).value;
+  const input = $(selImporte);
+  const nota = $(selNota);
+  if (!input) return;
+  const libre = esAportacionLibre(tipo);
+  input.value = libre ? '' : precioAbonoPorDefecto(tipo);
+  input.placeholder = libre ? 'Cantidad que aporta' : '';
+  if (nota) {
+    nota.textContent = !tipo
+      ? ''
+      : libre
+        ? 'Aportación libre: escribe la cantidad. No hay tarifa.'
+        : `Tarifa de «${tipo}»: ${euros(precioAbonoPorDefecto(tipo))}. Puedes cambiarla.`;
+  }
+}
+
+// --- Listado paginado --------------------------------------------------------
+
+/** Socios que casan con el buscador. Filtra sobre TODOS, no sobre la página. */
+function filtrados() {
+  const q = ($('#buscador')?.value || '').toLowerCase().trim();
+  const lista = socios.getSociosActivos();
+  if (!q) return lista;
+  return lista.filter((s) =>
+    `${s.nombre} ${s.ap1} ${s.ap2 || ''} ${s.dni}`.toLowerCase().includes(q),
+  );
+}
+
+function irAPagina(n) {
+  pagina = n;
+  render();
+  $('#tabla-socios')?.scrollIntoView({ block: 'nearest' });
 }
 
 export function render() {
-  const q = ($('#buscador')?.value || '').toLowerCase();
-  const lista = socios
-    .getSociosActivos()
-    .filter((s) =>
-      `${s.nombre} ${s.ap1} ${s.ap2 || ''} ${s.dni}`.toLowerCase().includes(q),
-    );
+  const lista = filtrados();
+  const total = socios.getSociosActivos().length;
+  const paginas = Math.max(1, Math.ceil(lista.length / SOCIOS_POR_PAGINA));
+  // La página puede quedarse fuera de rango sola: al borrar el último socio de
+  // la última página, o al recibir menos socios por una actualización remota.
+  pagina = Math.min(Math.max(1, pagina), paginas);
+  const desde = (pagina - 1) * SOCIOS_POR_PAGINA;
+  const visibles = lista.slice(desde, desde + SOCIOS_POR_PAGINA);
 
-  $('#total-socios').textContent = socios.getSociosActivos().length;
+  $('#total-socios').textContent = total;
   renderRenumerar();
+  renderPaginacion(lista.length, paginas, desde, visibles.length);
 
   const tbody = $('#tabla-socios');
   const empty = $('#tabla-empty');
@@ -78,7 +137,7 @@ export function render() {
   empty.style.display = 'none';
 
   const admin = roles.puedeGestionarSocios();
-  tbody.innerHTML = lista
+  tbody.innerHTML = visibles
     .map(
       (s) => `
     <tr>
@@ -86,12 +145,13 @@ export function render() {
       <td>${esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim())}${esFundador(s) ? ' <span title="Socio Fundador">⭐</span>' : ''}</td>
       <td>${esc(s.dni)}<br><small style="color:var(--txt3)">${esc(tipoDocDe(s))}</small></td>
       <td>${esc(s.tipo)}</td>
+      <td>${euros(importeAbonoDe(s))}</td>
       <td style="text-align:center">
         <input type="checkbox" data-pagado="${esc(s.id)}" ${s.pagado ? 'checked' : ''} ${admin ? '' : 'disabled'}>
       </td>
       <td>
         <button class="btn" data-perfil="${esc(s.id)}">👤 Perfil</button>
-        ${admin ? `<button class="btn btn-danger" data-baja="${esc(s.id)}">Dar de baja</button>` : ''}
+        ${admin ? `<button class="btn btn-danger" data-eliminar="${esc(s.id)}">Eliminar</button>` : ''}
       </td>
     </tr>`,
     )
@@ -107,8 +167,22 @@ export function render() {
     .querySelectorAll('[data-perfil]')
     .forEach((el) => on(el, 'click', () => verPerfil(el.dataset.perfil)));
   tbody
-    .querySelectorAll('[data-baja]')
-    .forEach((el) => on(el, 'click', () => onBaja(el.dataset.baja)));
+    .querySelectorAll('[data-eliminar]')
+    .forEach((el) => on(el, 'click', () => onEliminar(el.dataset.eliminar)));
+}
+
+/** Barra de páginas. Se esconde entera si todo cabe en una. */
+function renderPaginacion(nFiltrados, paginas, desde, nVisibles) {
+  const barra = $('#paginacion-socios');
+  if (!barra) return;
+  barra.style.display = paginas > 1 ? 'flex' : 'none';
+  const info = $('#paginacion-info');
+  if (info)
+    info.textContent = nFiltrados
+      ? `${desde + 1}–${desde + nVisibles} de ${nFiltrados} · página ${pagina} de ${paginas}`
+      : '';
+  $('#btn-pag-anterior').disabled = pagina <= 1;
+  $('#btn-pag-siguiente').disabled = pagina >= paginas;
 }
 
 // --- Renumeración de temporada ---------------------------------------------
@@ -124,10 +198,10 @@ function renderRenumerar() {
   const maxCarnet = activos.reduce((m, s) => Math.max(m, carnetDe(s)), 0);
   const huecos = maxCarnet - activos.length;
   $('#renumerar-info').innerHTML = huecos
-    ? `Hay <strong>${activos.length}</strong> socios activos pero los carnets llegan hasta el
-       <strong>${maxCarnet}</strong>: <strong style="color:var(--ambar)">${huecos} número${huecos === 1 ? '' : 's'} sueltos</strong>
-       que han dejado las bajas. Al renumerar pasarán a ser <strong>1 – ${activos.length}</strong>.`
-    : `Los <strong>${activos.length}</strong> socios activos ya están numerados del 1 al ${activos.length},
+    ? `Hay <strong>${activos.length}</strong> socios pero los carnets llegan hasta el
+       <strong>${maxCarnet}</strong>: <strong style="color:var(--ambar)">${huecos} número${huecos === 1 ? '' : 's'} sueltos</strong>.
+       Al renumerar pasarán a ser <strong>1 – ${activos.length}</strong>.`
+    : `Los <strong>${activos.length}</strong> socios ya están numerados del 1 al ${activos.length},
        sin huecos. No hace falta renumerar.`;
   $('#btn-renumerar').disabled = !activos.length;
 }
@@ -137,7 +211,7 @@ async function onRenumerar() {
   const msg = $('#renumerar-msg');
   if (
     !confirm(
-      `¿Renumerar los ${activos.length} socios activos para la nueva temporada?\n\n` +
+      `¿Renumerar los ${activos.length} socios para la nueva temporada?\n\n` +
         `· Pasarán a tener los números 1 – ${activos.length}.\n` +
         `· TODOS los carnets actuales dejarán de funcionar al instante.\n` +
         `· Hay que reimprimir y repartir los carnets nuevos (pestaña QRs → Descargar todos).\n\n` +
@@ -166,7 +240,7 @@ async function onRenumerar() {
   }
 }
 
-// --- Alta / baja / edición --------------------------------------------------
+// --- Alta / eliminación / edición -------------------------------------------
 
 async function onAlta() {
   const msg = $('#form-msg');
@@ -199,6 +273,7 @@ async function onAlta() {
       );
       $('#f-tipo').value = '';
       $('#f-importe').value = '';
+      sincronizarImporte('#f-tipo', '#f-importe', '#f-importe-nota');
     }
   } catch {
     msg.className = 'msg msg-err';
@@ -208,19 +283,26 @@ async function onAlta() {
   }
 }
 
-async function onBaja(id) {
+/**
+ * Borrado definitivo. Ya no hay "baja de socio": esto quita la ficha de verdad.
+ * Se avisa con nombre y número para que nadie borre al socio de la fila de al
+ * lado por un resbalón del dedo en el móvil.
+ */
+async function onEliminar(id) {
   const s = socios.obtener(id);
+  if (!s) return;
   if (
     !confirm(
-      `¿Dar de baja a ${s.nombre} ${s.ap1} (carnet nº ${carnetDe(s)})?\n\n` +
-        `Su carnet dejará de ser válido. El hueco que deja se recupera al renumerar la próxima temporada.`,
+      `¿ELIMINAR a ${s.nombre} ${s.ap1} (carnet nº ${carnetDe(s)})?\n\n` +
+        `Se borra su ficha entera: datos, cuota y carnet. Su QR deja de funcionar.\n` +
+        `Esto NO se puede deshacer.`,
     )
   )
     return;
   try {
-    await socios.bajaSocio(id);
+    await socios.eliminarSocio(id);
   } catch {
-    alert('No se pudo dar de baja. Revisa tus permisos.');
+    alert('No se pudo eliminar. Revisa tus permisos.');
   }
 }
 
@@ -240,18 +322,32 @@ function verPerfil(id) {
     `Carnet nº ${carnetDe(s)} · ${esc(s.tipo)}` +
     (esFundador(s) ? ' · <span style="color:#eab308">⭐ Socio Fundador</span>' : '');
 
+  // El importe pagado va en las cifras de arriba, no escondido en la tabla: en
+  // los abonos de aportación libre es el dato que de verdad se viene a mirar,
+  // porque no hay tarifa de la que deducirlo.
   $('#perfil-stats').innerHTML = `
     <div class="stat"><div class="stat-n">${h.asistidos}</div><div class="stat-l">Partidos asistidos<br>de ${h.jornadasConDatos} jugados</div></div>
     <div class="stat"><div class="stat-n">${h.pct}%</div><div class="stat-l">% asistencia</div></div>
+    <div class="stat"><div class="stat-n">${euros(importeAbonoDe(s))}</div><div class="stat-l">Pagado por el abono${esAportacionLibre(s.tipo) ? '<br><small>aportación libre</small>' : ''}</div></div>
     <div class="stat"><div class="stat-n">${s.pagado ? '✅' : '❌'}</div><div class="stat-l">${s.pagado ? 'Pagado' : 'Pago pendiente'}</div></div>`;
 
+  const desc = descripcionAbono(s.tipo);
   $('#perfil-datos').innerHTML = `
     <tr><td>Nombre completo</td><td>${esc(`${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim())}</td></tr>
     <tr><td>${esc(tipoDocDe(s))}</td><td>${esc(s.dni)}</td></tr>
     <tr><td>Fecha de nacimiento</td><td>${fecha(s.fnac)}</td></tr>
     <tr><td>Teléfono</td><td>${esc(s.tel || '—')}</td></tr>
     <tr><td>Email</td><td>${esc(s.email || '—')}</td></tr>
-    <tr><td>Tipo de abono</td><td>${esc(s.tipo)}</td></tr>
+    <tr><td>Tipo de abono</td><td>${esc(s.tipo)}${desc ? `<br><small style="color:var(--txt3)">${esc(desc)}</small>` : ''}</td></tr>
+    <tr><td>Importe del abono</td><td><strong>${euros(importeAbonoDe(s))}</strong>${
+      esAportacionLibre(s.tipo)
+        ? ' <small style="color:var(--txt3)">(aportación libre)</small>'
+        : Number(s.importeAbono ?? NaN) !== precioAbonoPorDefecto(s.tipo) &&
+            Number.isFinite(Number(s.importeAbono))
+          ? ` <small style="color:var(--txt3)">(tarifa: ${euros(precioAbonoPorDefecto(s.tipo))})</small>`
+          : ''
+    }</td></tr>
+    <tr><td>Método de pago</td><td>${esc(s.metodoPago || '—')}</td></tr>
     <tr><td>Socio desde</td><td>${antiguedad(s.alta)}</td></tr>`;
 
   renderHistorial(h);
@@ -303,6 +399,15 @@ function mostrarFormEdicion(visible) {
   $('#e-tel').value = s.tel || '';
   $('#e-email').value = s.email || '';
   $('#e-tipo').value = s.tipo || '';
+  $('#e-pago').value = s.metodoPago || METODOS_PAGO[0];
+  // El importe se carga con el que REALMENTE tiene, no con la tarifa: si no,
+  // abrir la edición y guardar sin tocar nada le cambiaría la cuota al socio.
+  $('#e-importe').value = importeAbonoDe(s);
+  const nota = $('#e-importe-nota');
+  if (nota)
+    nota.textContent = esAportacionLibre(s.tipo)
+      ? 'Aportación libre: la cantidad la decide el socio.'
+      : `Tarifa de «${s.tipo}»: ${euros(precioAbonoPorDefecto(s.tipo))}. Puedes cambiarla.`;
 }
 
 async function onGuardarSocio() {
@@ -318,6 +423,8 @@ async function onGuardarSocio() {
     tel: $('#e-tel').value.trim(),
     email: $('#e-email').value.trim(),
     tipo: $('#e-tipo').value,
+    metodoPago: $('#e-pago').value,
+    importeAbono: $('#e-importe').value,
   };
   try {
     const res = await socios.editarSocio(perfilActualId, campos);
@@ -349,6 +456,7 @@ async function onGuardarObs() {
   }
 }
 
+/** El CSV exporta SIEMPRE la lista completa, no la página que se está viendo. */
 function exportarCSV() {
   const h = [
     'Nº carnet',
@@ -361,6 +469,9 @@ function exportarCSV() {
     'Teléfono',
     'Email',
     'Tipo',
+    'Importe abono',
+    'Método de pago',
+    'Pagado',
     'Alta',
   ];
   const filas = socios
@@ -376,6 +487,9 @@ function exportarCSV() {
       s.tel,
       s.email,
       s.tipo,
+      importeAbonoDe(s),
+      s.metodoPago,
+      s.pagado ? 'Sí' : 'No',
       s.alta,
     ]);
   const csv = [h, ...filas]

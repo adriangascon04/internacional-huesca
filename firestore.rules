@@ -108,6 +108,15 @@ service cloud.firestore {
     // `carnet` = nº impreso y visible: SÍ es mutable, porque se compacta al
     // renumerar cada temporada. Reutilizar ese número es inofensivo solo
     // porque el QR lleva además el token del socio.
+    //
+    // BORRADO: antes era `allow delete: if false` y la única forma de quitar a
+    // alguien era la baja lógica (activo:false). El club no quiere ese rastro
+    // —un socio que se quita es casi siempre un alta equivocada— y además hacía
+    // imposible el "borrón y cuenta nueva" al terminar las pruebas. Ahora admin
+    // puede borrar de verdad. El nº de carnet que queda libre se reutiliza, pero
+    // eso NO resucita el carnet borrado: el QR lleva el token del socio, que es
+    // distinto para cada uno. Y el id interno no se reutiliza nunca, porque lo
+    // reparte el contador de más abajo, que solo sabe subir.
     match /socios/{id} {
       allow read: if autenticado();
       allow create: if esAdmin()
@@ -116,7 +125,7 @@ service cloud.firestore {
         && request.resource.data.carnet is number
         && request.resource.data.creadoPor == request.auth.token.email;
       allow update: if esAdmin() && noTocaAuditoria() && firmaValida();
-      allow delete: if false;  // baja lógica (activo:false), nunca borrado real
+      allow delete: if esAdmin();
     }
 
     // ---------------------------------------------------------------- entradas
