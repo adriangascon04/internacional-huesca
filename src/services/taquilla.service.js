@@ -5,6 +5,16 @@ import * as repo from '../repositories/taquilla.repository.js';
 import { PRECIOS_TAQUILLA, tipoEntradaPorId } from '../config/app.config.js';
 import { session } from '../core/session.js';
 
+/**
+ * Identificador de una venta. Sin él, dos ventas del mismo tipo, precio y
+ * método cobradas en el mismo milisegundo son objetos IDÉNTICOS, y el
+ * `arrayRemove` con el que se anula una borra las dos: se pedía corregir un
+ * error y desaparecía también una venta buena. Es además lo que permite
+ * anular una venta concreta y no solo la última.
+ */
+const nuevoIdVenta = () =>
+  `v_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
 /** Vende una entrada. El contador lo incrementa el servidor (atómico). */
 export async function venderEntrada(
   jornadaKey,
@@ -22,6 +32,7 @@ export async function venderEntrada(
   const importe = indicado === '' ? Number(definido?.precio ?? 0) : Number(indicado);
   if (!Number.isFinite(importe) || importe < 0) throw new Error('El precio no es válido');
   const venta = {
+    id: nuevoIdVenta(),
     tipo: tipoNormalizado,
     // Se persiste el nombre para que un tipo renombrado en el futuro siga
     // siendo inteligible en el histórico y en los informes.
@@ -32,6 +43,35 @@ export async function venderEntrada(
     vendidoPor: session.email ?? null, // auditoría: quién cobró
   };
   await repo.sumarVenta(jornadaKey, tipoNormalizado, venta);
+  return venta;
+}
+
+/** Las ventas de una jornada ordenadas de la más reciente a la más antigua. */
+export const ventasOrdenadas = (d = {}) =>
+  [...ventasDe(d)].sort((a, b) =>
+    String(b.hora || '').localeCompare(String(a.hora || '')),
+  );
+
+/**
+ * Anula UNA venta concreta. Se relee el documento del servidor y se borra el
+ * objeto tal y como está guardado: `arrayRemove` compara por valor exacto, así
+ * que pasarle la copia que tiene el navegador en pantalla (que puede ir un
+ * instante por detrás) no borraría nada.
+ *
+ * La venta anulada desaparece del historial, y las estadísticas se calculan
+ * SIEMPRE a partir del historial: en cuanto se anula deja de contar, tanto en
+ * el número de entradas como en la recaudación.
+ *
+ * @returns {Promise<object|null>} la venta anulada, o null si ya no estaba.
+ */
+export async function anularVenta(jornadaKey, ventaId) {
+  const snap = await repo.obtenerTaquilla(jornadaKey);
+  if (!snap.exists()) return null;
+  const historial = snap.data().historial;
+  if (!Array.isArray(historial)) return null;
+  const venta = historial.find((v) => v?.id === ventaId);
+  if (!venta) return null;
+  await repo.restarVenta(jornadaKey, venta.tipo, venta);
   return venta;
 }
 
@@ -54,7 +94,12 @@ export async function deshacerVenta(jornadaKey) {
 }
 
 export function ventasDe(d = {}) {
-  if (Array.isArray(d.historial) && d.historial.length) return d.historial;
+  // Si el documento TIENE historial, el historial es la verdad — aunque esté
+  // vacío. Un `[]` significa "no queda ninguna venta", normalmente porque se
+  // han anulado todas; antes se confundía con "documento antiguo sin historial"
+  // y se caía a los contadores `general`/`menor`, así que anular la última
+  // venta de una jornada la hacía reaparecer en las estadísticas.
+  if (Array.isArray(d.historial)) return d.historial;
   // Documentos anteriores no guardaban el importe individual: se conserva su
   // significado usando las tarifas que estaban vigentes entonces.
   return [

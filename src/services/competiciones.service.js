@@ -1,6 +1,9 @@
 // Modelo único de calendario. Un partido siempre tiene una clave estable para
 // enlazar asistencia, taquilla y bloqueos, independientemente de su etiqueta.
-import { TIPOS_ENTRADA_POR_DEFECTO } from '../config/app.config.js';
+import {
+  TIPOS_ENTRADA_POR_DEFECTO,
+  esTipoEntradaRetirado,
+} from '../config/app.config.js';
 
 export const tarifasPorDefecto = () =>
   Object.fromEntries(TIPOS_ENTRADA_POR_DEFECTO.map((t) => [t.id, t.precio]));
@@ -25,14 +28,32 @@ export const etiquetaPartido = (competiciones, id) => {
   const p = partidoPorId(competiciones, id);
   return p ? `${p.competicion} · ${p.nombre}` : id;
 };
+/**
+ * Todas las tarifas guardadas del partido, incluidas las de tipos retirados.
+ * Es la vista de EDICIÓN (pantalla de competiciones): un precio que existe en
+ * Firestore tiene que poder verse y corregirse aunque ya no se venda.
+ */
 export const preciosDePartido = (competiciones, id) => ({
   ...tarifasPorDefecto(),
   ...(partidoPorId(competiciones, id)?.precios || {}),
 });
+
+/**
+ * Solo las tarifas que se pueden COBRAR hoy. Los partidos creados antes de
+ * retirar un tipo siguen guardando su precio, y sin este filtro el tipo
+ * retirado volvía a aparecer en el desplegable de taquilla de esos partidos.
+ */
+export const preciosVendiblesDePartido = (competiciones, id) =>
+  Object.fromEntries(
+    Object.entries(preciosDePartido(competiciones, id)).filter(
+      ([tipo]) => !esTipoEntradaRetirado(tipo),
+    ),
+  );
+
 /** Tipos disponibles para un partido. Las claves añadidas a sus precios se
  * convierten automáticamente en tipos vendibles, sin tocar la aplicación. */
 export const tiposDePartido = (competiciones, id) => {
-  const precios = preciosDePartido(competiciones, id);
+  const precios = preciosVendiblesDePartido(competiciones, id);
   return Object.keys(precios).map((tipo) => ({
     id: tipo,
     nombre: TIPOS_ENTRADA_POR_DEFECTO.find((t) => t.id === tipo)?.nombre || tipo,
