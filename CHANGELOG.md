@@ -2,6 +2,71 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.3.0] — Empezar de cero, cuotas reales y estadísticas ordenadas
+
+> ⚠️ **Antes de nada:** este cambio toca `firestore.rules` (admin ya puede borrar
+> socios). Las reglas **no se despliegan solas**: hay que pegarlas en Firebase
+> Console → Firestore → Reglas → Publicar. Sin ese paso, ni el botón de eliminar
+> socio ni el de empezar de cero funcionarán.
+
+### Añadido
+- **Botón "Borrarlo todo y empezar de cero"** (pestaña Backup, solo admin). Borra
+  socios, fichajes y taquilla de una vez, que es lo que hace falta al terminar la
+  fase de pruebas. Convive con el reinicio de solo los datos de partido: van
+  numerados y con la diferencia escrita, y cada uno pide teclear su propia palabra.
+  Los socios se borran los últimos, para que un corte a mitad no deje fichajes
+  huérfanos. No toca calendario, precios, usuarios ni copias.
+- **Socio Colaborador**, un abono de **aportación libre**: la cuota es la que
+  decida quien aporta. El importe es obligatorio en el alta (su tarifa de
+  referencia es 0 € y heredarla en silencio registraría todos los donativos como
+  gratuitos) y suma en la recaudación de socios por lo que realmente se cobró.
+- **El importe del abono se ve y se edita.** Aparece en la lista de socios, en las
+  cifras de su ficha y en el detalle, y se corrige desde la edición junto al método
+  de pago. La tarifa es un punto de partida, no un precio cerrado.
+- **Lista de socios paginada** (25 por página). El buscador sigue filtrando sobre
+  todos los socios y el CSV sigue exportando la lista entera.
+- **Anular una venta concreta de taquilla**, no solo la última.
+- **Estadísticas en cuatro subpestañas** — Resumen, Socios, Taquilla y Asistencia —
+  con datos nuevos: cómo se cobra (para cuadrar la caja), precio medio por tipo de
+  entrada, cuota media por tipo de abono y cuánta recaudación viene de socios que
+  no van al campo.
+
+### Corregido
+- **Una entrada de taquilla borrada seguía contando.** Al anular la última venta
+  que quedaba, el historial se quedaba vacío y el cálculo lo confundía con "documento
+  antiguo sin historial", cayendo a los contadores heredados: la venta recién
+  anulada reaparecía en la recaudación. Ahora, si el documento tiene historial, el
+  historial manda aunque esté vacío.
+- **Anular una venta podía llevarse dos.** `arrayRemove` compara por valor exacto y
+  dos ventas del mismo tipo, precio y método cobradas en el mismo milisegundo eran
+  objetos idénticos. Cada venta lleva ya un identificador propio.
+- **El nombre de los abonos no coincidía** entre el desplegable ("Abono Familiar") y
+  la tabla de tarifas de al lado ("Pack Familiar (2 adultos + hasta 3 hijos)"):
+  parecían dos abonos distintos. Ahora la etiqueta es la misma en toda la aplicación
+  y el texto descriptivo va detrás, como apoyo.
+- **Dos censos de socios distintos** según la tarjeta de estadísticas que miraras:
+  unas contaban todas las fichas y otras solo las activas.
+
+### Cambiado
+- **Se acaban las bajas de socio.** El borrado lógico (`activo:false`) dejaba la
+  ficha guardada para siempre; el club no quiere ese rastro, porque un socio que se
+  quita es casi siempre un alta equivocada. Ahora se borra de verdad. No reabre el
+  bug del "QR zombie": el nº de carnet se reutiliza, pero el QR lleva además el
+  token del socio, que es distinto para cada uno, y el id interno lo reparte un
+  contador que solo sabe subir.
+- **Taquilla ya no vende "socio con entrada incluida".** Un abonado entra con su QR
+  y ya se cuenta como asistente ahí; cobrarle además una entrada de 0 € lo contaba
+  dos veces. Las ventas históricas de ese tipo se conservan tal cual.
+- **El Abono Internacional se cuenta aparte, no se esconde.** Sigue fuera del % de
+  asistencia —es el sentido de ese abono, apoyar al club sin venir al campo— y su
+  dinero sigue entrando entero en la recaudación; pero si uno de ellos viene y
+  ficha, su entrada se enseña aparte en el detalle por jornada en vez de
+  desaparecer.
+
+### Seguridad
+- `firestore.rules`: `socios` pasa de `allow delete: if false` a `if esAdmin()`.
+  Es lo que habilita eliminar un socio y el borrón y cuenta nueva. Publícalas.
+
 ## [1.2.0] — Calendario configurable, dinero real y escáner que lee
 
 ### Añadido

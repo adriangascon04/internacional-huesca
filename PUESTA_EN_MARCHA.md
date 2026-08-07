@@ -266,7 +266,7 @@ solo tienes el tuyo (admin), así que prueba al menos los de admin:
 |---|------|-----------|------------------|----------|
 | 1 | get | `/socios/1` | tu UID (admin) | ✅ Permitido |
 | 2 | create | `/socios/99` | tu UID (admin) | ✅ Permitido* |
-| 3 | delete | `/socios/1` | tu UID (admin) | ❌ **Denegado** |
+| 3 | delete | `/socios/1` | tu UID (admin) | ✅ Permitido |
 | 4 | get | `/backups/x` | tu UID (admin) | ✅ Permitido |
 | 5 | get | `/usuarios/OTRO_UID` | tu UID (admin) | ✅ Permitido |
 
@@ -274,9 +274,14 @@ solo tienes el tuyo (admin), así que prueba al menos los de admin:
 "Crear documento" y añade `activo: true` (boolean) y `numerico: 99` (number),
 o dará denegado — es correcto, las reglas exigen esos campos.
 
-**El caso 3 debe salir DENEGADO.** Es intencionado: los socios se dan de baja
-lógicamente (`activo: false`), nunca se borran, para que sus números no se
-reutilicen jamás.
+**El caso 3 debe salir PERMITIDO.** Los socios se borran de verdad: ya no hay
+baja lógica. Si te sale denegado es que tienes publicadas las reglas antiguas —
+vuelve a pegar `firestore.rules` entero, o ni el botón de eliminar socio ni el de
+"empezar de cero" funcionarán.
+
+Que el número de carnet se reutilice no resucita el carnet borrado: el QR lleva
+además el token del socio, distinto para cada uno. El id interno lo reparte el
+contador de `contadores`, que solo sabe subir.
 
 Si el caso 1 te sale **denegado**, tu documento de rol del paso 4 está mal.
 **Arréglalo antes de publicar.**
@@ -309,10 +314,16 @@ Recarga la app en local y comprueba, marcando cada casilla:
 - [ ] En **Escáner**: seleccionas jornada, escribes el nº de socio, pulsas
       Validar → sale ✅ ACCESO VÁLIDO
 - [ ] Vuelves a validar el mismo → sale ⚠️ QR ya utilizado
-- [ ] En **Taquilla**: seleccionas jornada, pulsas +1 General → el contador sube
+- [ ] En **Taquilla**: seleccionas partido y tipo, pulsas "Cobrar entrada" → sube
+- [ ] La venta aparece en "Ventas de este partido"; pulsas **Anular** → desaparece
+      de la tabla y la recaudación baja
 - [ ] Pulsas "Deshacer última venta" → baja
 - [ ] Cierras la jornada (🔒) → el escáner rechaza nuevas entradas
-- [ ] En **Estadísticas**: se pinta el gráfico
+- [ ] En **Estadísticas**: cambias de subpestaña (Resumen / Socios / Taquilla /
+      Asistencia) y en cada una se pintan sus gráficos
+- [ ] Das de alta un **Socio Colaborador** sin importe → te lo rechaza pidiendo
+      la cantidad; con importe, entra y suma en la recaudación de socios
+- [ ] Eliminas un socio de prueba y desaparece de la lista
 - [ ] En **Backup**: creas una copia y aparece en la lista
 
 Si todo esto pasa, la app está operativa.

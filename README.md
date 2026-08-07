@@ -38,14 +38,14 @@ u otras:
 
 | Pestaña | Para qué sirve |
 |---|---|
-| **Socios** | Dar de alta, buscar, editar y dar de baja socios. |
+| **Socios** | Dar de alta, buscar, editar y eliminar socios. |
 | **QRs** | Generar e imprimir el carnet con código QR de cada socio. |
 | **Escáner** | Leer el QR en la puerta y registrar la entrada. |
 | **Taquilla** | Vender entradas sueltas el día del partido, con su precio y método de pago. |
 | **Competiciones** | Crear el calendario (competiciones y partidos) y fijar el precio de cada partido. |
 | **Estadísticas** | Ver asistencia, recaudación de taquilla, recaudación por altas de socios y datos de los socios. |
 | **Importar** | Cargar muchos socios de golpe desde un Excel. |
-| **Backup** | Guardar copias de seguridad de todos los datos. |
+| **Backup** | Guardar copias de seguridad y reiniciar los datos para empezar de cero. |
 
 ---
 
@@ -67,7 +67,7 @@ Si no tienes usuario todavía, alguien con rol **admin** tiene que crearte uno
 ## 3. Roles: quién puede hacer qué
 
 Cada usuario tiene **un rol**. El rol decide qué puede hacer. La columna
-*Gestionar socios* incluye añadir, editar y dar de baja:
+*Gestionar socios* incluye añadir, editar y eliminar:
 
 | Rol | Ver socios y QRs | Gestionar socios | Escáner | Taquilla | Estadísticas | Importar / Backups |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -151,39 +151,57 @@ Pestaña **Socios** (solo **admin**).
    - **Teléfono** y **email**, opcionales: hay socios que no tienen, y
      inventárselos es peor que dejarlos vacíos.
    - **Tipo de abono** (Familiar, General, Internacional, Academia, Jubilado,
-     -16 años).
+     -16 años y **Socio Colaborador**).
    - **Método de pago** e **importe cobrado**. El importe en blanco significa
-     "la tarifa de su abono"; un 0 escrito a mano sí es gratis. Queda congelado
-     en la ficha, así que cambiar tarifas después no reescribe lo ya facturado.
+     "la tarifa de su abono"; un 0 escrito a mano sí es gratis. Queda anotado en
+     la ficha, así que cambiar tarifas después no reescribe lo ya facturado —
+     pero se puede corregir a mano desde la ficha del socio.
 2. Pulsa **Añadir socio**.
 
 El programa asigna automáticamente el **número de carnet**. Si el abono es
 gratuito (Academia), queda marcado como pagado; el resto nace **pendiente de
 cobro** hasta que se marque la casilla *Pagado*.
 
+> **Socio Colaborador**: abono de aportación libre, sin tarifa. El importe es
+> **obligatorio** al darlo de alta, porque su precio de referencia es 0 € y
+> dejarlo en blanco registraría el donativo como gratuito. Lo que se teclee es lo
+> que suma en la recaudación de socios.
+
+> **Abono Internacional**: su dinero cuenta entero en la recaudación, pero sus
+> socios **no entran en la base del % de asistencia** — es un abono de apoyo al
+> club desde fuera y prácticamente nunca vienen al campo.
+
 ### Buscar, ver y editar
 
-- Usa el **buscador** para filtrar por nombre, apellidos o documento.
-- Pulsa sobre una fila para abrir la **ficha del socio**: ahí ves sus datos, su
-  historial de asistencia partido a partido y puedes:
-  - **✏️ Editar** sus datos.
+- Usa el **buscador** para filtrar por nombre, apellidos o documento. Busca sobre
+  **todos** los socios, no solo sobre la página visible.
+- La lista se pagina de **25 en 25**, con *Anterior* / *Siguiente* bajo la tabla.
+- Pulsa **👤 Perfil** para abrir la **ficha del socio**: ahí ves sus datos, lo que
+  pagó por su abono y su historial de asistencia partido a partido, y puedes:
+  - **✏️ Editar** sus datos, su tipo de abono, su método de pago y **el importe
+    del abono**.
   - Marcar/desmarcar si ha **pagado**.
   - Escribir **observaciones**.
-  - Darlo de **baja**.
 
 ### Marcar como pagado
 
 En la tabla de socios o en la ficha, marca la casilla **Pagado** cuando el socio
 haya abonado su cuota. Esto alimenta las estadísticas de facturación.
 
-### Dar de baja
+### Eliminar un socio
 
-La baja **no borra** al socio: su carnet deja de funcionar pero su historial se
-conserva y su número no se reutiliza por error.
+**Eliminar** borra la ficha de verdad: no hay baja lógica ni papelera. Está
+pensado sobre todo para corregir un alta equivocada.
+
+Su número de carnet queda libre y lo hereda el siguiente socio, pero el carnet
+antiguo **no** abre la puerta del nuevo: el QR lleva además un código de
+seguridad propio de cada socio. El identificador interno tampoco se reutiliza
+nunca — lo reparte un contador que solo sabe subir.
 
 ### Exportar a CSV
 
-Botón **⬇ CSV** para descargar la lista de socios y abrirla en Excel.
+Botón **⬇ CSV** para descargar la lista **completa** de socios (con importe,
+método de pago y estado de cobro) y abrirla en Excel.
 
 ---
 
@@ -261,48 +279,57 @@ Comprueba antes que la persona es quien dice ser.
 
 Pestaña **Taquilla** (**admin** y **taquillero**).
 
-1. Elige la **jornada**.
-2. Cada vez que vendas una entrada, pulsa **+1 General** o **+1 Menor**. El
-   contador sube y se guarda solo.
-3. Si te equivocas, **↩ Deshacer última venta**.
-4. Puedes **cerrar la jornada** con el botón de bloqueo cuando termine la venta.
+1. Elige el **partido**.
+2. Elige el **tipo de entrada**: la lista sale de las tarifas de ese partido.
+3. El **precio** se rellena con la tarifa y **puedes cambiarlo** para esa venta
+   (invitación, descuento, suplemento). Las estadísticas registran lo cobrado.
+4. Elige el **método de pago** y pulsa **Cobrar entrada**.
+5. Puedes **cerrar el partido** con el botón de bloqueo cuando termine la venta.
 
-Abajo tienes el **resumen** de lo vendido y lo recaudado.
+Abajo tienes el **resumen** de lo vendido y lo recaudado, y la tabla **Ventas de
+este partido** con un botón **Anular** en cada fila. Al anular, esa venta deja de
+contar al momento en la recaudación y en el número de entradas. Para el error que
+acabas de cometer sigue estando **↩ Deshacer última venta**.
+
+> En taquilla **no** se vende "entrada de socio": un abonado entra con su QR y ya
+> queda contado como asistente ahí. Cobrarle además una entrada de 0 € lo contaría
+> dos veces.
 
 ---
 
 ## 9. Estadísticas
 
-Pestaña **Estadísticas** (todos los roles). Aquí puedes estudiar los datos desde
-muchos ángulos:
+Pestaña **Estadísticas** (todos los roles), dividida en **cuatro subpestañas**:
 
-**Resumen general**
-- Socios totales, jornadas con datos, asistentes totales y pendientes de pago.
-- Gráfico de **asistencia por jornada** (socios + taquilla + tendencia).
+**Resumen** — ¿cómo va la temporada y de dónde sale el dinero?
+- Socios, partidos con datos, asistentes totales, **ingreso total** y pendientes
+  de pago.
+- **De dónde sale el dinero**: cuotas frente a taquilla, con su porcentaje.
+- Resumen por **competición** y **detalle por jornada**.
 
-**Demografía y calidad de datos**
-- Socios activos y bajas, **edad media** y **distribución por edades**.
-- **Socios fundadores**.
-- **Morosidad**: cuántos están pendientes de pago y su porcentaje.
-- **Cobertura de contacto**: qué porcentaje tiene email y teléfono.
-- Reparto por **tipo de documento**.
+**Socios** — ¿quiénes son y cuánto han pagado?
+- **Cuotas**: cobrado, pendiente y **cuota media** (el dato que importa en el
+  Socio Colaborador, que no tiene tarifa).
+- Desglose **por tipo de abono**, con cuál cuenta para la asistencia.
+- **Cómo pagan** su cuota.
+- **Perfil**: edad media y distribución por edades, fundadores, morosidad,
+  cobertura de email y teléfono, tipos de documento.
+- **Evolución de las altas**, mes a mes.
 
-**Facturación**
-- **Cuotas cobradas** y **pendientes**, **taquilla** y **facturación total
-  estimada**.
-- **Reparto del ingreso** (cuánto viene de cuotas y cuánto de taquilla).
-- **Ticket medio** de taquilla y **taquilla media por jornada**.
-- Mejor y peor jornada de taquilla.
-- Desglose por tipo de abono (cobrado / pendiente).
+**Taquilla** — ¿qué se vende en la puerta?
+- Recaudación, entradas vendidas, **ticket medio**, media por partido jugado y
+  mejor y peor taquilla.
+- Gráfico de **recaudación por partido y tipo** (la altura es dinero).
+- Recaudación **por tipo de entrada** con su precio medio.
+- **Cómo se cobra en la puerta**, para cuadrar la caja al acabar el partido.
 
-**Asistencia**
-- **Ocupación media** (qué porcentaje de los socios acude de media).
-- **Socios con asistencia perfecta** y **absentistas** (los que no han venido
-  nunca).
-- **Fichajes totales** y **hora punta** de entrada.
-- Gráfico de **fidelidad** (cuántos socios han ido a 1, 2, 3… jornadas).
-- Gráfico de **franjas horarias** (a qué hora entra la gente).
-- Asistencia media por tipo de abono y **ranking** de socios por asistencia.
+**Asistencia** — ¿quién viene al campo?
+- **Ocupación media**, **asistencia perfecta**, **absentistas**, fichajes totales
+  y **hora punta**.
+- Gráfico de **asistentes por partido y tipo** (la altura son personas: aquí sí
+  salen los abonados, que aportan 0 € en la puerta).
+- Gráficos de **fidelidad** y **franjas horarias**.
+- Asistencia media por tipo de abono y **ranking** de socios.
 
 ---
 
@@ -339,7 +366,7 @@ temporada.
 En la pestaña **Socios** (solo **admin**), al final, está la opción **Renumerar
 carnets** para empezar una temporada nueva.
 
-- Compacta los números de carnet (tapa los huecos de las bajas) y **genera
+- Compacta los números de carnet (tapa los huecos que quedan) y **genera
   carnets nuevos**.
 - ⚠️ **Todos los carnets antiguos dejan de funcionar de golpe.** Hazlo solo al
   empezar la temporada y después **reimprime** los carnets con **QRs → 📦

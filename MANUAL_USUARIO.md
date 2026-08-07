@@ -26,7 +26,7 @@ del club que van a usarla, y también se explica paso a paso (apartado 12).
 8. [El día del partido: el escáner](#8-el-día-del-partido-el-escáner)
 9. [Taquilla](#9-taquilla)
 10. [Estadísticas](#10-estadísticas)
-11. [Copias de seguridad](#11-copias-de-seguridad)
+11. [Copias de seguridad](#11-copias-de-seguridad) · [empezar de cero](#111-zona-peligrosa-los-dos-reinicios)
 12. [Dar acceso a la gente del club](#12-dar-acceso-a-la-gente-del-club)
 13. [Protección de datos](#13-protección-de-datos)
 14. [Preguntas frecuentes](#14-preguntas-frecuentes)
@@ -68,7 +68,7 @@ Cinco minutos aquí te ahorran muchas dudas después.
 | **Carnet / QR** | El código que lleva el socio. Dentro va su número, un código de seguridad único suyo y la temporada en que se emitió. |
 | **Entrada de taquilla** | La que se vende en la puerta a quien no es socio. Tiene tipo (general, infantil…) y precio. |
 | **Rol** | El tipo de acceso de cada persona del club: decide qué puede ver y tocar. |
-| **Alta / baja** | Dar de alta es meter a un socio nuevo. Dar de baja es sacarlo de la operativa (su ficha no se borra). |
+| **Alta** | Meter a un socio nuevo. Para quitarlo, se **elimina** su ficha: no hay "baja", se borra de verdad. |
 | **⭐ Socio Fundador** | Distintivo automático de quien se dio de alta antes del 30 de mayo de 2027, el final de la primera temporada. |
 
 **La diferencia que más se confunde**, porque suenan parecido:
@@ -87,7 +87,7 @@ corresponde, ni le aparece. Cómo se asigna se explica en el apartado 12.
 
 | Rol | Socios | Competiciones y precios | Escáner | Taquilla | Estadísticas | Cerrar jornada | Fijar jornada actual | Importar | Copias |
 |-----|--------|------------------------|---------|----------|--------------|----------------|----------------------|----------|--------|
-| **admin** | Todo: alta, editar, baja, pagos | Sí | Sí, en cualquier partido | Sí | Sí | Sí | Sí | Sí | Sí |
+| **admin** | Todo: alta, editar, eliminar, pagos | Sí | Sí, en cualquier partido | Sí | Sí | Sí | Sí | Sí | Sí |
 | **taquillero** | Solo consultar | Solo consultar | No | Vender | Sí | No | No | No | No |
 | **control_acceso** | Solo consultar | Solo consultar | Sí, solo en la jornada actual | No | Sí | No | No | No | No |
 | **lector** | Solo consultar | Solo consultar | No | No | Sí | No | No | No | No |
@@ -168,8 +168,12 @@ partida, mientras no toques nada, son:
 |-----------------|--------|
 | Entrada general | 10 € (incluye sorteo) |
 | Entrada infantil | 5 € |
-| Socio con entrada incluida | 0 € |
 | Invitación | 0 € |
+
+> **En taquilla no hay "entrada de socio".** Un abonado entra con su QR por la
+> puerta y ahí ya queda contado como asistente. Si además se le cobrara una
+> entrada de 0 €, aparecería **dos veces** en las estadísticas. Si ves ese tipo en
+> algún partido antiguo es un precio guardado de antes: ya no se puede vender.
 
 ### 4.5. Crear un tipo de entrada nuevo
 
@@ -222,7 +226,7 @@ Si algo está mal te lo dice en rojo debajo del botón y no guarda nada:
 - **No puede haber dos socios activos con el mismo documento.**
 
 **El número de carnet se asigna solo**, a continuación del último. No lo eliges
-tú. Los huecos que dejan las bajas se recuperan al renumerar (apartado 5.9).
+tú. Los huecos que van quedando se recuperan al renumerar (apartado 5.9).
 
 ### 5.2. El dinero del abono: importe y método de pago
 
@@ -232,27 +236,35 @@ En el mismo formulario tienes dos casillas más:
 - **Importe cobrado (€):** lo que le has cobrado **de verdad** a esa persona.
 
 **Si dejas el importe en blanco, se cobra la tarifa de su abono.** Es lo normal.
-Solo lo rellenas cuando cobras algo distinto: un descuento familiar, un pago
+Solo lo cambias cuando cobras algo distinto: un descuento familiar, un pago
 parcial, un acuerdo especial. Un **0** escrito a mano sí vale y significa gratis.
 
 Justo debajo del formulario tienes siempre a la vista el recuadro **Precios de
-los abonos**, para no tener que acordarte de nada mientras cobras:
+los abonos**, con los mismos nombres que ves en el desplegable:
 
 | Abono | Precio |
 |-------|--------|
-| Pack Familiar (2 adultos + hasta 3 hijos) | 170 € |
-| Abono Normal | 95 € |
-| Internacional | 80 € |
-| Jubilado | 75 € |
-| Menor de 16 años | 50 € |
-| Jugadores de la escuela | Gratis |
+| Abono Familiar | 170 € — pack familiar: 2 adultos + hasta 3 hijos |
+| Abono General | 95 € — abono normal de temporada |
+| Abono Internacional | 80 € — apoyo desde fuera |
+| Abono Jubilado | 75 € |
+| Abono -16 años | 50 € |
+| Abono Academia | Gratis — jugadores de la escuela |
+| Socio Colaborador | **Lo que aporte** |
 
-Dos detalles de estos abonos:
+Cuatro detalles de estos abonos:
 
-- El de **jugadores de la escuela** es gratuito, así que al darlo de alta se
-  marca **pagado** automáticamente.
-- El **Internacional** es para quien no va al campo, así que **no cuenta** en los
-  porcentajes de asistencia de las estadísticas.
+- El **Abono Academia** es gratuito, así que al darlo de alta se marca **pagado**
+  automáticamente.
+- El **Abono Internacional** es para quien apoya al club sin ir al campo. **Su
+  dinero cuenta entero** en la recaudación; lo que no cuenta es su asistencia, así
+  que no hunde los porcentajes de las estadísticas. Si alguno viene y ficha, su
+  entrada aparece aparte en el detalle por jornada.
+- El **Socio Colaborador** no tiene tarifa: aporta lo que quiera. Por eso el
+  importe es **obligatorio** al darlo de alta — la casilla sale vacía y no te deja
+  guardar hasta que escribas la cantidad. Eso es lo que sumará en la recaudación.
+- El precio de **cualquier** abono se puede cambiar en el alta, y también después
+  desde la ficha del socio (apartado 5.6). La tarifa es un punto de partida.
 
 > ⚠️ **Muy importante:** dar de alta a alguien **no lo marca como pagado**. El
 > importe queda anotado, pero hasta que no marques su casilla **Pagado** en la
@@ -264,10 +276,17 @@ Dos detalles de estos abonos:
 En la columna **Pagado** de la tabla, marca o desmarca la casilla. Se guarda al
 instante. Solo el admin puede cambiarla.
 
-### 5.4. Buscar un socio
+### 5.4. Buscar un socio y moverte por la lista
 
 El buscador filtra por **nombre, apellidos o DNI** según escribes. A la derecha
 tienes el total de socios.
+
+La lista se muestra **de 25 en 25**, con los botones **← Anterior** y
+**Siguiente →** debajo de la tabla. Con cientos de socios, pintarlos todos hacía
+la página interminable y en el móvil era inmanejable.
+
+> **El buscador busca en TODOS los socios, no solo en la página que estás
+> viendo.** Y el botón **⬇ CSV** sigue exportando la lista completa.
 
 ### 5.5. Ver la ficha de un socio
 
@@ -275,15 +294,25 @@ Pulsa **👤 Perfil**. Se abre una ficha con:
 
 - **Partidos asistidos** (sobre los que se han jugado, no sobre el calendario
   entero) y su **porcentaje de asistencia**
-- **Estado de pago**
-- Todos sus datos y desde cuándo es socio
+- **Lo que ha pagado por su abono** y su estado de pago
+- Todos sus datos, el método de pago y desde cuándo es socio
 - La **⭐ de Socio Fundador** si le corresponde
 - **Partido a partido**: a qué jornadas fue y a qué hora entró
+
+El importe aparece arriba, entre las cifras grandes, y también en el detalle. Si
+lo que se cobró no es la tarifa de su abono, se indica cuál era la tarifa entre
+paréntesis. En un **Socio Colaborador** ese número es *el* dato: no hay tarifa de
+la que deducirlo.
 
 ### 5.6. Editar los datos de un socio
 
 Dentro de la ficha, **✏️ Editar** → cambia lo que necesites → **Guardar
 cambios**. Se aplican las mismas comprobaciones que en el alta. Solo admin.
+
+Además de sus datos personales puedes cambiar el **tipo de abono**, el **método
+de pago** y el **importe del abono**. Ese importe es el que suma en la
+recaudación de socios, así que si te equivocaste al darlo de alta —o el socio
+colaborador cambia su aportación— se corrige aquí, sin volver a darlo de alta.
 
 El número de socio **no se puede cambiar**.
 
@@ -292,26 +321,33 @@ El número de socio **no se puede cambiar**.
 Al final de la ficha hay un campo libre para lo que quieras anotar (alergias,
 notas de contacto, incidencias…). Escribe y pulsa **Guardar**.
 
-### 5.8. Dar de baja a un socio
+### 5.8. Eliminar a un socio
 
-Pulsa **Dar de baja** en su fila y confirma. A partir de ese momento:
+Pulsa **Eliminar** en su fila y confirma. A partir de ese momento:
 
-- Desaparece de la lista y de los recuentos
+- Desaparece de la lista, de los recuentos y de las estadísticas
 - **Su carnet deja de funcionar** en el escáner
-- Su ficha no se borra: sigue guardada por si hay que consultarla
-- **Su número queda libre**, pero no se le da a nadie hasta que renumeres
-  (apartado 5.9). A mitad de temporada nunca se mueve nada.
+- **Su ficha se borra de verdad**: datos, cuota y carnet
+- **Su número queda libre** y lo heredará el siguiente socio que des de alta
 
-> **No hay botón para reactivar a un socio dado de baja.** Si te equivocas, avisa
-> a quien administre la aplicación. Si lo das de alta otra vez desde el
-> formulario, recibirá un **número nuevo** y habrá que reimprimirle el carnet.
+> ### ⚠️ Esto no se puede deshacer
+>
+> No hay papelera ni botón de recuperar. Está pensado sobre todo para **corregir
+> un alta equivocada**; si dudas, haz antes una copia de seguridad (apartado 11).
+>
+> Si lo vuelves a dar de alta, recibirá un **número nuevo** y habrá que
+> reimprimirle el carnet.
+
+> **¿Y el carnet del que se fue, con el número que ahora tiene otro?** No sirve.
+> El QR no lleva solo el número: lleva también un código de seguridad único de
+> cada socio. El carnet viejo del nº 3 no abre la puerta del nuevo nº 3.
 
 ### 5.9. Renumerar los carnets en una temporada nueva
 
-Durante la temporada, las bajas van dejando huecos: si se va el socio 3, nadie
-tiene el 3 y los carnets llegan más alto que el número de socios que tienes. Al
-empezar temporada nueva, **Renumerar** tapa esos huecos: los socios pasan a estar
-numerados del **1 al N** sin saltos, respetando su antigüedad.
+Durante la temporada, los socios que se van dejan huecos: si se elimina el socio
+3, nadie tiene el 3 y los carnets llegan más alto que el número de socios que
+tienes. Al empezar temporada nueva, **Renumerar** tapa esos huecos: los socios
+pasan a estar numerados del **1 al N** sin saltos, respetando su antigüedad.
 
 En la pestaña **Socios**, abajo del todo, la tarjeta **Nueva temporada ·
 renumerar carnets** te dice cuántos huecos hay.
@@ -520,13 +556,26 @@ La casilla del precio es editable en cada venta. Sirve para:
 **Las estadísticas registran lo que se cobró de verdad**, no la tarifa. Si cobras
 una entrada a 7 €, en la recaudación aparecen 7 €.
 
-### 9.3. Deshacer
+### 9.3. Deshacer y anular ventas
 
-**↩ Deshacer última venta** quita la última. El botón solo aparece si hay algo que
-deshacer.
+Tienes dos formas de quitar una venta:
+
+- **↩ Deshacer última venta**, para el error que acabas de cometer. El botón solo
+  aparece si hay algo que deshacer.
+- La tabla **Ventas de este partido**, debajo del resumen, con la hora, el tipo,
+  el importe y el método de pago de cada una, y un botón **Anular** en cada fila.
+  Es lo que necesitas cuando la entrada equivocada ya no es la última porque has
+  cobrado tres más después.
+
+**Al anular, esa venta deja de contar al momento**: desaparece del número de
+entradas y de la recaudación, en la taquilla y en las estadísticas.
 
 Igual que en el escáner, todo se comparte en tiempo real entre las personas
-conectadas, y un **partido cerrado** no admite ventas.
+conectadas, y un **partido cerrado** no admite ventas ni anulaciones.
+
+> Lo mismo vale para la puerta: si fichas a alguien por error, **Borrar** en
+> *Entradas registradas* (apartado 8.5) lo quita de las estadísticas y su QR
+> vuelve a estar disponible en esa jornada.
 
 ---
 
@@ -535,52 +584,69 @@ conectadas, y un **partido cerrado** no admite ventas.
 Pestaña **Estadísticas**. Se calcula todo solo, no hay que introducir nada. Todo
 sale de lo que ya has hecho: las altas, los fichajes de la puerta y las ventas.
 
+Está dividida en **cuatro subpestañas**, arriba del todo. Cada una responde a una
+pregunta, para no tener que bajar por una lista interminable buscando un dato:
+
+| Subpestaña | Responde a |
+|------------|-----------|
+| **Resumen** | ¿Cómo va la temporada y de dónde sale el dinero? |
+| **Socios** | ¿Quiénes son y cuánto han pagado? |
+| **Taquilla** | ¿Qué se vende en la puerta? |
+| **Asistencia** | ¿Quién viene al campo? |
+
 ### 10.1. Resumen
 
-Arriba, en tarjetas: socios totales, jornadas con datos, asistentes totales y
-socios pendientes de pago.
+- **Las cifras de cabecera**: socios, partidos con datos, asistentes totales,
+  ingreso total de la temporada y socios pendientes de pago.
+- **De dónde sale el dinero**: cuánto han aportado las cuotas de socio y cuánto la
+  taquilla, con su porcentaje. Son **dos negocios distintos** y por eso van
+  separados; mezclarlos no dice nada útil.
+- **Resumen por competición** y **detalle por jornada**, partido a partido.
 
-### 10.2. Los dos gráficos principales
+El **% de asistencia** se colorea solo: 🟢 verde por encima del 70 %, 🟡 ámbar
+entre 30 % y 70 %, 🔴 rojo por debajo. Se calcula solo sobre los abonos que
+asisten al campo: el **Abono Internacional queda fuera de la base** a propósito.
+Si uno de ellos viene y ficha, su entrada aparece **en gris al lado** del número
+de socios de esa jornada, para que no parezca que se ha perdido un fichaje.
 
-Están uno debajo del otro y **cuentan cosas distintas**:
+### 10.2. Socios
 
-- **Recaudación de entradas por partido y tipo** — cada barra es un partido, cada
-  color un tipo de entrada, y la altura es **dinero**. Sirve para ver de dónde
-  sale la recaudación.
-- **Asistentes por partido y tipo** — el mismo desglose contando **personas**.
-  Aquí sí aparecen los abonados que entran con su QR, que no pagan en la puerta
-  pero son la mayoría de la gente que hay en el campo.
-
-Es normal que no se parezcan: quien llena el campo y quien lo paga no son los
-mismos.
-
-### 10.3. Altas de socios · recaudación independiente
-
-Un apartado **aparte de la taquilla**, a propósito: son dos negocios distintos y
-mezclarlos no dice nada útil. Incluye:
-
-- **nuevos socios**, **ingresos cobrados** y **pendiente de cobro**
-- desglose **por tipo de abono**
-- **evolución temporal**: cuántas altas y cuánto dinero, mes a mes
+- **Cuotas de socio**: dados de alta, cobrado, pendiente y **cuota media**.
+- **Desglose por tipo de abono**, con su cuota media. Es lo que hay que mirar para
+  el **Socio Colaborador**: como no tiene tarifa, la media es la única forma de
+  saber cuánto está aportando la gente.
+- **Socios por tipo de abono**, con el porcentaje y una columna que dice si ese
+  abono **cuenta para la asistencia**.
+- **Cómo pagan la cuota**: Bizum, TPV o efectivo.
+- **Perfil de los socios**: edades, tipos de documento, cuántos tienen email y
+  teléfono, morosidad, fundadores y cuántos no cuentan para la asistencia.
+- **Evolución de las altas**: cuántas y cuánto dinero, mes a mes.
 
 Recuerda que una cuota cuenta como cobrada solo si el socio está marcado como
 **Pagado** (apartado 5.3).
 
-### 10.4. El resto
+### 10.3. Taquilla
 
-- **Demografía y calidad de datos:** edades, tipos de documento, cuántos socios
-  tienen email y teléfono, morosidad, fundadores.
-- **Asistencia:** media por jornada, mejor y peor partido, asistencia por tipo de
-  abono, **fidelidad** (cuántos socios van a cuántos partidos) y **franjas
-  horarias** de entrada, útil para saber a qué hora llega la gente.
-- **Detalle por jornada:** socios, % de asistencia, entradas de taquilla, total y
-  recaudación de cada partido.
-- **Recaudación por tipo de entrada** y **por competición**.
-- **Socios por tipo de abono.**
+- **Recaudación por entradas**, entradas vendidas, **ticket medio**, media por
+  partido jugado y mejor y peor taquilla.
+- **Gráfico de recaudación por partido y tipo**: cada barra es un partido, cada
+  color un tipo de entrada, y la altura es **dinero**.
+- **Recaudación por tipo de entrada**, con su precio medio.
+- **Cómo se cobra en la puerta**: para **cuadrar la caja** al terminar el partido,
+  porque el efectivo es lo único que hay que contar a mano.
 
-El **% de asistencia** se colorea solo: 🟢 verde por encima del 70 %, 🟡 ámbar
-entre 30 % y 70 %, 🔴 rojo por debajo. Se calcula solo sobre los abonos que
-asisten al campo (el Internacional queda fuera).
+### 10.4. Asistencia
+
+- **Media por jornada**, ocupación, socios con asistencia perfecta, absentistas,
+  hora punta y mejor y peor partido.
+- **Gráfico de asistentes por partido y tipo**: el mismo desglose que el de
+  taquilla pero contando **personas**. Aquí sí aparecen los abonados que entran
+  con su QR, que no pagan en la puerta pero son la mayoría de la gente que hay en
+  el campo. Es normal que los dos gráficos no se parezcan: **quien llena el campo
+  y quien lo paga no son los mismos**.
+- **Fidelidad** (cuántos socios van a cuántos partidos) y **franjas horarias** de
+  entrada, útil para saber a qué hora llega la gente y cuánta puerta hacen falta.
+- **Asistencia por tipo de abono** y **ranking de socios**.
 
 ---
 
@@ -609,40 +675,44 @@ borra sola.
 >   crees que la necesitas, **no toques nada más** y pide ayuda antes de seguir
 >   usando la aplicación, para no sobrescribir lo que habría que recuperar.
 
-### 11.1. Reiniciar los datos de partido
+### 11.1. Zona peligrosa: los dos reinicios
 
-Abajo del todo de la misma pestaña, en un recuadro rojo, está **Reiniciar todas
-las jornadas** (solo admin).
+Abajo del todo de la misma pestaña, en un recuadro rojo, hay **dos botones**
+(solo admin). Se parecen y hacen cosas muy distintas, así que van numerados:
 
-Sirve para **dejar la aplicación limpia al terminar las pruebas**: durante los
-ensayos se ficha gente inventada y se venden entradas de mentira, y eso ensucia
-las estadísticas de toda la temporada.
+| | Botón | Qué borra | Cuándo se usa |
+|-|-------|-----------|---------------|
+| **1** | Reiniciar todas las jornadas | Fichajes y ventas. **Los socios se quedan.** | Empieza una temporada nueva |
+| **2** | 🧨 Borrarlo todo y empezar de cero | Lo anterior **y todos los socios** | Se acaban las pruebas |
 
-**Qué borra:**
+**Qué NO toca ninguno de los dos:** el calendario de competiciones, los precios,
+los usuarios de la aplicación y las copias de seguridad. Todo eso se queda.
 
-- todas las **entradas fichadas** en la puerta, de todas las jornadas
-- todas las **ventas de taquilla**, de todas las jornadas
-- reabre las jornadas que estuvieran **cerradas**
+**Cómo funcionan los dos:**
 
-**Qué NO toca:** los socios, el calendario de competiciones, los precios, los
-usuarios y las copias de seguridad. Todo eso se queda como está.
+1. Te enseñan **exactamente lo que van a borrar**, contado: cuántos socios,
+   cuántas entradas, cuántas ventas y cuántas jornadas cerradas.
+2. Te piden escribir una palabra — **BORRAR** el primero, **EMPEZAR DE CERO** el
+   segundo. Es a propósito: un "¿estás seguro?" normal se acepta sin leerlo.
+3. **Guardan una copia de seguridad automáticamente** antes de tocar nada, y si
+   esa copia falla no borran nada.
 
-**Cómo funciona:**
+#### Cuál quieres
 
-1. Te enseña **exactamente lo que va a borrar**, contado: cuántas entradas,
-   cuántas ventas y cuántas jornadas cerradas.
-2. Te pide escribir la palabra **BORRAR**. Es a propósito: un "¿estás seguro?"
-   normal se acepta sin leerlo.
-3. **Guarda una copia de seguridad automáticamente** antes de tocar nada, y si
-   esa copia falla no borra nada.
+- **Reiniciar todas las jornadas** es el de cada verano: se van los datos del año
+  pasado y los socios siguen ahí para renovar.
+- **Borrarlo todo y empezar de cero** es el de una sola vez: cuando has terminado
+  de probar la aplicación con socios y partidos inventados y quieres arrancar en
+  limpio. Después de pulsarlo hay que **dar de alta a los socios de verdad** y
+  **reimprimir todos los carnets**, porque los de prueba ya no existen.
 
-> ⚠️ **No se puede deshacer.** La copia previa queda en la lista de arriba y
-> puedes descargarla, pero volver a meterla en la aplicación no es un botón (ver
-> el aviso de arriba). Úsalo cuando de verdad quieras empezar de cero.
+> ⚠️ **Ninguno de los dos se puede deshacer.** La copia previa queda en la lista
+> de arriba y puedes descargarla, pero volver a meterla en la aplicación no es un
+> botón (ver el aviso de arriba).
 
-**Si lo que quieres es borrar también los socios de prueba**, eso no se puede
-hacer desde la aplicación a propósito: los socios nunca se borran de verdad, solo
-se dan de baja. Pídeselo a quien lleva el mantenimiento técnico.
+> **Los números de carnet vuelven a empezar en el 1** después de borrarlo todo.
+> Por dentro, el identificador de cada socio sigue avanzando y nunca se repite:
+> es lo que impide que un carnet viejo abra la puerta de un socio nuevo.
 
 ---
 
@@ -715,11 +785,14 @@ responsable de ellos ante el RGPD. En la práctica:
   los datos completos de todos los socios**, incluido el DNI.
 - **Un usuario por persona.** Nada de una cuenta compartida "del club": si pasa
   algo, hay que saber quién hizo qué. La aplicación ya registra quién dio de
-  alta, quién modificó, quién cobró y quién dio de baja.
-- **Da de baja el acceso** de quien deje el club (12.3).
+  alta, quién modificó y quién cobró.
+- **Quítale el acceso** a quien deje el club (12.3).
 - **Cuida los archivos que descargues** (CSV, JSON de copia, ZIP de carnets):
   salen del control de la aplicación y llevan datos personales.
-- Los socios tienen derecho a **acceder, rectificar y suprimir** sus datos.
+- Los socios tienen derecho a **acceder, rectificar y suprimir** sus datos. El
+  derecho de supresión se atiende con **Eliminar** en su fila (5.8), que borra la
+  ficha de verdad. Ojo: **las copias de seguridad anteriores siguen conteniéndola**
+  hasta que rotan, así que si alguien ejerce ese derecho, revísalas.
 
 ---
 
