@@ -13,7 +13,9 @@ import { euros } from '../utils/format.js';
 import {
   TIPOS_ABONO,
   METODOS_PAGO,
-  nombreAbono,
+  etiquetaAbono,
+  descripcionAbono,
+  esAportacionLibre,
   tipoEntradaPorId,
 } from '../config/app.config.js';
 
@@ -23,22 +25,43 @@ const metodosEnTexto = () =>
     ? `${METODOS_PAGO.slice(0, -1).join(', ')} o ${METODOS_PAGO.at(-1)}`
     : METODOS_PAGO[0] || '—';
 
-/** Una tarifa: "Abono Normal — 95 €" (o "gratis" cuando el precio es 0). */
+/** Una tarifa: "Abono General — 95 €" (o "gratis" cuando el precio es 0). */
 const fila = (nombre, precio, nota) =>
   `<li><span>${esc(nombre)}</span> <strong>${precio > 0 ? euros(precio) : 'gratis'}</strong>${
     nota ? ` <small>(${esc(nota)})</small>` : ''
   }</li>`;
 
+/** Igual, pero con el importe abierto: no hay tarifa que enseñar. */
+const filaLibre = (nombre, nota) =>
+  `<li><span>${esc(nombre)}</span> <strong>lo que aporte</strong>${
+    nota ? ` <small>(${esc(nota)})</small>` : ''
+  }</li>`;
+
 const lista = (filas) => `<ul class="tarifas">${filas.join('')}</ul>`;
 
-/** Precios de los abonos, para la pantalla de alta de socios. */
+/**
+ * Precios de los abonos, para la pantalla de alta de socios.
+ *
+ * El nombre del abono es EL MISMO que el del desplegable de al lado
+ * (`etiquetaAbono`, que es el id). Antes esta tabla usaba el nombre comercial
+ * largo y el desplegable el corto, así que "Abono Familiar" y "Pack Familiar
+ * (2 adultos + hasta 3 hijos)" parecían dos abonos distintos. La descripción
+ * sigue estando, pero como texto de apoyo detrás del precio.
+ */
 export function pintarTarifasAbonos(el) {
   if (!el) return;
   el.innerHTML =
     `<strong>Precios de los abonos</strong>` +
-    lista(TIPOS_ABONO.map((t) => fila(nombreAbono(t.id), t.precio))) +
+    lista(
+      TIPOS_ABONO.map((t) =>
+        esAportacionLibre(t.id)
+          ? filaLibre(etiquetaAbono(t.id), descripcionAbono(t.id))
+          : fila(etiquetaAbono(t.id), t.precio, descripcionAbono(t.id)),
+      ),
+    ) +
     `<small>Pago: ${esc(metodosEnTexto())}. El importe se puede ajustar en esta alta
-     concreta sin cambiar la tarifa general.</small>`;
+     concreta sin cambiar la tarifa general, y también después desde la ficha del
+     socio.</small>`;
 }
 
 /**

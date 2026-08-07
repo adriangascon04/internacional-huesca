@@ -25,9 +25,25 @@ export const getPartidos = (temporada = TEMPORADA_ACTUAL) =>
 export const TIPOS_ENTRADA_POR_DEFECTO = [
   { id: 'general', nombre: 'Entrada general', precio: 10, nota: 'incluye sorteo' },
   { id: 'menor', nombre: 'Entrada infantil', precio: 5 },
-  { id: 'socio', nombre: 'Socio con entrada incluida', precio: 0 },
   { id: 'invitacion', nombre: 'Invitación', precio: 0 },
 ];
+
+// Tipos de entrada que YA NO se venden en taquilla pero que siguen existiendo
+// en los datos guardados. Un abonado entra con su QR por la puerta y ya se
+// cuenta como asistente ahí: cobrarle además una "entrada de socio" de 0 € en
+// taquilla lo contaba DOS veces (una como abonado y otra como entrada vendida).
+//
+// No basta con quitarlo de la lista de arriba: los partidos ya creados guardan
+// sus propias tarifas en Firestore (`precios: {general, menor, socio, ...}`) y
+// los tipos vendibles se derivan de esas claves, así que el tipo retirado
+// reaparecería en el desplegable de cualquier partido antiguo. Se filtra por
+// nombre al construir la lista de venta (ver competiciones.service.js).
+//
+// Las ventas históricas de estos tipos NO se tocan: conservan su `nombreTipo`
+// y siguen apareciendo en las estadísticas tal y como se cobraron.
+export const TIPOS_ENTRADA_RETIRADOS = ['socio'];
+export const esTipoEntradaRetirado = (id) => TIPOS_ENTRADA_RETIRADOS.includes(id);
+
 export const METODOS_PAGO = ['Bizum', 'TPV', 'Efectivo'];
 export const PRECIOS_TAQUILLA = { general: 10, menor: 5 }; // compatibilidad legacy
 export const tipoEntradaPorId = (id) =>
@@ -44,53 +60,79 @@ export const TIPOS_DOCUMENTO = [TIPO_DOC_DNI, 'Pasaporte', 'Otro'];
 export const tipoDocDe = (socio) => socio?.tipoDoc || TIPO_DOC_DNI;
 
 // --- Tipos de abono ---------------------------------------------------------
-// El "Abono Academia" es gratuito -> se marca pagado automáticamente al alta.
-// El "Abono Internacional" no asiste al campo -> se excluye de las stats de asistencia.
-// Los precios son de referencia (verifícalos con el club); no se usaban en la
-// lógica original salvo como texto, así que quedan centralizados aquí.
+// Campos de cada tipo:
+//   · id        NOMBRE OFICIAL del abono. Es lo que se ve en el desplegable, en
+//               la tabla de tarifas, en las listas y en las estadísticas: una
+//               sola etiqueta en toda la aplicación. `descripcion` es texto de
+//               apoyo, nunca sustituye al nombre.
+//   · precio    Tarifa de referencia. Es un valor por DEFECTO, no un precio
+//               cerrado: cada alta guarda el importe que realmente se cobró
+//               (`importeAbono`) y ese importe se puede editar después.
+//   · asiste    false -> sus socios no cuentan para la asistencia. El "Abono
+//               Internacional" es de apoyo al club desde fuera: su dinero SÍ
+//               entra en la recaudación, pero prácticamente nunca vienen al
+//               campo y meterlos en la base del % de asistencia lo hundía sin
+//               que eso significara nada.
+//   · gratuito  true -> el alta se marca pagada automáticamente.
+//   · libre     true -> no hay tarifa: el importe lo decide quien aporta y es
+//               obligatorio teclearlo en el alta.
 export const TIPOS_ABONO = [
   {
     id: 'Abono Familiar',
-    nombre: 'Pack Familiar (2 adultos + hasta 3 hijos)',
+    descripcion: 'Pack familiar: 2 adultos + hasta 3 hijos',
     precio: 170,
     asiste: true,
     gratuito: false,
   },
   {
     id: 'Abono General',
-    nombre: 'Abono Normal',
+    descripcion: 'Abono normal de temporada',
     precio: 95,
     asiste: true,
     gratuito: false,
   },
   {
     id: 'Abono Internacional',
-    nombre: 'Internacional',
+    descripcion: 'Apoyo desde fuera: no cuenta para la asistencia',
     precio: 80,
     asiste: false,
     gratuito: false,
   },
   {
     id: 'Abono Academia',
-    nombre: 'Jugadores de la escuela',
+    descripcion: 'Jugadores de la escuela',
     precio: 0,
     asiste: true,
     gratuito: true,
   },
   { id: 'Abono Jubilado', precio: 75, asiste: true, gratuito: false },
   { id: 'Abono -16 años', precio: 50, asiste: true, gratuito: false },
+  {
+    id: 'Socio Colaborador',
+    descripcion: 'Aportación libre: la cantidad la decide el socio',
+    precio: 0,
+    asiste: true,
+    gratuito: false,
+    libre: true,
+  },
 ];
 
-/** Etiqueta legible de un abono. Varios tipos no traen `nombre`: su id ya lo es. */
-export const nombreAbono = (tipo) =>
-  TIPOS_ABONO.find((t) => t.id === tipo)?.nombre || tipo;
+export const tipoAbonoPorId = (tipo) => TIPOS_ABONO.find((t) => t.id === tipo);
 
-export const esGratuito = (tipo) =>
-  TIPOS_ABONO.find((t) => t.id === tipo)?.gratuito === true;
-export const precioAbonoPorDefecto = (tipo) =>
-  TIPOS_ABONO.find((t) => t.id === tipo)?.precio ?? 0;
-export const asisteAlCampo = (tipo) =>
-  TIPOS_ABONO.find((t) => t.id === tipo)?.asiste !== false;
+/**
+ * Etiqueta de un abono. Es su id, siempre y en todas las pantallas: antes el
+ * desplegable enseñaba "Abono Familiar" y la tabla de tarifas de al lado
+ * "Pack Familiar (2 adultos + hasta 3 hijos)", así que parecían dos cosas.
+ */
+export const etiquetaAbono = (tipo) => tipo;
+/** Texto de apoyo del abono ('' si no tiene). Nunca sustituye a la etiqueta. */
+export const descripcionAbono = (tipo) => tipoAbonoPorId(tipo)?.descripcion || '';
+
+export const esGratuito = (tipo) => tipoAbonoPorId(tipo)?.gratuito === true;
+export const precioAbonoPorDefecto = (tipo) => tipoAbonoPorId(tipo)?.precio ?? 0;
+export const asisteAlCampo = (tipo) => tipoAbonoPorId(tipo)?.asiste !== false;
+/** ¿El importe lo pone quien se da de alta (donativo) en vez de la tarifa? */
+export const esAportacionLibre = (tipo) => tipoAbonoPorId(tipo)?.libre === true;
 
 // --- Socio Fundador (antes DUPLICADO en líneas 680 y 884) -------------------
 // Fundador = dado de alta antes del 30/05/2027 (fin de temporada 26/27).
@@ -156,6 +198,14 @@ export const COLECCIONES = {
 export const DOC_JORNADA_ACTUAL = 'jornada_actual';
 
 export const MAX_BACKUPS = 7; // rotación de copias de seguridad
+
+// --- Listado de socios -------------------------------------------------------
+// La tabla de la primera pestaña se pinta entera en el DOM. Con 30 socios de
+// pruebas daba igual; con los cientos que tendrá el club en temporada, la
+// página crece sin fin, el móvil se arrastra al hacer scroll y encontrar a
+// alguien es imposible. Se pagina: el buscador sigue filtrando sobre TODOS los
+// socios, no solo sobre la página que se está viendo.
+export const SOCIOS_POR_PAGINA = 25;
 
 // --- Números de carnet (renumeración por temporada) --------------------------
 // Hay DOS números por socio y no son el mismo:
