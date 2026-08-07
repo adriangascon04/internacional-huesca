@@ -55,6 +55,7 @@ function iniciarApp() {
   qrPage.initQr();
   scannerPage.initScanner();
   taquillaPage.initTaquilla();
+  statsPage.initStats();
   importarPage.initImportar();
   backupPage.initBackup();
   jornadasPage.initJornadas();

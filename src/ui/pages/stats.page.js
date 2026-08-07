@@ -1,11 +1,22 @@
 // ============================================================================
-//  src/ui/pages/stats.page.js  ·  Estadísticas y gráfico (Chart.js por CDN).
+//  src/ui/pages/stats.page.js  ·  Estadísticas y gráficos (Chart.js por CDN).
+//
+//  La pantalla está partida en cuatro subpestañas, cada una con UNA pregunta:
+//    · resumen    — ¿cómo va la temporada y de dónde sale el dinero?
+//    · socios     — ¿quiénes son y cuánto han pagado?
+//    · taquilla   — ¿qué se vende en la puerta?
+//    · asistencia — ¿quién viene al campo?
+//
+//  Los gráficos se pintan SOLO en la subpestaña visible. Chart.js mide el
+//  contenedor al crearse, y un canvas dentro de un `display:none` mide 0: se
+//  quedaba en una raya de un píxel que ya no se recuperaba al enseñar la
+//  pestaña. Por eso cambiar de subpestaña vuelve a llamar a render().
 // ============================================================================
-import { $ } from '../../utils/dom.js';
+import { $, $$, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
 import { euros } from '../../utils/format.js';
 import { state } from '../../core/state.js';
-import { claseAsistencia, carnetDe } from '../../config/app.config.js';
+import { claseAsistencia, carnetDe, asisteAlCampo } from '../../config/app.config.js';
 import {
   calcularStats,
   calcularAltasSocios,
@@ -20,151 +31,246 @@ let chartFranjas = null;
 let chartFidelidad = null;
 let chartAltas = null;
 
+const SUBTABS = ['resumen', 'socios', 'taquilla', 'asistencia'];
+let subtabActiva = 'resumen';
+
 const pct = (n, total) => (total ? Math.round((n / total) * 100) : 0);
+/** Cuerpo de tabla, o una fila de "sin datos" que ocupe todas las columnas. */
+const filasO = (html, columnas, texto = 'Sin datos') =>
+  html || `<tr><td colspan="${columnas}">${texto}</td></tr>`;
+
+export function initStats() {
+  $$('.subtab').forEach((btn) =>
+    on(btn, 'click', () => cambiarSubtab(btn.dataset.subtab)),
+  );
+  cambiarSubtab(subtabActiva);
+}
+
+function cambiarSubtab(sub) {
+  subtabActiva = SUBTABS.includes(sub) ? sub : SUBTABS[0];
+  SUBTABS.forEach((s) => {
+    $(`#substats-${s}`)?.classList.toggle('active', s === subtabActiva);
+    $(`.subtab[data-subtab="${s}"]`)?.classList.toggle('active', s === subtabActiva);
+  });
+  render();
+}
 
 export function render() {
+  // Una sola población de socios para TODAS las subpestañas. Cada función de
+  // estadística filtraba por su cuenta y el mismo club salía con dos censos
+  // distintos según la tarjeta que mirases. Ya no hay bajas de socio (un socio
+  // que se quita se borra), pero el filtro se queda por si alguna ficha antigua
+  // sigue marcada de baja.
+  const socios = state.socios.filter((s) => s.activo !== false);
+
   const s = calcularStats({
-    socios: state.socios,
+    socios,
     entradas: state.entradas,
     taquilla: state.taquilla,
     competiciones: state.competiciones,
   });
+  // Las cuotas se calculan UNA vez: las pinta su propia subpestaña y además
+  // aportan el ingreso real con el que se reparte el total en el resumen.
+  const altas = calcularAltasSocios({ socios });
 
-  $('#stats-cards').innerHTML = `
-    <div class="stat"><div class="stat-n">${s.totalSocios}</div><div class="stat-l">Socios totales</div></div>
-    <div class="stat"><div class="stat-n">${s.jornadasConDatos}</div><div class="stat-l">Jornadas con datos</div></div>
-    <div class="stat"><div class="stat-n">${s.porJornada.reduce((a, j) => a + j.totalAsistentes, 0)}</div><div class="stat-l">Asistentes totales</div></div>
-    <div class="stat"><div class="stat-n">${s.pendientesPago}</div><div class="stat-l">Pendientes de pago</div></div>`;
-
-  $('#stats-tabla').innerHTML = s.porJornada
-    .map((j) => {
-      const pct = s.baseAsistencia ? Math.round((j.nSocios / s.baseAsistencia) * 100) : 0;
-      const cls = claseAsistencia(pct);
-      return `<tr><td>${esc(j.label)}</td><td>${j.nSocios}</td>
-      <td><span class="badge ${cls}">${pct}%</span></td>
-      <td>${j.nTaquilla}</td><td><strong>${j.totalAsistentes}</strong></td>
-      <td>${euros(j.recaudacion)}</td></tr>`;
-    })
-    .join('');
-
-  $('#stats-tipos').innerHTML =
-    Object.entries(s.tipos)
-      .map(([t, n]) => `<tr><td>${esc(t)}</td><td>${n}</td></tr>`)
-      .join('') || '<tr><td colspan="2">Sin datos</td></tr>';
-
-  $('#stats-recaudacion').textContent = euros(s.recaudacionTotal);
-  $('#stats-entradas-tipos').innerHTML =
-    s.tiposEntrada
-      .map(
-        (t) =>
-          `<tr><td>${esc(t.nombre || t.tipo)}</td><td>${t.asistentes}</td><td>${euros(t.recaudacion)}</td></tr>`,
-      )
-      .join('') || '<tr><td colspan="3">Sin ventas</td></tr>';
-  $('#stats-competiciones').innerHTML =
-    s.porCompeticion
-      .map(
-        (c) =>
-          `<tr><td>${esc(c.competicion)}</td><td>${c.partidos}</td><td>${c.asistentes}</td><td>${euros(c.recaudacion)}</td></tr>`,
-      )
-      .join('') || '<tr><td colspan="4">Sin datos</td></tr>';
-  // Las altas se calculan UNA vez: las pinta su propio apartado y además
-  // aportan el ingreso real por cuotas con el que se reparte el total.
-  const altas = calcularAltasSocios({ socios: state.socios });
-
-  pintarGrafico(s);
-  pintarGraficoAsistencia(s);
-  renderEconomia(s, altas);
-  renderDemografia();
-  renderAltasSocios(altas);
-  renderAsistencia(s);
+  // Las tablas y las cifras se pintan siempre (son baratas y así no hay que
+  // acordarse de repintarlas); los gráficos solo en la subpestaña visible.
+  renderResumen(s, altas);
+  renderSocios(s, altas, socios);
+  renderTaquilla(s, altas);
+  renderAsistencia(s, socios);
 }
 
-/**
- * Cifras globales de la venta de entradas. No repite las cuotas de socio: solo
- * recibe su total ya calculado para poder mostrar el reparto del ingreso.
- */
-function renderEconomia(s, altas) {
-  const cont = $('#economia-cards');
-  if (!cont) return;
+// ============================================================================
+//  Resumen
+// ============================================================================
+
+function renderResumen(s, altas) {
   const e = calcularEconomiaEntradas({
     porJornada: s.porJornada,
     ingresoAltas: altas.ingresos,
   });
 
-  cont.innerHTML = `
-    <div class="stat"><div class="stat-n">${euros(e.recaudacionTaquilla)}</div><div class="stat-l">Recaudación por entradas<br><small>${e.entradasVendidas} entradas vendidas</small></div></div>
-    <div class="stat"><div class="stat-n">${euros(e.ticketMedioTaquilla)}</div><div class="stat-l">Ticket medio por entrada</div></div>
-    <div class="stat"><div class="stat-n">${euros(e.recaudacionMediaJornada)}</div><div class="stat-l">Recaudación media por partido jugado</div></div>
-    <div class="stat"><div class="stat-n">${euros(e.ingresoTotal)}</div><div class="stat-l">Ingreso total de la temporada<br><small>${e.pctIngresoAltas}% altas · ${e.pctIngresoTaquilla}% entradas</small></div></div>
-    ${e.jornadaMax ? `<div class="stat"><div class="stat-n">${euros(e.jornadaMax.recaudacion)}</div><div class="stat-l">Mejor taquilla<br>${esc(e.jornadaMax.label)}</div></div>` : ''}
-    ${e.jornadaMin ? `<div class="stat"><div class="stat-n">${euros(e.jornadaMin.recaudacion)}</div><div class="stat-l">Peor taquilla<br>${esc(e.jornadaMin.label)}</div></div>` : ''}`;
+  $('#stats-cards').innerHTML = `
+    <div class="stat"><div class="stat-n">${s.totalSocios}</div><div class="stat-l">Socios</div></div>
+    <div class="stat"><div class="stat-n">${s.jornadasConDatos}</div><div class="stat-l">Partidos con datos</div></div>
+    <div class="stat"><div class="stat-n">${s.porJornada.reduce((a, j) => a + j.totalAsistentes, 0)}</div><div class="stat-l">Asistentes totales</div></div>
+    <div class="stat"><div class="stat-n">${euros(e.ingresoTotal)}</div><div class="stat-l">Ingreso total de la temporada</div></div>
+    <div class="stat"><div class="stat-n">${s.pendientesPago}</div><div class="stat-l">Socios pendientes de pago</div></div>`;
+
+  $('#resumen-ingresos-cards').innerHTML = `
+    <div class="stat"><div class="stat-n">${euros(altas.ingresos)}</div><div class="stat-l">Cuotas de socio cobradas<br><small>${e.pctIngresoAltas}% del ingreso</small></div></div>
+    <div class="stat"><div class="stat-n">${euros(e.recaudacionTaquilla)}</div><div class="stat-l">Taquilla<br><small>${e.pctIngresoTaquilla}% del ingreso</small></div></div>
+    <div class="stat"><div class="stat-n">${euros(altas.pendientes)}</div><div class="stat-l">Cuotas pendientes de cobro</div></div>
+    ${altas.ingresosNoAsisten ? `<div class="stat"><div class="stat-n">${euros(altas.ingresosNoAsisten)}</div><div class="stat-l">De socios que no van al campo<br><small>Abono Internacional</small></div></div>` : ''}`;
+
+  $('#stats-recaudacion').textContent = euros(s.recaudacionTotal);
+
+  $('#stats-tabla').innerHTML = filasO(
+    s.porJornada
+      .map((j) => {
+        const p = s.baseAsistencia ? Math.round((j.nSocios / s.baseAsistencia) * 100) : 0;
+        return `<tr><td>${esc(j.label)}</td>
+      <td>${j.nSocios}${j.nSociosSinComputar ? ` <small style="color:var(--txt3)" title="Socios que no cuentan para el % de asistencia">+${j.nSociosSinComputar}</small>` : ''}</td>
+      <td><span class="badge ${claseAsistencia(p)}">${p}%</span></td>
+      <td>${j.nTaquilla}</td><td><strong>${j.totalAsistentes}</strong></td>
+      <td>${euros(j.recaudacion)}</td></tr>`;
+      })
+      .join(''),
+    6,
+    'Todavía no hay ningún partido con datos.',
+  );
+
+  $('#stats-competiciones').innerHTML = filasO(
+    s.porCompeticion
+      .map(
+        (c) =>
+          `<tr><td>${esc(c.competicion)}</td><td>${c.partidos}</td><td>${c.asistentes}</td><td>${euros(c.recaudacion)}</td></tr>`,
+      )
+      .join(''),
+    4,
+  );
 }
 
 // ============================================================================
-//  Demografía y calidad de datos: edad, contacto, documentos, fundadores.
+//  Socios: cuotas, reparto por abono, perfil demográfico.
 // ============================================================================
 
-function renderDemografia() {
-  const d = calcularDemografia({ socios: state.socios });
+function renderSocios(s, altas, socios) {
+  $('#altas-cards').innerHTML = `
+    <div class="stat"><div class="stat-n">${altas.nuevosSocios}</div><div class="stat-l">Socios dados de alta</div></div>
+    <div class="stat"><div class="stat-n">${euros(altas.ingresos)}</div><div class="stat-l">Cuotas cobradas</div></div>
+    <div class="stat"><div class="stat-n">${euros(altas.pendientes)}</div><div class="stat-l">Pendiente de cobro</div></div>
+    <div class="stat"><div class="stat-n">${euros(altas.nuevosSocios ? Math.round((altas.ingresos + altas.pendientes) / altas.nuevosSocios) : 0)}</div><div class="stat-l">Cuota media por socio</div></div>`;
+
+  $('#altas-tabla').innerHTML = filasO(
+    altas.porTipo
+      .map(
+        (t) =>
+          `<tr><td>${esc(t.tipo)}${t.asiste ? '' : ' <small style="color:var(--txt3)">no asiste</small>'}</td>
+           <td>${t.socios}</td><td>${euros(t.cuotaMedia)}</td>
+           <td>${euros(t.ingresos)}</td><td>${euros(t.pendiente)}</td></tr>`,
+      )
+      .join(''),
+    5,
+  );
+
+  const totalTipos = Object.values(s.tipos).reduce((a, n) => a + n, 0);
+  $('#stats-tipos').innerHTML = filasO(
+    Object.entries(s.tipos)
+      .sort((a, b) => b[1] - a[1])
+      .map(
+        ([t, n]) =>
+          `<tr><td>${esc(t)}</td><td>${n}</td><td>${pct(n, totalTipos)}%</td>
+           <td>${asisteAlCampo(t) ? 'Sí' : '<span class="badge badge-warn">No</span>'}</td></tr>`,
+      )
+      .join(''),
+    4,
+  );
+
+  $('#socios-metodo-tabla').innerHTML = filasO(
+    altas.porMetodoPago
+      .map(
+        (m) =>
+          `<tr><td>${esc(m.metodo)}</td><td>${m.n}</td><td>${euros(m.importe)}</td></tr>`,
+      )
+      .join(''),
+    3,
+    'Todavía no se ha cobrado ninguna cuota.',
+  );
+
+  renderDemografia(socios);
+  if (subtabActiva === 'socios') pintarAltas(altas);
+}
+
+function renderDemografia(socios) {
+  const d = calcularDemografia({ socios });
 
   $('#demografia-cards').innerHTML = `
-    <div class="stat"><div class="stat-n">${d.totalActivos}</div><div class="stat-l">Socios activos</div></div>
-    <div class="stat"><div class="stat-n">${d.bajas}</div><div class="stat-l">Bajas</div></div>
+    <div class="stat"><div class="stat-n">${d.totalActivos}</div><div class="stat-l">Socios</div></div>
     <div class="stat"><div class="stat-n">${d.edadMedia || '—'}</div><div class="stat-l">Edad media</div></div>
     <div class="stat"><div class="stat-n">${d.fundadores}</div><div class="stat-l">Socios fundadores</div></div>
+    <div class="stat"><div class="stat-n">${d.noAsisten}</div><div class="stat-l">No cuentan para asistencia<br><small>Abono Internacional</small></div></div>
     <div class="stat"><div class="stat-n">${d.pendientes}</div><div class="stat-l">Pendientes de pago<br><small>${d.morosidadPct}% de morosidad</small></div></div>
     <div class="stat"><div class="stat-n">${pct(d.conEmail, d.totalActivos)}%</div><div class="stat-l">Con email<br><small>${pct(d.conTel, d.totalActivos)}% con teléfono</small></div></div>`;
 
   $('#demografia-edad-tabla').innerHTML =
-    d.edades
-      .map(
-        (g) =>
-          `<tr><td>${esc(g.label)} años</td><td>${g.socios}</td>
+    filasO(
+      d.edades
+        .map(
+          (g) =>
+            `<tr><td>${esc(g.label)} años</td><td>${g.socios}</td>
            <td><span class="badge badge-ok">${pct(g.socios, d.totalActivos)}%</span></td></tr>`,
-      )
-      .join('') +
+        )
+        .join(''),
+      3,
+    ) +
     (d.sinFecha
       ? `<tr><td>Sin fecha de nacimiento</td><td>${d.sinFecha}</td>
          <td><span class="badge badge-warn">${pct(d.sinFecha, d.totalActivos)}%</span></td></tr>`
       : '');
 
-  $('#demografia-doc-tabla').innerHTML =
+  $('#demografia-doc-tabla').innerHTML = filasO(
     d.porDoc
       .map(
         (t) =>
           `<tr><td>${esc(t.doc)}</td><td>${t.n}</td><td>${pct(t.n, d.totalActivos)}%</td></tr>`,
       )
-      .join('') || '<tr><td colspan="3">Sin datos</td></tr>';
+      .join(''),
+    3,
+  );
 }
 
 // ============================================================================
-//  Recaudación por altas de socios. Apartado independiente de la venta de
-//  entradas: aquí solo entra el dinero de las cuotas de abono.
+//  Taquilla: economía de la venta de entradas.
 // ============================================================================
 
-function renderAltasSocios(f) {
-  $('#altas-cards').innerHTML = `
-    <div class="stat"><div class="stat-n">${f.nuevosSocios}</div><div class="stat-l">Nuevos socios</div></div>
-    <div class="stat"><div class="stat-n">${euros(f.ingresos)}</div><div class="stat-l">Ingresos cobrados</div></div>
-    <div class="stat"><div class="stat-n">${euros(f.pendientes)}</div><div class="stat-l">Pendiente de cobro</div></div>`;
+function renderTaquilla(s, altas) {
+  const e = calcularEconomiaEntradas({
+    porJornada: s.porJornada,
+    ingresoAltas: altas.ingresos,
+  });
 
-  $('#altas-tabla').innerHTML =
-    f.porTipo
+  $('#economia-cards').innerHTML = `
+    <div class="stat"><div class="stat-n">${euros(e.recaudacionTaquilla)}</div><div class="stat-l">Recaudación por entradas<br><small>${e.entradasVendidas} entradas vendidas</small></div></div>
+    <div class="stat"><div class="stat-n">${euros(e.ticketMedioTaquilla)}</div><div class="stat-l">Ticket medio por entrada</div></div>
+    <div class="stat"><div class="stat-n">${euros(e.recaudacionMediaJornada)}</div><div class="stat-l">Recaudación media por partido jugado</div></div>
+    ${e.jornadaMax ? `<div class="stat"><div class="stat-n">${euros(e.jornadaMax.recaudacion)}</div><div class="stat-l">Mejor taquilla<br>${esc(e.jornadaMax.label)}</div></div>` : ''}
+    ${e.jornadaMin ? `<div class="stat"><div class="stat-n">${euros(e.jornadaMin.recaudacion)}</div><div class="stat-l">Peor taquilla<br>${esc(e.jornadaMin.label)}</div></div>` : ''}`;
+
+  $('#stats-entradas-tipos').innerHTML = filasO(
+    s.tiposEntrada
       .map(
         (t) =>
-          `<tr><td>${esc(t.tipo)}</td><td>${t.socios}</td><td>${euros(t.ingresos)}</td><td>${euros(t.pendiente)}</td></tr>`,
+          `<tr><td>${esc(t.nombre || t.tipo)}</td><td>${t.asistentes}</td><td>${euros(t.recaudacion)}</td>
+           <td>${euros(t.asistentes ? Math.round(t.recaudacion / t.asistentes) : 0)}</td></tr>`,
       )
-      .join('') || '<tr><td colspan="4">Sin datos</td></tr>';
-  pintarAltas(f);
+      .join(''),
+    4,
+    'Todavía no se ha vendido ninguna entrada.',
+  );
+
+  $('#taquilla-metodo-tabla').innerHTML = filasO(
+    s.porMetodoPago
+      .map(
+        (m) =>
+          `<tr><td>${esc(m.metodo)}</td><td>${m.n}</td><td>${euros(m.importe)}</td></tr>`,
+      )
+      .join(''),
+    3,
+    'Todavía no se ha vendido ninguna entrada.',
+  );
+
+  if (subtabActiva === 'taquilla') pintarGrafico(s);
 }
 
 // ============================================================================
 //  Asistencia: jornada pico/valle, ranking de socios, tasa por tipo de abono.
 // ============================================================================
 
-function renderAsistencia(s) {
+function renderAsistencia(s, socios) {
   const a = calcularAsistencia({
-    socios: state.socios,
+    socios,
     entradas: state.entradas,
     porJornada: s.porJornada,
   });
@@ -179,19 +285,18 @@ function renderAsistencia(s) {
     ${a.jornadaMax ? `<div class="stat"><div class="stat-n">${a.jornadaMax.nSocios}</div><div class="stat-l">Jornada con más asistencia<br>${esc(a.jornadaMax.label)}</div></div>` : ''}
     ${a.jornadaMin ? `<div class="stat"><div class="stat-n">${a.jornadaMin.nSocios}</div><div class="stat-l">Jornada con menos asistencia<br>${esc(a.jornadaMin.label)}</div></div>` : ''}`;
 
-  pintarFidelidad(a);
-  pintarFranjas(a);
-
-  $('#asistencia-tipos-tabla').innerHTML =
+  $('#asistencia-tipos-tabla').innerHTML = filasO(
     a.porTipo
       .filter((t) => t.socios > 0)
       .map(
         (t) =>
           `<tr><td>${esc(t.tipo)}</td><td>${t.socios}</td><td>${t.mediaAsistencia}%</td></tr>`,
       )
-      .join('') || '<tr><td colspan="3">Sin datos</td></tr>';
+      .join(''),
+    3,
+  );
 
-  $('#asistencia-ranking-tabla').innerHTML =
+  $('#asistencia-ranking-tabla').innerHTML = filasO(
     a.ranking
       .slice(0, 20)
       .map(
@@ -200,8 +305,20 @@ function renderAsistencia(s) {
            <td>${esc(`${r.socio.nombre} ${r.socio.ap1}`)}</td>
            <td>${r.asistidas}</td><td>${r.pct}%</td></tr>`,
       )
-      .join('') || '<tr><td colspan="4">Sin datos</td></tr>';
+      .join(''),
+    4,
+  );
+
+  if (subtabActiva === 'asistencia') {
+    pintarGraficoAsistencia(s);
+    pintarFidelidad(a);
+    pintarFranjas(a);
+  }
 }
+
+// ============================================================================
+//  Gráficos
+// ============================================================================
 
 const COLORES_TIPO = ['#185FA5', '#22c55e', '#eab308', '#E8354A', '#7c3aed', '#f97316'];
 
@@ -232,7 +349,9 @@ function graficoApilado(selector, { porJornada, tipos, filas, campo, formato }) 
       labels: porJornada.map((j) => j.label),
       datasets: tipos.map((t, i) => ({
         label: t.nombre || t.tipo,
-        data: porJornada.map((j) => filas(j).find((f) => f.tipo === t.tipo)?.[campo] || 0),
+        data: porJornada.map(
+          (j) => filas(j).find((f) => f.tipo === t.tipo)?.[campo] || 0,
+        ),
         backgroundColor: COLORES_TIPO[i % COLORES_TIPO.length],
         borderRadius: 4,
       })),

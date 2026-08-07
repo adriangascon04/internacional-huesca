@@ -75,7 +75,13 @@ export function calcularStats({ socios, entradas, taquilla, competiciones = [] }
 
   const porJornada = partidos.map((p) => {
     const e = entradas[p.id] || {};
-    const nSocios = Object.keys(e).filter((id) => !idsExcluidos.has(id)).length;
+    const idsFichados = Object.keys(e);
+    const nSocios = idsFichados.filter((id) => !idsExcluidos.has(id)).length;
+    // Un socio Internacional que SÍ viene ha fichado igual que los demás: su
+    // entrada existe, simplemente no entra en el % de asistencia. Se cuenta
+    // aparte en vez de desaparecer, porque un fichaje que no se ve en ningún
+    // sitio parece un fichaje perdido.
+    const nSociosSinComputar = idsFichados.length - nSocios;
     const d = taquilla[p.id] || {};
     const ventas = ventasDe(d);
     const nTaquilla = ventas.length;
@@ -99,6 +105,7 @@ export function calcularStats({ socios, entradas, taquilla, competiciones = [] }
       label: `${p.competicion ? p.competicion + ' · ' : ''}${p.nombre}`,
       competicion: p.competicion || 'Histórico',
       nSocios,
+      nSociosSinComputar,
       nTaquilla,
       totalAsistentes: nSocios + nTaquilla,
       recaudacion: recaudacion(d),
@@ -153,34 +160,71 @@ export function calcularStats({ socios, entradas, taquilla, competiciones = [] }
         return m;
       }, {}),
     ),
+    // Cómo se cobra en la puerta. Sirve para cuadrar la caja al final del
+    // partido: el efectivo es lo único que hay que contar a mano.
+    porMetodoPago: agregarPorMetodo(
+      partidos.flatMap((p) => ventasDe(taquilla[p.id] || {})),
+    ),
   };
 }
 
-/** Recaudación de altas, deliberadamente separada de la venta de entradas. */
+/** Agrupa cobros {metodoPago, precio} por método de pago. */
+function agregarPorMetodo(cobros) {
+  return Object.values(
+    cobros.reduce((m, c) => {
+      const metodo = c.metodoPago || 'Sin indicar';
+      const x = m[metodo] || { metodo, n: 0, importe: 0 };
+      x.n++;
+      x.importe += Number(c.precio ?? c.importe ?? 0);
+      m[metodo] = x;
+      return m;
+    }, {}),
+  ).sort((a, b) => b.importe - a.importe);
+}
+
+/**
+ * Cuota que se le cuenta a un socio: la que REALMENTE se cobró. Los socios
+ * anteriores a que se guardara ese campo caen a la tarifa de referencia de su
+ * tipo de abono.
+ */
+export const importeAbonoDe = (s) =>
+  Number.isFinite(Number(s?.importeAbono))
+    ? Number(s.importeAbono)
+    : precioAbonoPorDefecto(s?.tipo);
+
+/**
+ * Recaudación de altas, deliberadamente separada de la venta de entradas.
+ *
+ * TODOS los socios entran aquí, incluidos los que no pisan el campo. Es la
+ * contrapartida de excluir al Abono Internacional de la asistencia: su dinero
+ * cuenta igual que el de cualquier otro — es justo de lo que va ese abono —,
+ * lo único que no cuenta es su presencia. Por eso el reparto va aparte, en
+ * `ingresosNoAsisten`: para poder ver cuánto de la recaudación viene de gente
+ * que no ocupa asiento.
+ */
 export function calcularAltasSocios({ socios = [] }) {
   const porTipoMap = {};
   const porMesMap = {};
   let nuevosSocios = 0;
   let ingresos = 0;
   let pendientes = 0;
+  let ingresosNoAsisten = 0;
   socios.forEach((s) => {
-    // Una baja no borra una alta ni el dinero cobrado en ese momento.
     nuevosSocios++;
-    // Importe REALMENTE cobrado en el alta. Los socios anteriores a que se
-    // guardara ese campo caen a la tarifa de referencia de su tipo de abono.
-    const importe = Number.isFinite(Number(s.importeAbono))
-      ? Number(s.importeAbono)
-      : precioAbonoPorDefecto(s.tipo);
+    const importe = importeAbonoDe(s);
     const fila = porTipoMap[s.tipo] || {
       tipo: s.tipo || 'Sin tipo',
       socios: 0,
       ingresos: 0,
       pendiente: 0,
+      cuotaMedia: 0,
+      asiste: asisteAlCampo(s.tipo),
     };
     fila.socios++;
     if (s.pagado) {
       fila.ingresos += importe;
       ingresos += importe;
+      if (!asisteAlCampo(s.tipo)) ingresosNoAsisten += importe;
     } else {
       fila.pendiente += importe;
       pendientes += importe;
@@ -196,28 +240,45 @@ export function calcularAltasSocios({ socios = [] }) {
       }
     }
   });
+
+  const porTipo = Object.values(porTipoMap).map((f) => ({
+    ...f,
+    // Con cuota libre (Socio Colaborador) la tarifa no dice nada: lo que
+    // interesa saber es cuánto está aportando de media cada uno.
+    cuotaMedia: f.socios ? Math.round((f.ingresos + f.pendiente) / f.socios) : 0,
+  }));
+
   return {
     nuevosSocios,
     ingresos,
     pendientes,
-    porTipo: Object.values(porTipoMap),
+    ingresosNoAsisten,
+    porTipo,
+    porMetodoPago: agregarPorMetodo(
+      socios
+        .filter((s) => s.pagado)
+        .map((s) => ({ metodoPago: s.metodoPago, precio: importeAbonoDe(s) })),
+    ),
     evolucion: Object.values(porMesMap).sort((a, b) => a.mes.localeCompare(b.mes)),
   };
 }
 
 // ============================================================================
-//  Demografía y calidad de datos: edad, sexo del abono, contacto, fundadores.
-//  Todo se calcula sobre socios ACTIVOS (los de baja no cuentan como base).
+//  Demografía y calidad de datos: edad, contacto, documentos, fundadores.
+//
+//  Ya no existe la "baja de socio": un socio que se quita se borra de verdad
+//  (ver socios.service.js). El filtro `activo !== false` se mantiene por si
+//  queda alguna ficha marcada de baja de antes, pero no se cuentan ni se
+//  enseñan como una categoría.
 // ============================================================================
 
 /**
- * @returns {{totalActivos, bajas, pagados, pendientes, morosidadPct,
+ * @returns {{totalActivos, pagados, pendientes, morosidadPct,
  *            conEmail, conTel, conAmbos, edadMedia, sinFecha,
- *            edades:Array, porDoc:Array, fundadores}}
+ *            edades:Array, porDoc:Array, fundadores, noAsisten}}
  */
 export function calcularDemografia({ socios }) {
   const activos = socios.filter((s) => s.activo !== false);
-  const bajas = socios.length - activos.length;
 
   const conEmail = activos.filter((s) => (s.email || '').trim()).length;
   const conTel = activos.filter((s) => (s.tel || '').trim()).length;
@@ -253,7 +314,8 @@ export function calcularDemografia({ socios }) {
 
   return {
     totalActivos: activos.length,
-    bajas,
+    // Cuántos socios sostienen al club sin ocupar asiento (Abono Internacional).
+    noAsisten: activos.filter((s) => !asisteAlCampo(s.tipo)).length,
     pagados,
     pendientes: activos.length - pagados,
     morosidadPct: activos.length
@@ -307,7 +369,8 @@ export function calcularEconomiaEntradas({ porJornada = [], ingresoAltas = 0 } =
     : null;
 
   const ingresoTotal = ingresoAltas + recaudacionTaquilla;
-  const reparto = (parte) => (ingresoTotal ? Math.round((parte / ingresoTotal) * 100) : 0);
+  const reparto = (parte) =>
+    ingresoTotal ? Math.round((parte / ingresoTotal) * 100) : 0;
 
   return {
     recaudacionTaquilla,

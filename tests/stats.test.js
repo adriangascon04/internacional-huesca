@@ -226,6 +226,98 @@ test('altas: un importe de 0 € se respeta y no se confunde con "sin dato"', ()
   assert.equal(altas.ingresos, 0);
 });
 
+test('altas: el Socio Colaborador aporta lo que quiera y suma en la recaudación', () => {
+  // Su tarifa de referencia es 0 €: si la recaudación se calculara con la
+  // tarifa en vez de con lo cobrado, todos los donativos valdrían 0 €.
+  const altas = calcularAltasSocios({
+    socios: [
+      { tipo: 'Socio Colaborador', importeAbono: 250, pagado: true },
+      { tipo: 'Socio Colaborador', importeAbono: 30, pagado: true },
+    ],
+  });
+  assert.equal(altas.ingresos, 280);
+  const fila = altas.porTipo.find((t) => t.tipo === 'Socio Colaborador');
+  assert.equal(fila.socios, 2);
+  assert.equal(fila.cuotaMedia, 140);
+});
+
+test('altas: el dinero del Abono Internacional cuenta, y se puede aislar', () => {
+  // El punto entero de ese abono: su dinero SÍ entra en la recaudación aunque
+  // su gente no entre en el % de asistencia.
+  const altas = calcularAltasSocios({
+    socios: [
+      { tipo: 'Abono General', importeAbono: 95, pagado: true },
+      { tipo: 'Abono Internacional', importeAbono: 80, pagado: true },
+    ],
+  });
+  assert.equal(altas.ingresos, 175);
+  assert.equal(altas.ingresosNoAsisten, 80);
+  assert.equal(altas.porTipo.find((t) => t.tipo === 'Abono Internacional').asiste, false);
+});
+
+test('altas: agrupa por método de pago solo lo ya cobrado', () => {
+  const altas = calcularAltasSocios({
+    socios: [
+      { tipo: 'Abono General', importeAbono: 95, pagado: true, metodoPago: 'Bizum' },
+      { tipo: 'Abono General', importeAbono: 95, pagado: true, metodoPago: 'Bizum' },
+      { tipo: 'Abono General', importeAbono: 95, pagado: true, metodoPago: 'Efectivo' },
+      { tipo: 'Abono General', importeAbono: 95, pagado: false, metodoPago: 'TPV' },
+    ],
+  });
+  assert.deepEqual(
+    altas.porMetodoPago.map((m) => [m.metodo, m.n, m.importe]),
+    [
+      ['Bizum', 2, 190],
+      ['Efectivo', 1, 95],
+    ],
+  );
+});
+
+test('stats: un socio que no computa asistencia se cuenta aparte, no se pierde', () => {
+  // Si un Internacional viene al campo, su fichaje existe. Se excluye del % de
+  // asistencia pero se enseña aparte: un fichaje invisible parece un fallo.
+  const competiciones = [{ id: 'liga', nombre: 'Liga', partidos: [{ id: 'p1', nombre: 'J1', orden: 0 }] }];
+  const s = calcularStats({
+    socios: [
+      { id: '1', tipo: 'Abono General' },
+      { id: '2', tipo: 'Abono Internacional' },
+    ],
+    competiciones,
+    entradas: { p1: { 1: t(19, 0), 2: t(19, 5) } },
+    taquilla: {},
+  });
+  assert.equal(s.porJornada[0].nSocios, 1);
+  assert.equal(s.porJornada[0].nSociosSinComputar, 1);
+  assert.equal(s.baseAsistencia, 1); // el Internacional no entra en la base
+});
+
+test('stats: agrupa los cobros de taquilla por método de pago', () => {
+  const competiciones = [{ id: 'liga', nombre: 'Liga', partidos: [{ id: 'p1', nombre: 'J1', orden: 0 }] }];
+  const s = calcularStats({
+    socios: [],
+    competiciones,
+    entradas: {},
+    taquilla: {
+      p1: {
+        historial: [
+          { tipo: 'general', precio: 10, metodoPago: 'Efectivo' },
+          { tipo: 'general', precio: 10, metodoPago: 'Bizum' },
+          { tipo: 'menor', precio: 5, metodoPago: 'Efectivo' },
+          { tipo: 'invitacion', precio: 0 }, // sin método: es una invitación
+        ],
+      },
+    },
+  });
+  assert.deepEqual(
+    s.porMetodoPago.map((m) => [m.metodo, m.n, m.importe]),
+    [
+      ['Efectivo', 2, 15],
+      ['Bizum', 1, 10],
+      ['Sin indicar', 1, 0],
+    ],
+  );
+});
+
 // --- Demografía ----------------------------------------------------------------
 
 test('edadDe: calcula la edad y devuelve null sin fecha', () => {
@@ -235,17 +327,30 @@ test('edadDe: calcula la edad y devuelve null sin fecha', () => {
   assert.equal(edadDe(hace20.toISOString().slice(0, 10)), 20);
 });
 
-test('demografia: cuenta activos, bajas, contacto y morosidad', () => {
+test('demografia: cuenta socios, contacto y morosidad', () => {
   const socios = [
-    { id: '1', activo: true, tipo: 'Abono General', pagado: true, email: 'a@b.c', tel: '600100200' },
-    { id: '2', activo: true, tipo: 'Abono General', pagado: false, email: '', tel: '600100201' },
-    { id: '3', activo: false, tipo: 'Abono General', pagado: true },
+    { id: '1', tipo: 'Abono General', pagado: true, email: 'a@b.c', tel: '600100200' },
+    { id: '2', tipo: 'Abono General', pagado: false, email: '', tel: '600100201' },
   ];
   const d = calcularDemografia({ socios });
   assert.equal(d.totalActivos, 2);
-  assert.equal(d.bajas, 1);
   assert.equal(d.conEmail, 1);
   assert.equal(d.conTel, 2);
   assert.equal(d.pendientes, 1);
   assert.equal(d.morosidadPct, 50);
+  // Ya no existe la "baja de socio": un socio que se quita se borra de verdad,
+  // así que no queda ninguna categoría que contar.
+  assert.equal('bajas' in d, false);
+});
+
+test('demografia: cuenta aparte a los socios que no van al campo', () => {
+  const d = calcularDemografia({
+    socios: [
+      { id: '1', tipo: 'Abono General' },
+      { id: '2', tipo: 'Abono Internacional' },
+      { id: '3', tipo: 'Abono Internacional' },
+    ],
+  });
+  assert.equal(d.totalActivos, 3);
+  assert.equal(d.noAsisten, 2);
 });

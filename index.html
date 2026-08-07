@@ -154,6 +154,26 @@ nav::-webkit-scrollbar{display:none}
   box-shadow:0 6px 16px -10px rgba(34,119,199,1);
 }
 
+/* Subpestañas (estadísticas). Deliberadamente MÁS discretas que las de arriba:
+   si se pintaran igual, se leerían como una segunda navegación principal y no
+   como una división de la pantalla en la que ya estás. */
+.subnav{
+  display:flex;gap:3px;margin-bottom:16px;padding:4px;overflow-x:auto;
+  scrollbar-width:none;background:var(--panel);border:1px solid var(--borde);
+  border-radius:var(--r);
+}
+.subnav::-webkit-scrollbar{display:none}
+.subtab{
+  white-space:nowrap;padding:9px 15px;border:1px solid transparent;flex:1;
+  background:transparent;color:var(--txt2);border-radius:var(--r-s);cursor:pointer;
+  font-size:13px;font-weight:500;font-family:inherit;transition:all var(--t);
+}
+.subtab:hover{color:var(--txt);background:var(--panel-2)}
+.subtab.active{background:var(--panel-2);color:#fff;font-weight:600;border-color:var(--borde-vivo)}
+.subpanel{display:none}
+.subpanel.active{display:block;animation:entrar .2s ease-out}
+@media(max-width:600px){.subtab{flex:none;padding:9px 12px;font-size:12.5px}}
+
 /* ═══ Paneles y tarjetas ══════════════════════════════════════════════════ */
 .panel{display:none;padding:20px 18px 44px;max-width:1120px;margin:0 auto}
 .panel.active{display:block;animation:entrar .22s ease-out}
@@ -548,102 +568,168 @@ canvas.chart-mini{max-height:240px}
     <div id="competiciones-lista"></div>
   </section>
 
-  <!-- ---------- ESTADÍSTICAS ---------- -->
+  <!-- ---------- ESTADÍSTICAS ----------
+       Cuatro subpestañas, cada una responde a UNA pregunta:
+         Resumen    → ¿cómo va la temporada y de dónde sale el dinero?
+         Socios     → ¿quiénes son y cuánto han pagado?
+         Taquilla   → ¿qué se vende en la puerta?
+         Asistencia → ¿quién viene al campo?
+       Antes era una sola columna de nueve tarjetas en la que la recaudación de
+       socios, la demografía y el ranking de asistencia estaban mezclados. -->
   <section class="panel" id="panel-stats">
-    <div class="card"><div class="grid" id="stats-cards"></div></div>
-    <div class="card">
-      <h2>Recaudación de entradas por partido y tipo</h2>
-      <p class="nota">Cada barra es un partido; cada color, un tipo de entrada. La altura es el dinero, no el número de personas.</p>
-      <canvas id="chart-taquilla" class="chart-grande"></canvas>
-      <div class="grid" id="economia-cards" style="margin-top:16px"></div>
-    </div>
+    <nav class="subnav">
+      <button class="subtab" data-subtab="resumen">Resumen</button>
+      <button class="subtab" data-subtab="socios">Socios</button>
+      <button class="subtab" data-subtab="taquilla">Taquilla</button>
+      <button class="subtab" data-subtab="asistencia">Asistencia</button>
+    </nav>
 
-    <div class="card">
-      <h2>Asistentes por partido y tipo</h2>
-      <p class="nota">El mismo desglose contando <strong>personas</strong> en vez de dinero. Aquí sí salen los abonados que entran con su QR: no pagan en la puerta, pero son la mayoría de la gente que hay en el campo.</p>
-      <canvas id="chart-asistencia" class="chart-grande"></canvas>
-    </div>
+    <!-- ····· RESUMEN: la foto global y el reparto del ingreso ····· -->
+    <div class="subpanel" id="substats-resumen">
+      <div class="card"><div class="grid" id="stats-cards"></div></div>
 
-    <div class="card">
-      <h2>Demografía y calidad de datos</h2>
-      <div class="grid" id="demografia-cards"></div>
-      <div class="grid-2">
+      <div class="card">
+        <h2>De dónde sale el dinero</h2>
+        <p class="nota">Las dos vías de ingreso del club son independientes: las cuotas
+          de los abonos y lo que se cobra en la puerta cada partido.</p>
+        <div class="grid" id="resumen-ingresos-cards"></div>
+      </div>
+
+      <div class="card">
+        <h2>Resumen por competición</h2>
+        <div style="overflow-x:auto"><table><thead><tr><th>Competición</th><th>Partidos</th><th>Asistentes</th><th>Recaudación</th></tr></thead><tbody id="stats-competiciones"></tbody></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Detalle por jornada · Recaudación de taquilla: <span id="stats-recaudacion"></span></h2>
+        <p class="nota">El % de asistencia se calcula sobre los socios que sí van al campo:
+          el Abono Internacional queda fuera de la base a propósito.</p>
         <div style="overflow-x:auto">
-          <h2 style="margin-top:16px">Distribución por edad</h2>
           <table>
-            <thead><tr><th>Franja</th><th>Socios</th><th>%</th></tr></thead>
-            <tbody id="demografia-edad-tabla"></tbody>
+            <thead><tr><th>Jornada</th><th>Socios</th><th>% asist.</th><th>Taquilla</th><th>Total</th><th>Recaudación</th></tr></thead>
+            <tbody id="stats-tabla"></tbody>
           </table>
         </div>
-        <div style="overflow-x:auto">
-          <h2 style="margin-top:16px">Tipo de documento</h2>
+      </div>
+    </div>
+
+    <!-- ····· SOCIOS: quiénes son y cuánto han pagado ····· -->
+    <div class="subpanel" id="substats-socios">
+      <div class="card">
+        <h2>Cuotas de socio · recaudación independiente</h2>
+        <p class="nota">Solo el dinero de los abonos. Lo que se cobra en la puerta está
+          en la subpestaña de Taquilla.</p>
+        <div class="grid" id="altas-cards"></div>
+        <div style="overflow-x:auto;margin-top:14px">
           <table>
-            <thead><tr><th>Documento</th><th>Socios</th><th>%</th></tr></thead>
-            <tbody id="demografia-doc-tabla"></tbody>
+            <thead><tr><th>Tipo de abono</th><th>Socios</th><th>Cuota media</th><th>Ingresos</th><th>Pendiente</th></tr></thead>
+            <tbody id="altas-tabla"></tbody>
           </table>
         </div>
       </div>
-    </div>
 
-    <div class="card">
-      <h2>Altas de socios · recaudación independiente</h2>
-      <div class="grid" id="altas-cards"></div>
-      <div style="overflow-x:auto;margin-top:14px">
-        <table>
-          <thead><tr><th>Tipo de abono</th><th>Nuevos socios</th><th>Ingresos</th><th>Pendiente</th></tr></thead>
-          <tbody id="altas-tabla"></tbody>
-        </table>
+      <div class="card">
+        <h2>Socios por tipo de abono</h2>
+        <div style="overflow-x:auto"><table><thead><tr><th>Tipo</th><th>Socios</th><th>%</th><th>Cuenta para asistencia</th></tr></thead><tbody id="stats-tipos"></tbody></table></div>
       </div>
-      <div style="margin-top:16px"><h2>Evolución temporal de altas</h2><canvas id="chart-altas" class="chart-mini"></canvas></div>
-    </div>
 
-    <div class="card">
-      <h2>Asistencia</h2>
-      <div class="grid" id="asistencia-cards"></div>
-      <div class="grid-2" style="margin-top:16px">
-        <div>
-          <h2>Fidelidad · socios por nº de jornadas asistidas</h2>
-          <canvas id="chart-fidelidad" class="chart-mini"></canvas>
+      <div class="card">
+        <h2>Cómo pagan los socios su cuota</h2>
+        <div style="overflow-x:auto"><table><thead><tr><th>Método</th><th>Socios</th><th>Importe</th></tr></thead><tbody id="socios-metodo-tabla"></tbody></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Perfil de los socios</h2>
+        <div class="grid" id="demografia-cards"></div>
+        <div class="grid-2">
+          <div style="overflow-x:auto">
+            <h2 style="margin-top:16px">Distribución por edad</h2>
+            <table>
+              <thead><tr><th>Franja</th><th>Socios</th><th>%</th></tr></thead>
+              <tbody id="demografia-edad-tabla"></tbody>
+            </table>
+          </div>
+          <div style="overflow-x:auto">
+            <h2 style="margin-top:16px">Tipo de documento</h2>
+            <table>
+              <thead><tr><th>Documento</th><th>Socios</th><th>%</th></tr></thead>
+              <tbody id="demografia-doc-tabla"></tbody>
+            </table>
+          </div>
         </div>
-        <div>
-          <h2>Franjas horarias de entrada</h2>
-          <canvas id="chart-franjas" class="chart-mini"></canvas>
-        </div>
       </div>
-      <div style="overflow-x:auto;margin-top:14px">
-        <h2 style="margin-top:14px">Asistencia por tipo de abono</h2>
-        <table>
-          <thead><tr><th>Tipo de abono</th><th>Socios</th><th>Asistencia media</th></tr></thead>
-          <tbody id="asistencia-tipos-tabla"></tbody>
-        </table>
-      </div>
-      <div style="overflow-x:auto;margin-top:14px">
-        <h2 style="margin-top:14px">Ranking de asistencia (socios)</h2>
-        <table>
-          <thead><tr><th>Nº</th><th>Socio</th><th>Jornadas asistidas</th><th>% asistencia</th></tr></thead>
-          <tbody id="asistencia-ranking-tabla"></tbody>
-        </table>
+
+      <div class="card">
+        <h2>Evolución de las altas</h2>
+        <canvas id="chart-altas" class="chart-mini"></canvas>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Detalle por jornada · Recaudación total: <span id="stats-recaudacion"></span></h2>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>Jornada</th><th>Socios</th><th>% asist.</th><th>Taquilla</th><th>Total</th><th>Recaudación</th></tr></thead>
-          <tbody id="stats-tabla"></tbody>
-        </table>
+    <!-- ····· TAQUILLA: qué se vende en la puerta ····· -->
+    <div class="subpanel" id="substats-taquilla">
+      <div class="card"><div class="grid" id="economia-cards"></div></div>
+
+      <div class="card">
+        <h2>Recaudación de entradas por partido y tipo</h2>
+        <p class="nota">Cada barra es un partido; cada color, un tipo de entrada. La altura es el dinero, no el número de personas.</p>
+        <canvas id="chart-taquilla" class="chart-grande"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>Recaudación por tipo de entrada</h2>
+        <div style="overflow-x:auto"><table><thead><tr><th>Tipo</th><th>Entradas</th><th>Recaudación</th><th>Precio medio</th></tr></thead><tbody id="stats-entradas-tipos"></tbody></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Cómo se cobra en la puerta</h2>
+        <p class="nota">Para cuadrar la caja al terminar el partido: el efectivo es lo único que hay que contar a mano.</p>
+        <div style="overflow-x:auto"><table><thead><tr><th>Método</th><th>Entradas</th><th>Importe</th></tr></thead><tbody id="taquilla-metodo-tabla"></tbody></table></div>
       </div>
     </div>
-    <div class="card">
-      <h2>Recaudación por tipo de entrada</h2>
-      <div style="overflow-x:auto"><table><thead><tr><th>Tipo</th><th>Asistentes</th><th>Recaudación</th></tr></thead><tbody id="stats-entradas-tipos"></tbody></table></div>
-      <h2 style="margin-top:18px">Resumen por competición</h2>
-      <div style="overflow-x:auto"><table><thead><tr><th>Competición</th><th>Partidos</th><th>Asistentes</th><th>Recaudación</th></tr></thead><tbody id="stats-competiciones"></tbody></table></div>
-    </div>
-    <div class="card">
-      <h2>Socios por tipo de abono</h2>
-      <table><thead><tr><th>Tipo</th><th>Nº</th></tr></thead><tbody id="stats-tipos"></tbody></table>
+
+    <!-- ····· ASISTENCIA: quién viene al campo ····· -->
+    <div class="subpanel" id="substats-asistencia">
+      <div class="card"><div class="grid" id="asistencia-cards"></div></div>
+
+      <div class="card">
+        <h2>Asistentes por partido y tipo</h2>
+        <p class="nota">Contando <strong>personas</strong> en vez de dinero. Aquí sí salen los abonados que entran con su QR: no pagan en la puerta, pero son la mayoría de la gente que hay en el campo.</p>
+        <canvas id="chart-asistencia" class="chart-grande"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>Fidelidad y horarios</h2>
+        <div class="grid-2">
+          <div>
+            <h2>Socios por nº de jornadas asistidas</h2>
+            <canvas id="chart-fidelidad" class="chart-mini"></canvas>
+          </div>
+          <div>
+            <h2>Franjas horarias de entrada</h2>
+            <canvas id="chart-franjas" class="chart-mini"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Asistencia por tipo de abono</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Tipo de abono</th><th>Socios</th><th>Asistencia media</th></tr></thead>
+            <tbody id="asistencia-tipos-tabla"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ranking de asistencia (socios)</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Nº</th><th>Socio</th><th>Jornadas asistidas</th><th>% asistencia</th></tr></thead>
+            <tbody id="asistencia-ranking-tabla"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </section>
 
