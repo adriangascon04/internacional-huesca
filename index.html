@@ -598,6 +598,15 @@ canvas.chart-mini{max-height:240px}
       <button class="subtab" data-subtab="asistencia">Asistencia</button>
     </nav>
 
+    <!-- Modo demostración: enseña la pantalla llena cuando aún no hay datos.
+         No escribe nada, solo cambia de dónde lee esta pestaña, y se apaga
+         solo al recargar (ver demo.service.js). -->
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn" id="btn-demo-stats">👁 Ver con datos de ejemplo</button>
+      <span class="nota">Rellena las estadísticas con una temporada inventada. No guarda nada.</span>
+    </div>
+    <div class="aviso" id="aviso-demo-stats" style="display:none"></div>
+
     <!-- ····· RESUMEN: la foto global y el reparto del ingreso ····· -->
     <div class="subpanel" id="substats-resumen">
       <div class="card"><div class="grid" id="stats-cards"></div></div>

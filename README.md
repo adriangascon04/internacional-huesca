@@ -299,7 +299,12 @@ acabas de cometer sigue estando **↩ Deshacer última venta**.
 
 ## 9. Estadísticas
 
-Pestaña **Estadísticas** (todos los roles), dividida en **cuatro subpestañas**:
+Pestaña **Estadísticas** (todos los roles), dividida en **cuatro subpestañas**.
+
+**👁 Ver con datos de ejemplo** rellena la pantalla con una temporada inventada
+(128 socios, 8 partidos) para ver cómo se leerán las estadísticas cuando haya
+datos de verdad. No guarda nada en ningún sitio, avisa con un rótulo bien visible
+mientras está activo y se apaga solo al recargar la página.
 
 **Resumen** — ¿cómo va la temporada y de dónde sale el dinero?
 - Socios, partidos con datos, asistentes totales, **ingreso total** y pendientes

@@ -30,6 +30,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   con datos nuevos: cómo se cobra (para cuadrar la caja), precio medio por tipo de
   entrada, cuota media por tipo de abono y cuánta recaudación viene de socios que
   no van al campo.
+- **Modo demostración de las estadísticas** (👁 Ver con datos de ejemplo): rellena
+  la pantalla con una temporada inventada para poder enseñar cómo se leerán las
+  estadísticas cuando todavía no hay datos. No escribe absolutamente nada —los
+  datos se generan en el navegador—, avisa con un rótulo visible mientras está
+  activo y se apaga solo al recargar la página, para que nadie se quede leyendo
+  cifras inventadas creyendo que son del club. Las cifras son siempre las mismas
+  (generador con semilla fija): un demo que cambia de números en cada pulsación
+  parece roto.
 
 ### Corregido
 - **Una entrada de taquilla borrada seguía contando.** Al anular la última venta

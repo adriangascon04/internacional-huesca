@@ -11,6 +11,11 @@
 //  contenedor al crearse, y un canvas dentro de un `display:none` mide 0: se
 //  quedaba en una raya de un píxel que ya no se recuperaba al enseñar la
 //  pestaña. Por eso cambiar de subpestaña vuelve a llamar a render().
+//
+//  MODO DEMOSTRACIÓN: un interruptor que sustituye los datos reales por una
+//  temporada inventada, para poder enseñar cómo se ven las estadísticas cuando
+//  todavía no hay nada que enseñar. No escribe en ningún sitio (ver
+//  demo.service.js): solo cambia de dónde lee esta página.
 // ============================================================================
 import { $, $$, on } from '../../utils/dom.js';
 import { esc } from '../../utils/sanitize.js';
@@ -24,6 +29,7 @@ import {
   calcularAsistencia,
   calcularDemografia,
 } from '../../services/stats.service.js';
+import { generarDatosDemo } from '../../services/demo.service.js';
 
 let chart = null;
 let chartAsistencia = null;
@@ -34,6 +40,12 @@ let chartAltas = null;
 const SUBTABS = ['resumen', 'socios', 'taquilla', 'asistencia'];
 let subtabActiva = 'resumen';
 
+// Modo demostración. Vive solo en memoria a propósito: al recargar la página se
+// apaga solo, así que es imposible dejárselo puesto a alguien que luego lea las
+// cifras inventadas como si fueran del club.
+let demo = false;
+let datosDemo = null;
+
 const pct = (n, total) => (total ? Math.round((n / total) * 100) : 0);
 /** Cuerpo de tabla, o una fila de "sin datos" que ocupe todas las columnas. */
 const filasO = (html, columnas, texto = 'Sin datos') =>
@@ -43,6 +55,7 @@ export function initStats() {
   $$('.subtab').forEach((btn) =>
     on(btn, 'click', () => cambiarSubtab(btn.dataset.subtab)),
   );
+  on($('#btn-demo-stats'), 'click', alternarDemo);
   cambiarSubtab(subtabActiva);
 }
 
@@ -55,19 +68,61 @@ function cambiarSubtab(sub) {
   render();
 }
 
+/** Enciende o apaga los datos de ejemplo. No toca nada guardado. */
+function alternarDemo() {
+  demo = !demo;
+  // Se generan una sola vez y se reutilizan: si se regenerasen en cada render,
+  // las cifras bailarían al cambiar de subpestaña.
+  if (demo && !datosDemo) datosDemo = generarDatosDemo();
+  render();
+}
+
+/** Pinta el botón y el aviso según el modo. Es lo único que avisa de que las cifras no son reales. */
+function renderAvisoDemo() {
+  const btn = $('#btn-demo-stats');
+  const aviso = $('#aviso-demo-stats');
+  if (btn) {
+    btn.textContent = demo ? '✕ Quitar datos de ejemplo' : '👁 Ver con datos de ejemplo';
+    btn.className = demo ? 'btn btn-danger' : 'btn';
+  }
+  if (aviso) {
+    aviso.style.display = demo ? 'block' : 'none';
+    if (demo)
+      aviso.innerHTML =
+        `⚠️ <strong>Estás viendo datos de ejemplo, no los del club.</strong> ` +
+        `${datosDemo.resumen.socios} socios y ${datosDemo.resumen.partidos} partidos inventados, ` +
+        `para ver cómo quedan las estadísticas llenas. No se ha guardado nada: pulsa ` +
+        `<strong>Quitar datos de ejemplo</strong> (o recarga la página) y vuelven los datos reales.`;
+  }
+}
+
 export function render() {
+  renderAvisoDemo();
+
+  // De aquí salen TODAS las cifras de la pantalla: o los datos del club, o los
+  // inventados. Un solo sitio donde se elige, para que no pueda quedarse media
+  // pantalla en modo demostración y la otra media con datos reales.
+  const fuente = demo
+    ? datosDemo
+    : {
+        socios: state.socios,
+        entradas: state.entradas,
+        taquilla: state.taquilla,
+        competiciones: state.competiciones,
+      };
+
   // Una sola población de socios para TODAS las subpestañas. Cada función de
   // estadística filtraba por su cuenta y el mismo club salía con dos censos
   // distintos según la tarjeta que mirases. Ya no hay bajas de socio (un socio
   // que se quita se borra), pero el filtro se queda por si alguna ficha antigua
   // sigue marcada de baja.
-  const socios = state.socios.filter((s) => s.activo !== false);
+  const socios = fuente.socios.filter((s) => s.activo !== false);
 
   const s = calcularStats({
     socios,
-    entradas: state.entradas,
-    taquilla: state.taquilla,
-    competiciones: state.competiciones,
+    entradas: fuente.entradas,
+    taquilla: fuente.taquilla,
+    competiciones: fuente.competiciones,
   });
   // Las cuotas se calculan UNA vez: las pinta su propia subpestaña y además
   // aportan el ingreso real con el que se reparte el total en el resumen.
@@ -78,7 +133,7 @@ export function render() {
   renderResumen(s, altas);
   renderSocios(s, altas, socios);
   renderTaquilla(s, altas);
-  renderAsistencia(s, socios);
+  renderAsistencia(s, socios, fuente.entradas);
 }
 
 // ============================================================================
@@ -268,12 +323,8 @@ function renderTaquilla(s, altas) {
 //  Asistencia: jornada pico/valle, ranking de socios, tasa por tipo de abono.
 // ============================================================================
 
-function renderAsistencia(s, socios) {
-  const a = calcularAsistencia({
-    socios,
-    entradas: state.entradas,
-    porJornada: s.porJornada,
-  });
+function renderAsistencia(s, socios, entradas) {
+  const a = calcularAsistencia({ socios, entradas, porJornada: s.porJornada });
 
   $('#asistencia-cards').innerHTML = `
     <div class="stat"><div class="stat-n">${a.asistenciaMedia}</div><div class="stat-l">Asistencia media por jornada (socios)</div></div>

@@ -594,6 +594,23 @@ pregunta, para no tener que bajar por una lista interminable buscando un dato:
 | **Taquilla** | ¿Qué se vende en la puerta? |
 | **Asistencia** | ¿Quién viene al campo? |
 
+### 10.0. Ver cómo quedan las estadísticas antes de tener datos
+
+Al empezar la temporada las estadísticas están casi vacías y no se entiende para
+qué sirven. Debajo de las subpestañas tienes **👁 Ver con datos de ejemplo**:
+rellena toda la pantalla con una temporada inventada —128 socios, 8 partidos
+jugados, taquilla y asistencia— para que veas cómo se leerá cuando tengas datos
+de verdad.
+
+Mientras está encendido aparece un **aviso amarillo bien visible** recordándote
+que esas cifras no son del club. Se apaga con **✕ Quitar datos de ejemplo**, y
+también **se apaga solo al recargar la página**.
+
+> **No ensucia nada.** Los datos de ejemplo se inventan en tu navegador y no se
+> guardan en ningún sitio: ni socios, ni fichajes, ni ventas, ni copias. La otra
+> gente conectada no ve nada distinto, y en cuanto lo apagas vuelven tus datos
+> exactamente como estaban.
+
 ### 10.1. Resumen
 
 - **Las cifras de cabecera**: socios, partidos con datos, asistentes totales,
