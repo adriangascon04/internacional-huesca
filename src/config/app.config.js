@@ -8,6 +8,41 @@
 // --- Temporada activa (antes en un <option> y en localStorage) -------------
 export const TEMPORADA_ACTUAL = localStorage.getItem('hue_temporada') || '2026/27';
 
+// --- Temporadas ------------------------------------------------------------
+// Una temporada va de julio a junio: el socio que se apunta en agosto de 2026 y
+// el que se apunta en marzo de 2027 están en la MISMA, la 2026/27. Contar por
+// año natural partiría cada temporada en dos y diría que un socio de un año
+// lleva "dos temporadas".
+export const MES_INICIO_TEMPORADA = 6; // julio (0 = enero)
+
+/** Temporada ('2026/27') a la que pertenece una fecha. */
+export function temporadaDe(fecha) {
+  const d = fecha instanceof Date ? fecha : new Date(fecha);
+  if (Number.isNaN(d.getTime())) return '';
+  const inicio =
+    d.getMonth() >= MES_INICIO_TEMPORADA ? d.getFullYear() : d.getFullYear() - 1;
+  return `${inicio}/${String((inicio + 1) % 100).padStart(2, '0')}`;
+}
+
+/** Año en el que empieza una temporada: '2026/27' -> 2026. */
+export const anioInicioTemporada = (temporada) =>
+  Number(String(temporada || '').slice(0, 4)) || 0;
+
+/**
+ * Todas las temporadas desde `desde` hasta `hasta`, ambas incluidas.
+ * Es lo que responde a "¿cuántas temporadas lleva con nosotros?": de la de su
+ * alta a la de hoy, contando las dos.
+ */
+export function temporadasEntre(desde, hasta = TEMPORADA_ACTUAL) {
+  const a = anioInicioTemporada(desde);
+  const b = anioInicioTemporada(hasta);
+  if (!a || !b || b < a) return [];
+  return Array.from(
+    { length: b - a + 1 },
+    (_, i) => `${a + i}/${String((a + i + 1) % 100).padStart(2, '0')}`,
+  );
+}
+
 // Solo compatibilidad de migración para documentos y pruebas de la versión
 // anterior. La aplicación ya no usa esta lista para configurar su calendario.
 export const jKey = (j) => j.replace(/\//g, '-');

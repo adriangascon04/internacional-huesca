@@ -8,6 +8,9 @@ import {
   tipoDocDe,
   esFundador,
   precioAbonoPorDefecto,
+  temporadaDe,
+  temporadasEntre,
+  TEMPORADA_ACTUAL,
   TIPOS_ABONO,
 } from '../config/app.config.js';
 import { recaudacion, ventasDe } from './taquilla.service.js';
@@ -484,6 +487,18 @@ export function calcularAsistencia({ socios, entradas, porJornada = [] }) {
   const ocupacionMedia =
     base && conDatos.length ? Math.round((asistenciaMedia / base) * 100) : 0;
 
+  // Núcleo duro: los que vienen al 80 % o más. Es la cifra que de verdad dice
+  // con cuánta gente cuenta el club cada domingo, mejor que la media, que se
+  // hunde con los que no vienen nunca.
+  const nucleo = jornadasConDatos ? ranking.filter((r) => r.pct >= 80).length : 0;
+  const ocasionales = jornadasConDatos
+    ? ranking.filter((r) => r.pct > 0 && r.pct < 50).length
+    : 0;
+
+  // Cuánta gente distinta ha pisado el campo alguna vez. Un club con 200 socios
+  // de los que solo 60 han venido nunca no es lo mismo que uno con 200 rotando.
+  const distintos = jornadasConDatos ? ranking.filter((r) => r.asistidas > 0).length : 0;
+
   return {
     jornadaMax,
     jornadaMin,
@@ -493,11 +508,161 @@ export function calcularAsistencia({ socios, entradas, porJornada = [] }) {
     distribucionFidelidad,
     absentistas,
     fieles,
+    nucleo,
+    ocasionales,
+    distintos,
+    pctDistintos: base ? Math.round((distintos / base) * 100) : 0,
     base,
     ocupacionMedia,
     franjasHorarias,
     horaPico,
     totalFichajes,
+    jornadasConDatos,
+  };
+}
+
+// ============================================================================
+//  Ficha individual de un socio: todo lo que se puede decir de UNA persona.
+// ============================================================================
+
+/**
+ * Racha más larga de partidos consecutivos a los que fue, y racha viva al
+ * final. `asistencias` es la lista de partidos jugados en orden, con true/false.
+ */
+function rachas(asistencias) {
+  let mejor = 0;
+  let actual = 0;
+  for (const fue of asistencias) {
+    actual = fue ? actual + 1 : 0;
+    if (actual > mejor) mejor = actual;
+  }
+  // La racha viva solo cuenta si el último partido jugado lo tiene: si faltó al
+  // último, su racha está rota aunque antes llevara diez seguidos.
+  const viva = asistencias.at(-1) ? actual : 0;
+  return { mejor, viva };
+}
+
+/**
+ * Retrato completo de un socio. Reúne lo que hasta ahora estaba disperso (o no
+ * estaba): cuánto lleva en el club, cuánto ha aportado cada temporada, a qué
+ * partidos ha ido y cómo se compara con el resto.
+ *
+ * @param {object} p
+ * @param {object} p.socio
+ * @param {Array}  p.cuotas        Historial de cuotas (socios.service:cuotasDe).
+ * @param {object} p.entradas      Fichajes de todas las jornadas.
+ * @param {Array}  p.competiciones Calendario.
+ * @param {Array}  p.socios        El resto del club, para poder comparar.
+ */
+export function perfilSocio({
+  socio,
+  cuotas = [],
+  entradas = {},
+  competiciones = [],
+  socios = [],
+}) {
+  const partidos = partidosDisponibles(competiciones, Object.keys(entradas));
+  const jugados = partidos.filter((p) => Object.keys(entradas[p.id] || {}).length);
+
+  const asistidos = jugados
+    .map((p) => ({
+      jornada: p.id,
+      competicion: p.competicion || 'Histórico',
+      label: p.competicion ? `${p.competicion} · ${p.nombre}` : p.nombre,
+      entrada: entradas[p.id]?.[socio.id] || null,
+    }))
+    .filter((x) => x.entrada);
+
+  const pct = jugados.length ? Math.round((asistidos.length / jugados.length) * 100) : 0;
+
+  // --- Antigüedad -----------------------------------------------------------
+  const temporadaAlta = temporadaDe(socio.alta);
+  const temporadas = temporadaAlta
+    ? temporadasEntre(temporadaAlta, TEMPORADA_ACTUAL).length
+    : 0;
+
+  // --- Dinero ---------------------------------------------------------------
+  const aportado = cuotas
+    .filter((c) => c.pagado)
+    .reduce((t, c) => t + Number(c.importe || 0), 0);
+  const pendiente = cuotas
+    .filter((c) => !c.pagado)
+    .reduce((t, c) => t + Number(c.importe || 0), 0);
+  const aportacionMedia = cuotas.length ? Math.round(aportado / cuotas.length) : 0;
+  // Lo que le cuesta cada partido al que de verdad viene. Es la cifra que
+  // convierte "paga 95 €" en "le sale a 12 € el partido".
+  const costePorPartido = asistidos.length
+    ? Math.round((aportado / asistidos.length) * 100) / 100
+    : 0;
+
+  // --- Comparación con el resto del club ------------------------------------
+  const comparables = socios.filter((s) => asisteAlCampo(s.tipo));
+  const asistenciasDeTodos = comparables
+    .map((s) => jugados.filter((p) => entradas[p.id]?.[s.id]).length)
+    .sort((a, b) => b - a);
+  const posicion = asistenciasDeTodos.filter((n) => n > asistidos.length).length + 1;
+  const mediaClub = asistenciasDeTodos.length
+    ? Math.round(
+        (asistenciasDeTodos.reduce((a, b) => a + b, 0) / asistenciasDeTodos.length) * 10,
+      ) / 10
+    : 0;
+
+  // --- Ritmos ---------------------------------------------------------------
+  const horas = asistidos
+    .map((a) => new Date(a.entrada).getHours() * 60 + new Date(a.entrada).getMinutes())
+    .filter((m) => !Number.isNaN(m));
+  const minutoMedio = horas.length
+    ? Math.round(horas.reduce((a, b) => a + b, 0) / horas.length)
+    : null;
+
+  const idsAsistidos = new Set(asistidos.map((a) => a.jornada));
+  const { mejor: rachaMejor, viva: rachaViva } = rachas(
+    jugados.map((p) => idsAsistidos.has(p.id)),
+  );
+
+  // --- Por competición ------------------------------------------------------
+  const porCompeticion = Object.values(
+    jugados.reduce((m, p) => {
+      const nombre = p.competicion || 'Histórico';
+      const fila = m[nombre] || { competicion: nombre, jugados: 0, asistidos: 0 };
+      fila.jugados++;
+      if (idsAsistidos.has(p.id)) fila.asistidos++;
+      m[nombre] = fila;
+      return m;
+    }, {}),
+  ).map((f) => ({
+    ...f,
+    pct: f.jugados ? Math.round((f.asistidos / f.jugados) * 100) : 0,
+  }));
+
+  return {
+    // Antigüedad
+    temporadas,
+    temporadaAlta,
+    esFundador: esFundador(socio),
+    // Asistencia
+    partidos: asistidos,
+    asistidos: asistidos.length,
+    jornadasConDatos: jugados.length,
+    pct,
+    ausencias: jugados.length - asistidos.length,
+    rachaMejor,
+    rachaViva,
+    primero: asistidos[0] || null,
+    ultimo: asistidos.at(-1) || null,
+    minutoMedio,
+    porCompeticion,
+    // Comparación
+    posicion,
+    deCuantos: comparables.length,
+    mediaClub,
+    cuentaParaAsistencia: asisteAlCampo(socio.tipo),
+    // Dinero
+    cuotas,
+    aportado,
+    pendiente,
+    aportacionMedia,
+    costePorPartido,
   };
 }
 

@@ -21,6 +21,8 @@ import {
   esAportacionLibre,
   carnetDe,
   TIPO_DOC_DNI,
+  TEMPORADA_ACTUAL,
+  temporadaDe,
   precioAbonoPorDefecto,
   METODOS_PAGO,
 } from '../config/app.config.js';
@@ -89,6 +91,108 @@ export function resolverImporteAbono(tipo, valor) {
   return { importe, errores: [] };
 }
 
+// ============================================================================
+//  Cuotas por temporada
+//
+//  `importeAbono` guarda lo que paga el socio ESTA temporada, y con eso bastaba
+//  mientras solo había una. Para responder a "¿cuánto ha aportado cada año?"
+//  hace falta guardar una entrada por temporada, y eso es `cuotas`:
+//
+//     cuotas: [{ temporada, importe, metodoPago, pagado, fecha }]
+//
+//  Los socios dados de alta antes de que existiera el campo no lo tienen. No se
+//  migran ni se les inventa historia: `cuotasDe` sintetiza sobre la marcha la
+//  única cuota que se les puede atribuir con certeza — la de la temporada de su
+//  alta, por el importe que tengan guardado. Así la ficha enseña algo cierto
+//  desde el primer día, sin tocar un solo documento.
+// ============================================================================
+
+/**
+ * Historial de cuotas del socio, ordenado de la más reciente a la más antigua.
+ * @returns {Array<{temporada, importe, metodoPago, pagado, fecha}>}
+ */
+export function cuotasDe(socio) {
+  if (!socio) return [];
+  const guardadas = Array.isArray(socio.cuotas) ? socio.cuotas : [];
+  if (guardadas.length) {
+    return [...guardadas].sort((a, b) =>
+      String(b.temporada).localeCompare(String(a.temporada)),
+    );
+  }
+  return [
+    {
+      temporada: temporadaDe(socio.alta) || TEMPORADA_ACTUAL,
+      importe: Number.isFinite(Number(socio.importeAbono))
+        ? Number(socio.importeAbono)
+        : precioAbonoPorDefecto(socio.tipo),
+      metodoPago: socio.metodoPago || null,
+      pagado: socio.pagado === true,
+      fecha: socio.alta || null,
+      sintetizada: true, // no está guardada: se deduce de la ficha
+    },
+  ];
+}
+
+/** Suma de lo REALMENTE cobrado en todas las temporadas. */
+export const totalAportado = (socio) =>
+  cuotasDe(socio)
+    .filter((c) => c.pagado)
+    .reduce((t, c) => t + Number(c.importe || 0), 0);
+
+/**
+ * Registra (o corrige) la cuota de una temporada. Si esa temporada ya estaba,
+ * se reemplaza en su sitio en vez de duplicarse: un socio no puede tener dos
+ * cuotas del mismo año, y permitirlo doblaría la recaudación sin avisar.
+ *
+ * La cuota de la temporada ACTUAL manda sobre `importeAbono` y `pagado`, que
+ * siguen siendo la vista rápida que usan la lista y las estadísticas.
+ */
+export async function registrarCuota(id, { temporada, importe, metodoPago, pagado }) {
+  const socio = obtener(id);
+  if (!socio) return { ok: false, errores: ['Ese socio ya no existe.'] };
+
+  const temp = String(temporada || '').trim();
+  if (!/^\d{4}\/\d{2}$/.test(temp))
+    return { ok: false, errores: ['La temporada no tiene el formato 2026/27.'] };
+
+  const { importe: cantidad, errores } = resolverImporteAbono(socio.tipo, importe);
+  if (errores.length) return { ok: false, errores };
+  if (metodoPago && !METODOS_PAGO.includes(metodoPago))
+    return { ok: false, errores: ['El método de pago no es válido.'] };
+
+  const entrada = {
+    temporada: temp,
+    importe: cantidad,
+    metodoPago: metodoPago || null,
+    pagado: pagado === true,
+    fecha: new Date().toISOString(),
+  };
+  // Se parte del historial actual —incluida la cuota sintetizada del alta, que
+  // así queda guardada de verdad— y se sustituye la de esta temporada si ya
+  // estaba. Duplicarla doblaría la aportación del socio sin avisar.
+  const cuotas = cuotasDe(socio)
+    .filter((c) => c.temporada !== temp)
+    .map((c) => ({
+      temporada: c.temporada,
+      importe: Number(c.importe || 0),
+      metodoPago: c.metodoPago || null,
+      pagado: c.pagado === true,
+      fecha: c.fecha || null,
+    }))
+    .concat(entrada)
+    .sort((a, b) => String(a.temporada).localeCompare(String(b.temporada)));
+
+  const campos = { cuotas, modificadoPor: session.email, modificadoEn: entrada.fecha };
+  // La temporada en curso es además la que ve el resto de la aplicación.
+  if (temp === TEMPORADA_ACTUAL) {
+    campos.importeAbono = cantidad;
+    campos.pagado = entrada.pagado;
+    campos.metodoPago = entrada.metodoPago;
+  }
+  await repo.actualizarSocio(id, campos);
+  return { ok: true };
+}
+
 /** Alta de socio. Devuelve { ok, id, carnet } o { ok:false, errores:[...] }. */
 export async function altaSocio(datos) {
   datos = {
@@ -128,6 +232,17 @@ export async function altaSocio(datos) {
     importeAbono,
     metodoPago: datos.metodoPago || null,
     pagado: esGratuito(datos.tipo) || datos.pagado === true,
+    // Primera cuota de su historial. `importeAbono` sigue siendo la vista
+    // rápida de la temporada en curso; `cuotas` es el año a año.
+    cuotas: [
+      {
+        temporada: temporadaDe(ahora) || TEMPORADA_ACTUAL,
+        importe: importeAbono,
+        metodoPago: datos.metodoPago || null,
+        pagado: esGratuito(datos.tipo) || datos.pagado === true,
+        fecha: ahora,
+      },
+    ],
     activo: true,
     tokenQR: generarTokenQR(), // credencial del carnet (Upgrades #5)
     creadoPor: session.email, // auditoría
@@ -231,19 +346,65 @@ export async function editarSocio(id, campos) {
   if (_socios.some((s) => s.id !== id && s.dni === datos.dni && s.activo !== false)) {
     return { ok: false, errores: ['Ya existe otro socio con ese documento.'] };
   }
+  const actualizado = {
+    ...datos,
+    ...(importeAbono === undefined ? {} : { importeAbono }),
+  };
   await repo.actualizarSocio(id, {
     ...campos,
     // Después del spread: el documento se guarda normalizado, como en el alta.
     ...(campos.dni ? { dni: datos.dni } : {}),
     ...(importeAbono === undefined ? {} : { importeAbono }),
+    // La cuota de la temporada en curso ES el importe del socio: si se
+    // actualizara solo `importeAbono`, la ficha enseñaría 400 € arriba y 250 €
+    // en la tabla del año a año, contradiciéndose consigo misma.
+    cuotas: sincronizarCuotaActual(actualizado),
     modificadoPor: session.email,
     modificadoEn: new Date().toISOString(),
   });
   return { ok: true };
 }
 
-export const marcarPagado = (id, pagado) =>
-  repo.actualizarSocio(id, { pagado, modificadoPor: session.email });
+/**
+ * Historial de cuotas con la entrada de la temporada en curso puesta al día a
+ * partir de los campos "rápidos" del socio (`importeAbono`, `metodoPago`,
+ * `pagado`). Si esa temporada aún no estaba en el historial, se añade.
+ */
+function sincronizarCuotaActual(socio) {
+  const resto = cuotasDe(socio)
+    .filter((c) => c.temporada !== TEMPORADA_ACTUAL)
+    .map((c) => ({
+      temporada: c.temporada,
+      importe: Number(c.importe || 0),
+      metodoPago: c.metodoPago || null,
+      pagado: c.pagado === true,
+      fecha: c.fecha || null,
+    }));
+  const previa = cuotasDe(socio).find((c) => c.temporada === TEMPORADA_ACTUAL);
+  return [
+    ...resto,
+    {
+      temporada: TEMPORADA_ACTUAL,
+      importe: Number.isFinite(Number(socio.importeAbono))
+        ? Number(socio.importeAbono)
+        : precioAbonoPorDefecto(socio.tipo),
+      metodoPago: socio.metodoPago || null,
+      pagado: socio.pagado === true,
+      fecha: previa?.fecha || socio.alta || new Date().toISOString(),
+    },
+  ].sort((a, b) => String(a.temporada).localeCompare(String(b.temporada)));
+}
+
+export function marcarPagado(id, pagado) {
+  const socio = obtener(id);
+  return repo.actualizarSocio(id, {
+    pagado,
+    // El estado de cobro es de una temporada concreta, no del socio para
+    // siempre: se refleja en la cuota del año en curso.
+    ...(socio ? { cuotas: sincronizarCuotaActual({ ...socio, pagado }) } : {}),
+    modificadoPor: session.email,
+  });
+}
 
 export const guardarObservaciones = (id, texto) =>
   repo.actualizarSocio(id, { observaciones: texto, modificadoPor: session.email });

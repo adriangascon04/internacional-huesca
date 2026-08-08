@@ -16,6 +16,8 @@ import {
   TIPOS_DOCUMENTO,
   METODOS_PAGO,
   SOCIOS_POR_PAGINA,
+  TEMPORADA_ACTUAL,
+  claseAsistencia,
   precioAbonoPorDefecto,
   esAportacionLibre,
   descripcionAbono,
@@ -24,7 +26,7 @@ import {
 } from '../../config/app.config.js';
 import { pintarTarifasAbonos } from '../tarifas.view.js';
 import * as socios from '../../services/socios.service.js';
-import { historialSocio, importeAbonoDe } from '../../services/stats.service.js';
+import { perfilSocio, importeAbonoDe } from '../../services/stats.service.js';
 import * as roles from '../../services/roles.service.js';
 
 let perfilActualId = null;
@@ -71,6 +73,9 @@ export function initSocios() {
   on($('#btn-renumerar'), 'click', onRenumerar);
   on($('#btn-pag-anterior'), 'click', () => irAPagina(pagina - 1));
   on($('#btn-pag-siguiente'), 'click', () => irAPagina(pagina + 1));
+  $('#c-pago').innerHTML = OPCIONES_PAGO;
+  $('#c-temporada').value = TEMPORADA_ACTUAL;
+  on($('#btn-registrar-cuota'), 'click', onRegistrarCuota);
 }
 
 /**
@@ -311,10 +316,13 @@ function verPerfil(id) {
   if (!s) return;
   perfilActualId = id;
 
-  const h = historialSocio({
-    socioId: id,
+  const cuotas = socios.cuotasDe(s);
+  const p = perfilSocio({
+    socio: s,
+    cuotas,
     entradas: state.entradas,
     competiciones: state.competiciones,
+    socios: socios.getSociosActivos(),
   });
 
   $('#perfil-nombre').textContent = `${s.nombre} ${s.ap1} ${s.ap2 || ''}`.trim();
@@ -322,14 +330,9 @@ function verPerfil(id) {
     `Carnet nº ${carnetDe(s)} · ${esc(s.tipo)}` +
     (esFundador(s) ? ' · <span style="color:#eab308">⭐ Socio Fundador</span>' : '');
 
-  // El importe pagado va en las cifras de arriba, no escondido en la tabla: en
-  // los abonos de aportación libre es el dato que de verdad se viene a mirar,
-  // porque no hay tarifa de la que deducirlo.
-  $('#perfil-stats').innerHTML = `
-    <div class="stat"><div class="stat-n">${h.asistidos}</div><div class="stat-l">Partidos asistidos<br>de ${h.jornadasConDatos} jugados</div></div>
-    <div class="stat"><div class="stat-n">${h.pct}%</div><div class="stat-l">% asistencia</div></div>
-    <div class="stat"><div class="stat-n">${euros(importeAbonoDe(s))}</div><div class="stat-l">Pagado por el abono${esAportacionLibre(s.tipo) ? '<br><small>aportación libre</small>' : ''}</div></div>
-    <div class="stat"><div class="stat-n">${s.pagado ? '✅' : '❌'}</div><div class="stat-l">${s.pagado ? 'Pagado' : 'Pago pendiente'}</div></div>`;
+  renderCifrasPerfil(s, p);
+  renderCuotas(p);
+  renderAsistenciaPerfil(p);
 
   const desc = descripcionAbono(s.tipo);
   $('#perfil-datos').innerHTML = `
@@ -348,13 +351,13 @@ function verPerfil(id) {
           : ''
     }</td></tr>
     <tr><td>Método de pago</td><td>${esc(s.metodoPago || '—')}</td></tr>
-    <tr><td>Socio desde</td><td>${antiguedad(s.alta)}</td></tr>`;
-
-  renderHistorial(h);
+    <tr><td>Socio desde</td><td>${antiguedad(s.alta)}</td></tr>
+    <tr><td>Temporadas en el club</td><td>${p.temporadas || '—'}${p.temporadaAlta ? ` <small style="color:var(--txt3)">(desde la ${esc(p.temporadaAlta)})</small>` : ''}</td></tr>`;
 
   // El formulario de edición solo existe para quien puede gestionar socios;
   // las reglas de Firestore lo imponen igualmente en el servidor.
   $('#perfil-edicion').style.display = roles.puedeGestionarSocios() ? 'block' : 'none';
+  $('#perfil-cuota-alta').style.display = roles.puedeGestionarSocios() ? 'block' : 'none';
   mostrarFormEdicion(false);
 
   $('#perfil-observaciones').value = s.observaciones || '';
@@ -362,23 +365,121 @@ function verPerfil(id) {
   $('#modal-perfil').style.display = 'flex';
 }
 
-/** Partido a partido: a qué fue y a qué hora entró. */
-function renderHistorial(h) {
-  const cont = $('#perfil-historial');
-  if (!h.partidos.length) {
-    cont.innerHTML = '<p class="empty">Todavía no ha asistido a ningún partido.</p>';
-    return;
-  }
+/**
+ * Las cinco cifras de cabecera. Se elige a conciencia qué va aquí arriba: es lo
+ * único que se lee de verdad al abrir una ficha.
+ */
+function renderCifrasPerfil(s, p) {
+  const hora = (m) =>
+    m === null
+      ? '—'
+      : `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+  $('#perfil-stats').innerHTML = `
+    <div class="stat"><div class="stat-n">${p.temporadas || '—'}</div><div class="stat-l">${p.temporadas === 1 ? 'Temporada' : 'Temporadas'} en el club</div></div>
+    <div class="stat"><div class="stat-n">${euros(p.aportado)}</div><div class="stat-l">Aportado en total${p.pendiente ? `<br><small>+ ${euros(p.pendiente)} pendiente</small>` : ''}</div></div>
+    <div class="stat"><div class="stat-n">${p.asistidos}</div><div class="stat-l">Partidos asistidos<br><small>de ${p.jornadasConDatos} jugados</small></div></div>
+    <div class="stat"><div class="stat-n">${p.pct}%</div><div class="stat-l">% asistencia${
+      p.cuentaParaAsistencia && p.deCuantos
+        ? `<br><small>nº ${p.posicion} de ${p.deCuantos}</small>`
+        : '<br><small>no computa</small>'
+    }</div></div>
+    <div class="stat"><div class="stat-n">${euros(importeAbonoDe(s))}</div><div class="stat-l">Cuota de esta temporada${esAportacionLibre(s.tipo) ? '<br><small>aportación libre</small>' : ''}</div></div>
+    <div class="stat"><div class="stat-n">${s.pagado ? '✅' : '❌'}</div><div class="stat-l">${s.pagado ? 'Pagado' : 'Pago pendiente'}</div></div>
+    ${p.asistidos ? `<div class="stat"><div class="stat-n">${euros(p.costePorPartido)}</div><div class="stat-l">Le sale cada partido<br><small>lo aportado entre los que vino</small></div></div>` : ''}
+    ${p.rachaMejor ? `<div class="stat"><div class="stat-n">${p.rachaMejor}</div><div class="stat-l">Mejor racha seguida${p.rachaViva > 1 ? `<br><small>lleva ${p.rachaViva} en curso 🔥</small>` : ''}</div></div>` : ''}
+    ${p.minutoMedio !== null ? `<div class="stat"><div class="stat-n">${hora(p.minutoMedio)}</div><div class="stat-l">Hora media de llegada</div></div>` : ''}`;
+}
+
+/** Aportación temporada a temporada: la respuesta a "¿cuánto lleva puesto?". */
+function renderCuotas(p) {
+  const cont = $('#perfil-cuotas');
+  if (!cont) return;
   cont.innerHTML = `<table>
-    <thead><tr><th>Jornada</th><th>Entró</th></tr></thead>
-    <tbody>${h.partidos
+    <thead><tr><th>Temporada</th><th>Aportación</th><th>Pago</th><th>Estado</th></tr></thead>
+    <tbody>${p.cuotas
       .map(
-        (p) => `<tr>
-        <td>${esc(p.label.split(' - ')[1] || p.label)}</td>
-        <td>${horaCorta(p.entrada)}</td>
+        (c) => `<tr>
+        <td>${esc(c.temporada)}${c.temporada === TEMPORADA_ACTUAL ? ' <small style="color:var(--txt3)">(actual)</small>' : ''}</td>
+        <td><strong>${euros(c.importe)}</strong></td>
+        <td>${esc(c.metodoPago || '—')}</td>
+        <td>${c.pagado ? '<span class="badge badge-ok">Cobrada</span>' : '<span class="badge badge-warn">Pendiente</span>'}</td>
       </tr>`,
       )
-      .join('')}</tbody></table>`;
+      .join('')}</tbody>
+    <tfoot><tr>
+      <td><strong>Total</strong></td>
+      <td><strong>${euros(p.aportado + p.pendiente)}</strong></td>
+      <td colspan="2"><small style="color:var(--txt3)">${euros(p.aportado)} cobrado · media ${euros(p.aportacionMedia)} por temporada</small></td>
+    </tr></tfoot></table>`;
+}
+
+/** Partido a partido, más el resumen por competición y la comparación. */
+function renderAsistenciaPerfil(p) {
+  const cont = $('#perfil-historial');
+  if (!p.jornadasConDatos) {
+    cont.innerHTML = '<p class="empty">Todavía no se ha jugado ningún partido.</p>';
+    return;
+  }
+
+  const resumen = `<p class="nota">
+      Ha venido a <strong>${p.asistidos}</strong> de los ${p.jornadasConDatos} partidos jugados
+      y ha faltado a <strong>${p.ausencias}</strong>.
+      ${
+        p.cuentaParaAsistencia && p.deCuantos > 1
+          ? `Es el <strong>nº ${p.posicion}</strong> de ${p.deCuantos} socios; la media del club son ${p.mediaClub} partidos.`
+          : 'Su abono no cuenta para las estadísticas de asistencia.'
+      }
+      ${p.primero ? `Vino por primera vez a <strong>${esc(p.primero.label)}</strong>${p.ultimo && p.ultimo !== p.primero ? ` y la última a <strong>${esc(p.ultimo.label)}</strong>` : ''}.` : ''}
+    </p>`;
+
+  const porCompeticion =
+    p.porCompeticion.length > 1
+      ? `<table style="margin-bottom:14px">
+          <thead><tr><th>Competición</th><th>Asistidos</th><th>%</th></tr></thead>
+          <tbody>${p.porCompeticion
+            .map(
+              (c) =>
+                `<tr><td>${esc(c.competicion)}</td><td>${c.asistidos} de ${c.jugados}</td>
+                 <td><span class="badge ${claseAsistencia(c.pct)}">${c.pct}%</span></td></tr>`,
+            )
+            .join('')}</tbody></table>`
+      : '';
+
+  const detalle = p.partidos.length
+    ? `<table>
+        <thead><tr><th>Partido</th><th>Entró</th></tr></thead>
+        <tbody>${p.partidos
+          .map(
+            (x) => `<tr>
+            <td>${esc(x.label.split(' - ')[1] || x.label)}</td>
+            <td>${horaCorta(x.entrada)}</td>
+          </tr>`,
+          )
+          .join('')}</tbody></table>`
+    : '<p class="empty">Todavía no ha asistido a ningún partido.</p>';
+
+  cont.innerHTML = resumen + porCompeticion + detalle;
+}
+
+/** Apunta la cuota de una temporada (la de renovación, normalmente). */
+async function onRegistrarCuota() {
+  if (!perfilActualId) return;
+  const msg = $('#perfil-cuota-msg');
+  const res = await socios.registrarCuota(perfilActualId, {
+    temporada: $('#c-temporada').value.trim(),
+    importe: $('#c-importe').value,
+    metodoPago: $('#c-pago').value,
+    pagado: $('#c-pagado').checked,
+  });
+  if (!res.ok) {
+    msg.className = 'msg msg-err';
+    msg.textContent = res.errores.join(' ');
+    return;
+  }
+  msg.className = 'msg msg-ok';
+  msg.textContent = 'Cuota registrada ✓';
+  verPerfil(perfilActualId);
 }
 
 /** Muestra/oculta el formulario y lo recarga desde el socio actual. */

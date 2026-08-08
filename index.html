@@ -218,6 +218,14 @@ code{
 .paginacion{display:flex;gap:9px;align-items:center;justify-content:center;margin-top:14px}
 .paginacion .nota{padding:0;font-variant-numeric:tabular-nums}
 
+/* Separadores de la ficha del socio, que ya tiene varias secciones. */
+.perfil-seccion{
+  font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--txt2);margin:22px 0 12px;padding-bottom:11px;
+  border-bottom:1px solid var(--borde);
+}
+tfoot td{border-top:1px solid var(--borde-vivo);color:var(--txt)}
+
 /* ═══ Métricas ════════════════════════════════════════════════════════════ */
 .stat{
   background:linear-gradient(180deg,var(--panel-2),var(--panel));
@@ -837,10 +845,28 @@ canvas.chart-mini{max-height:240px}
     <div class="grid" id="perfil-stats" style="margin:16px 0"></div>
     <table><tbody id="perfil-datos"></tbody></table>
 
-    <h2 style="font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
-               color:var(--txt2);margin:22px 0 12px;padding-bottom:11px;border-bottom:1px solid var(--borde)">
-      Partido a partido
-    </h2>
+    <h2 class="perfil-seccion">Aportación temporada a temporada</h2>
+    <div id="perfil-cuotas" style="overflow-x:auto"></div>
+
+    <!-- Renovación: apuntar la cuota de una temporada nueva. Solo admin. -->
+    <div id="perfil-cuota-alta" style="display:none;margin-top:12px">
+      <div class="grid">
+        <div><label for="c-temporada">Temporada</label><input id="c-temporada" placeholder="2027/28"></div>
+        <div><label for="c-importe">Aportación (€)</label><input type="number" id="c-importe" min="0" step="0.01"></div>
+        <div><label for="c-pago">Método de pago</label><select id="c-pago"></select></div>
+        <div>
+          <label for="c-pagado">¿Cobrada?</label>
+          <div class="row" style="min-height:44px"><input type="checkbox" id="c-pagado" checked><span class="nota">Márcalo si ya has cobrado</span></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn btn-primary" id="btn-registrar-cuota">Registrar cuota</button>
+        <span class="msg" id="perfil-cuota-msg"></span>
+      </div>
+      <p class="nota">Si la temporada ya estaba registrada, se sustituye — no se duplica.</p>
+    </div>
+
+    <h2 class="perfil-seccion">Asistencia a los partidos</h2>
     <div id="perfil-historial" style="overflow-x:auto"></div>
 
     <!-- Edición de datos (Upgrades #2). Solo admin: se oculta por rol. -->
