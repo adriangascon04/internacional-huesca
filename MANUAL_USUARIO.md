@@ -290,19 +290,32 @@ la página interminable y en el móvil era inmanejable.
 
 ### 5.5. Ver la ficha de un socio
 
-Pulsa **👤 Perfil**. Se abre una ficha con:
+Pulsa **👤 Perfil**. La ficha cuenta la historia de esa persona en el club:
 
-- **Partidos asistidos** (sobre los que se han jugado, no sobre el calendario
-  entero) y su **porcentaje de asistencia**
-- **Lo que ha pagado por su abono** y su estado de pago
-- Todos sus datos, el método de pago y desde cuándo es socio
-- La **⭐ de Socio Fundador** si le corresponde
-- **Partido a partido**: a qué jornadas fue y a qué hora entró
+**Las cifras de arriba**
 
-El importe aparece arriba, entre las cifras grandes, y también en el detalle. Si
-lo que se cobró no es la tarifa de su abono, se indica cuál era la tarifa entre
-paréntesis. En un **Socio Colaborador** ese número es *el* dato: no hay tarifa de
-la que deducirlo.
+| Cifra | Qué te dice |
+|---|---|
+| Temporadas en el club | Cuánto lleva. Se cuentan de julio a junio |
+| Aportado en total | Todo lo que ha puesto, sumando todas las temporadas |
+| Partidos asistidos | Sobre los jugados, no sobre el calendario entero |
+| % de asistencia | Y su puesto: «nº 7 de 54» |
+| Cuota de esta temporada | Y si está cobrada o pendiente |
+| Le sale cada partido | Lo aportado entre los partidos a los que vino |
+| Mejor racha seguida | Y si tiene una viva ahora mismo 🔥 |
+| Hora media de llegada | Útil para saber quién llega justo |
+
+**Aportación temporada a temporada.** Una fila por año, con lo que puso, cómo lo
+pagó y si está cobrado, más el total y la media. En un **Socio Colaborador** esta
+tabla es *el* dato de su ficha: no hay tarifa de la que deducirlo.
+
+**Asistencia a los partidos.** Un resumen en cristiano (a cuántos vino, a cuántos
+faltó, cómo va frente a la media del club, cuál fue su primer partido), el
+desglose por competición si hay más de una, y el partido a partido con la hora a
+la que entró.
+
+> La racha viva solo se enseña si vino **al último partido jugado**: llevar diez
+> seguidos y faltar al último no es una racha en pie.
 
 ### 5.6. Editar los datos de un socio
 
@@ -315,6 +328,21 @@ recaudación de socios, así que si te equivocaste al darlo de alta —o el soci
 colaborador cambia su aportación— se corrige aquí, sin volver a darlo de alta.
 
 El número de socio **no se puede cambiar**.
+
+### 5.6.b. Apuntar la cuota de una temporada nueva (renovación)
+
+Cuando un socio renueva, en su ficha —debajo de la tabla de aportaciones— tienes
+**Temporada / Aportación / Método de pago / ¿Cobrada?** y el botón **Registrar
+cuota**. Escribe la temporada (`2027/28`) y lo que ha puesto.
+
+- Si esa temporada **ya estaba registrada, se sustituye**, no se duplica. Así una
+  corrección no le dobla la aportación al socio.
+- Si registras la **temporada en curso**, la ficha, la lista y las estadísticas
+  se actualizan a la vez: es la misma cuota vista desde sitios distintos.
+
+> Los socios dados de alta antes de que existiera esta tabla no pierden nada: se
+> les muestra la cuota de la temporada de su alta con el importe que ya tenían
+> guardado. A partir de ahí, cada renovación que apuntes se va sumando.
 
 ### 5.7. Observaciones
 

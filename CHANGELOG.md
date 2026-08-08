@@ -39,7 +39,28 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   (generador con semilla fija): un demo que cambia de números en cada pulsación
   parece roto.
 
+- **La ficha del socio cuenta su historia**, no solo sus datos: temporadas en el
+  club, aportación temporada a temporada con su total y su media, puesto en el
+  ranking de asistencia, mejor racha (y la viva, que solo cuenta si vino al último
+  partido), lo que le sale cada partido, hora media de llegada y desglose por
+  competición. Con un botón para **apuntar la cuota de una temporada nueva**.
+- **Cuotas por temporada** (`cuotas` en la ficha del socio). A los socios
+  anteriores no se les migra ni se les inventa historial: se les muestra la cuota
+  de la temporada de su alta con el importe que ya tenían, así que la ficha dice
+  algo cierto desde el primer día sin tocar un solo documento.
+- **Más métricas en estadísticas**: tendencia de asistencia y de taquilla
+  (aparecen a partir del cuarto partido, antes es ruido), proyección de taquilla a
+  fin de temporada, ingreso por socio y por asistente, concentración de las cuotas
+  en el 10 % que más aporta, quién más aporta, antigüedad de los socios, núcleo
+  duro y ocasionales, cuántos socios distintos han venido alguna vez, peso de las
+  invitaciones y una tabla de taquilla partido a partido.
+
 ### Corregido
+- **La descripción del abono se montaba encima del importe** en el recuadro
+  amarillo de tarifas. Se veía en el Socio Colaborador, el único que junta la
+  descripción más larga con el importe más largo: los tres eran hermanos del mismo
+  flex y el importe, con `nowrap`, no cedía. La descripción pasa a ir dentro del
+  nombre, en su propia línea.
 - **Una entrada de taquilla borrada seguía contando.** Al anular la última venta
   que quedaba, el historial se quedaba vacío y el cálculo lo confundía con "documento
   antiguo sin historial", cayendo a los contadores heredados: la venta recién
