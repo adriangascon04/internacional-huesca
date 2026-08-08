@@ -25,17 +25,25 @@ const metodosEnTexto = () =>
     ? `${METODOS_PAGO.slice(0, -1).join(', ')} o ${METODOS_PAGO.at(-1)}`
     : METODOS_PAGO[0] || '—';
 
-/** Una tarifa: "Abono General — 95 €" (o "gratis" cuando el precio es 0). */
-const fila = (nombre, precio, nota) =>
-  `<li><span>${esc(nombre)}</span> <strong>${precio > 0 ? euros(precio) : 'gratis'}</strong>${
-    nota ? ` <small>(${esc(nota)})</small>` : ''
-  }</li>`;
+/**
+ * Una tarifa: el nombre (con su descripción debajo) a la izquierda y el importe
+ * a la derecha.
+ *
+ * La descripción va DENTRO del nombre, no detrás del importe. Antes eran los
+ * tres hermanos de un mismo flex: el importe lleva `white-space:nowrap` y no
+ * puede encoger, la descripción sí, y al quedarse sin sitio se montaba encima
+ * del importe. Se veía sobre todo en el Socio Colaborador, que es el que junta
+ * la descripción más larga con el importe más largo ("lo que aporte").
+ */
+const fila = (nombre, importe, nota) =>
+  `<li><span>${esc(nombre)}${nota ? `<small>${esc(nota)}</small>` : ''}</span>` +
+  `<strong>${esc(importe)}</strong></li>`;
+
+const tarifa = (nombre, precio, nota) =>
+  fila(nombre, precio > 0 ? euros(precio) : 'gratis', nota);
 
 /** Igual, pero con el importe abierto: no hay tarifa que enseñar. */
-const filaLibre = (nombre, nota) =>
-  `<li><span>${esc(nombre)}</span> <strong>lo que aporte</strong>${
-    nota ? ` <small>(${esc(nota)})</small>` : ''
-  }</li>`;
+const filaLibre = (nombre, nota) => fila(nombre, 'lo que aporte', nota);
 
 const lista = (filas) => `<ul class="tarifas">${filas.join('')}</ul>`;
 
@@ -56,7 +64,7 @@ export function pintarTarifasAbonos(el) {
       TIPOS_ABONO.map((t) =>
         esAportacionLibre(t.id)
           ? filaLibre(etiquetaAbono(t.id), descripcionAbono(t.id))
-          : fila(etiquetaAbono(t.id), t.precio, descripcionAbono(t.id)),
+          : tarifa(etiquetaAbono(t.id), t.precio, descripcionAbono(t.id)),
       ),
     ) +
     `<small>Pago: ${esc(metodosEnTexto())}. El importe se puede ajustar en esta alta
@@ -75,7 +83,7 @@ export function pintarTarifasEntradas(el, precios = {}) {
   if (!el) return;
   const filas = Object.entries(precios).map(([tipo, precio]) => {
     const def = tipoEntradaPorId(tipo);
-    return fila(def?.nombre || tipo, Number(precio), def?.nota);
+    return tarifa(def?.nombre || tipo, Number(precio), def?.nota);
   });
   el.innerHTML =
     `<strong>Precios de este partido</strong>` +

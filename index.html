@@ -92,9 +92,12 @@ ul.tarifas li{
   border-bottom:1px solid var(--borde);
 }
 ul.tarifas li:last-child{border-bottom:0}
+/* El nombre (con su descripción debajo) encoge; el importe nunca. Si la
+   descripción fuese hermana del importe en vez de ir dentro del nombre, se
+   montaría encima al quedarse sin sitio: el importe lleva nowrap y no cede. */
 ul.tarifas li span{flex:1;min-width:0}
-ul.tarifas li strong{font-variant-numeric:tabular-nums;white-space:nowrap}
-ul.tarifas li small{color:var(--txt3)}
+ul.tarifas li span small{display:block;color:var(--txt3);line-height:1.35;margin-top:1px}
+ul.tarifas li strong{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
 
 /* ═══ Botones ═════════════════════════════════════════════════════════════ */
 .btn{
