@@ -74,6 +74,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ### Seguridad
 - `firestore.rules`: `socios` pasa de `allow delete: if false` a `if esAdmin()`.
   Es lo que habilita eliminar un socio y el borrón y cuenta nueva. Publícalas.
+- **Las reglas de Firestore ya se prueban** (`npm run test:reglas`): 26 casos que
+  las ejecutan contra el emulador con un usuario de cada rol, en vez de leerlas y
+  confiar. Cubren quién puede borrar un socio y quién no, que un lote no sirva
+  para saltarse el rol, que un taquillero pueda anular una venta pero no colar
+  tres de golpe, que una jornada cerrada no admita nada, y que el contador de
+  números de socio siga sin poder bajar ni con el borrón y cuenta nueva. La CI lo
+  pasa en cada PR; `npm test` sigue sin necesitar instalar ni descargar nada.
 
 ## [1.2.0] — Calendario configurable, dinero real y escáner que lee
 

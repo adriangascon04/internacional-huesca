@@ -1,0 +1,16 @@
+{
+  "_comentario": [
+    "Configuración SOLO para el emulador local, que es lo que usa `npm run test:reglas`.",
+    "La aplicación se publica en GitHub Pages, no con `firebase deploy`, y las reglas",
+    "se publican a mano desde la consola de Firebase (ver DESARROLLO.md)."
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "firestore": { "host": "127.0.0.1", "port": 8085 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  }
+}

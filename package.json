@@ -9,7 +9,9 @@
     "lint": "eslint \"src/**/*.js\"",
     "format": "prettier --write \"src/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\"",
-    "test": "node --import ./tests/setup.js --test tests/*.test.js"
+    "test": "node --import ./tests/setup.js --test tests/*.test.js",
+    "test:reglas:instalar": "npm install --no-save @firebase/rules-unit-testing firebase firebase-tools",
+    "test:reglas": "npx firebase emulators:exec --only firestore --project internacional-huesca-reglas \"node --test tests/firestore-rules.test.mjs\""
   },
   "devDependencies": {
     "eslint": "^8.57.0",

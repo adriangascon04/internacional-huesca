@@ -37,3 +37,29 @@ jobs:
         run: |
           grep -q 'id="btn-camara"' index.html
           test -f src/ui/camara.js
+
+  # Las reglas de Firestore son un lenguaje aparte que evalúa el servidor: el
+  # lint y los tests de arriba no las miran. Aquí se ejecutan de verdad contra
+  # el emulador, con un usuario de cada rol. Va en un job propio porque necesita
+  # Java y descargar el emulador, y no queremos ralentizar el resto.
+  reglas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ubuntu-latest ya trae Java, pero fijarlo evita que un cambio de imagen
+      # rompa esto sin avisar.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar emulador y SDK
+        run: npm run test:reglas:instalar
+
+      - name: Probar firestore.rules contra el emulador
+        run: npm run test:reglas
