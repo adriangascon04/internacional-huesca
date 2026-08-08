@@ -9,18 +9,21 @@ correo y una hoja de cálculo, puedes usar esto.
 Lo único que se hace **fuera** de la aplicación es dar de alta a las personas
 del club que van a usarla, y también se explica paso a paso (apartado 12).
 
-> **¿Primera vez?** Lee los apartados 1, 2 y 3. Con eso ya entiendes de qué va
-> todo. El resto búscalo cuando lo necesites.
+> **¿Primera vez?** Lee *Qué hace la aplicación* y los apartados 1, 2 y 3. Con
+> eso ya entiendes de qué va todo. El resto búscalo cuando lo necesites.
 
 ---
 
 ## Índice
 
+- [Qué hace la aplicación, de un vistazo](#qué-hace-la-aplicación-de-un-vistazo)
+- [Poner el club en marcha desde cero](#poner-el-club-en-marcha-desde-cero)
+
 1. [Entrar en la aplicación](#1-entrar-en-la-aplicación)
 2. [Vocabulario: qué significa cada palabra](#2-vocabulario-qué-significa-cada-palabra)
 3. [Qué puede hacer cada persona](#3-qué-puede-hacer-cada-persona)
 4. [Competiciones: el calendario y los precios](#4-competiciones-el-calendario-y-los-precios)
-5. [Socios](#5-socios) · [renumerar temporada](#59-renumerar-los-carnets-en-una-temporada-nueva)
+5. [Socios](#5-socios) · [renumerar temporada](#510-renumerar-los-carnets-en-una-temporada-nueva)
 6. [Importar socios desde Excel](#6-importar-socios-desde-excel)
 7. [Carnets y códigos QR](#7-carnets-y-códigos-qr)
 8. [El día del partido: el escáner](#8-el-día-del-partido-el-escáner)
@@ -31,6 +34,76 @@ del club que van a usarla, y también se explica paso a paso (apartado 12).
 13. [Protección de datos](#13-protección-de-datos)
 14. [Preguntas frecuentes](#14-preguntas-frecuentes)
 15. [Firebase: lo mínimo que hay que saber](#15-firebase-lo-mínimo-que-hay-que-saber)
+
+- [Chuleta para la puerta](#chuleta-para-la-puerta) *(para imprimir)*
+- [Calendario del club: qué hacer y cuándo](#calendario-del-club-qué-hacer-y-cuándo)
+
+---
+
+## Qué hace la aplicación, de un vistazo
+
+Ocho pestañas arriba. Según tu tipo de acceso verás unas u otras.
+
+| Pestaña | Para qué sirve | Quién la usa |
+|---------|----------------|--------------|
+| **Socios** | Alta, búsqueda, ficha completa, cobro de cuotas, edición y eliminación. Exportar a Excel. Renumerar carnets en temporada nueva. | Oficina |
+| **QRs** | Generar el carnet con código QR de cada socio. Uno a uno o todos de golpe en un ZIP para imprimir. | Oficina |
+| **Escáner** | Leer el carnet en la puerta el día del partido y registrar quién entra. Con cámara o a mano. | Puerta |
+| **Taquilla** | Vender entradas sueltas, con su precio y método de pago. Anular una venta equivocada. | Taquilla |
+| **Competiciones** | Montar el calendario (Liga, Copa, torneos…) y poner el precio de las entradas de cada partido. | Oficina |
+| **Estadísticas** | Asistencia, recaudación, perfil de los socios y marcha de la temporada. Se calcula solo. | Todos |
+| **Importar** | Cargar muchos socios de golpe desde un Excel. | Oficina |
+| **Backup** | Copias de seguridad y reinicio de datos. | Oficina |
+
+**Lo que puedes hacer con ella:**
+
+- Llevar el **fichero de socios** completo: datos personales, tipo de abono, lo
+  que paga cada uno y su historial año a año.
+- Emitir **carnets con QR** que no se pueden falsificar y que caducan cada
+  temporada.
+- **Controlar la entrada** al campo con el móvil, con varias puertas a la vez y
+  sin que nadie pueda colarse dos veces con el mismo carnet.
+- **Vender y cuadrar la taquilla** de cada partido, sabiendo cuánto es efectivo.
+- Saber **quién viene y quién no**, cuánto se recauda, de dónde sale el dinero y
+  hacia dónde va la temporada.
+- **Cerrar el acta** de un partido para que sus datos queden definitivos.
+- Guardar **copias de seguridad** y exportar todo a Excel o a un archivo.
+
+**Lo que NO hace** (para que nadie se lleve una sorpresa):
+
+- No cobra por internet: los pagos se hacen fuera y aquí se anotan.
+- No controla salidas del campo, solo entradas.
+- No funciona sin conexión a internet.
+- No manda correos ni avisos a los socios.
+- No lleva contabilidad ni emite facturas.
+
+---
+
+## Poner el club en marcha desde cero
+
+Si la aplicación está vacía (o acabas de borrarlo todo tras las pruebas), este
+es el orden. Cada paso tiene su apartado detallado más abajo.
+
+| | Qué | Dónde | Apartado |
+|-|-----|-------|----------|
+| 1 | Dar acceso a la gente del club | Firebase | [12](#12-dar-acceso-a-la-gente-del-club) |
+| 2 | Crear la competición y sus partidos | Competiciones | [4.1–4.2](#41-crear-una-competición) |
+| 3 | Poner el precio de las entradas de cada partido | Competiciones | [4.4](#44-los-precios-de-cada-partido) |
+| 4 | Dar de alta a los socios (uno a uno o desde Excel) | Socios / Importar | [5.1](#51-dar-de-alta-a-un-socio) · [6](#6-importar-socios-desde-excel) |
+| 5 | Marcar quién ha pagado | Socios | [5.3](#53-marcar-quién-ha-pagado) |
+| 6 | Descargar todos los carnets e imprimirlos | QRs | [7](#7-carnets-y-códigos-qr) |
+| 7 | Hacer una copia de seguridad | Backup | [11](#11-copias-de-seguridad) |
+
+A partir de ahí, **el día de cada partido**:
+
+1. Un admin **fija la jornada actual** antes de abrir puertas ([8.1](#81-antes-de-abrir-puertas-solo-admin-fija-la-jornada-actual)).
+2. La puerta escanea; la taquilla vende.
+3. Al terminar, el admin **cierra la jornada** ([8.6](#86-cerrar-la-jornada)) y hace una **copia** ([11](#11-copias-de-seguridad)).
+
+> **Consejo:** haz una prueba completa —un socio de mentira, un carnet impreso,
+> un escaneo y una venta— **antes** del primer partido de verdad, y con el móvil
+> que vayas a usar en la puerta. Es el momento de descubrir que el campo tiene
+> mala cobertura, no con la cola esperando.
 
 ---
 
@@ -226,7 +299,7 @@ Si algo está mal te lo dice en rojo debajo del botón y no guarda nada:
 - **No puede haber dos socios activos con el mismo documento.**
 
 **El número de carnet se asigna solo**, a continuación del último. No lo eliges
-tú. Los huecos que van quedando se recuperan al renumerar (apartado 5.9).
+tú. Los huecos que van quedando se recuperan al renumerar (apartado 5.10).
 
 ### 5.2. El dinero del abono: importe y método de pago
 
@@ -329,7 +402,7 @@ colaborador cambia su aportación— se corrige aquí, sin volver a darlo de alt
 
 El número de socio **no se puede cambiar**.
 
-### 5.6.b. Apuntar la cuota de una temporada nueva (renovación)
+### 5.7. Apuntar la cuota de una temporada nueva (renovación)
 
 Cuando un socio renueva, en su ficha —debajo de la tabla de aportaciones— tienes
 **Temporada / Aportación / Método de pago / ¿Cobrada?** y el botón **Registrar
@@ -344,12 +417,12 @@ cuota**. Escribe la temporada (`2027/28`) y lo que ha puesto.
 > les muestra la cuota de la temporada de su alta con el importe que ya tenían
 > guardado. A partir de ahí, cada renovación que apuntes se va sumando.
 
-### 5.7. Observaciones
+### 5.8. Observaciones
 
 Al final de la ficha hay un campo libre para lo que quieras anotar (alergias,
 notas de contacto, incidencias…). Escribe y pulsa **Guardar**.
 
-### 5.8. Eliminar a un socio
+### 5.9. Eliminar a un socio
 
 Pulsa **Eliminar** en su fila y confirma. A partir de ese momento:
 
@@ -370,7 +443,7 @@ Pulsa **Eliminar** en su fila y confirma. A partir de ese momento:
 > El QR no lleva solo el número: lleva también un código de seguridad único de
 > cada socio. El carnet viejo del nº 3 no abre la puerta del nuevo nº 3.
 
-### 5.9. Renumerar los carnets en una temporada nueva
+### 5.10. Renumerar los carnets en una temporada nueva
 
 Durante la temporada, los socios que se van dejan huecos: si se elimina el socio
 3, nadie tiene el 3 y los carnets llegan más alto que el número de socios que
@@ -394,7 +467,7 @@ renumerar carnets** te dice cuántos huecos hay.
 > Lo que **sí** se conserva: el historial completo de cada socio. Aunque le cambie
 > el número, sus partidos y sus estadísticas siguen siendo suyos.
 
-### 5.10. Exportar la lista a Excel
+### 5.11. Exportar la lista a Excel
 
 Pulsa **⬇ CSV**. Se descarga un archivo con todos los socios activos, que se abre
 directamente en Excel.
@@ -835,7 +908,7 @@ responsable de ellos ante el RGPD. En la práctica:
 - **Cuida los archivos que descargues** (CSV, JSON de copia, ZIP de carnets):
   salen del control de la aplicación y llevan datos personales.
 - Los socios tienen derecho a **acceder, rectificar y suprimir** sus datos. El
-  derecho de supresión se atiende con **Eliminar** en su fila (5.8), que borra la
+  derecho de supresión se atiende con **Eliminar** en su fila (5.9), que borra la
   ficha de verdad. Ojo: **las copias de seguridad anteriores siguen conteniéndola**
   hasta que rotan, así que si alguien ejerce ese derecho, revísalas.
 
@@ -948,15 +1021,20 @@ Muestra las "colecciones" (como pestañas de una hoja de cálculo): `socios`,
 > `tipo`, `pagado`, `observaciones`. Aun así, **edítalos desde la aplicación**
 > siempre que puedas (5.6): así queda registrado quién lo cambió y cuándo.
 
-### Republicar las reglas de seguridad
+### Las reglas de seguridad
 
-La aplicación tiene un fichero de "reglas" que decide quién puede leer o escribir
-cada dato. Vive en el código (`firestore.rules`) pero **no se aplica solo**: si el
-mantenimiento técnico te pide "republicar las reglas", es en **Firestore Database
-→ pestaña Reglas → pegar el contenido → Publicar**.
+Firestore tiene unas **reglas** que deciden quién puede leer y escribir cada
+dato. Son las que hacen que un taquillero no pueda borrar socios aunque se lo
+proponga, y están en **Firestore Database → pestaña Reglas**.
 
-Si algo falla justo después de una actualización y el mensaje habla de permisos,
-esto es lo primero que hay que mirar.
+**No las toques por tu cuenta.** Lo único que puede que te pidan alguna vez:
+quien lleve el mantenimiento te pasará un texto y tendrás que **pegarlo ahí y
+pulsar Publicar**. Antes de hacerlo, fíjate en la pestaña **Historial**: es desde
+donde se puede volver a la versión anterior si algo sale mal.
+
+> Si justo después de una actualización de la aplicación algo deja de funcionar y
+> el mensaje habla de **permisos**, esto es lo primero que hay que mirar: casi
+> siempre es que las reglas nuevas no se han publicado.
 
 ### Cuándo NO tocar nada y avisar
 
@@ -964,3 +1042,80 @@ Si algo parece corrupto, si borraste algo importante, o si dudas de si un cambio
 es seguro: **no sigas tocando**, haz una copia de seguridad si puedes (apartado
 11) y avisa al mantenimiento técnico. Es mucho más fácil arreglar un problema
 pequeño que uno grande.
+
+---
+
+## Chuleta para la puerta
+
+*Imprime esta página y déjala en la puerta del campo.*
+
+### Antes de abrir
+
+- [ ] Un admin ha **fijado la jornada actual** (pestaña Escáner).
+- [ ] El móvil tiene **batería** y **cobertura**.
+- [ ] Has entrado en la aplicación y arriba pone tu correo.
+
+### Escanear
+
+1. **📷 Escanear QR** → acepta el permiso de la cámara.
+2. Apunta al carnet. **Se lee solo**, no hay que pulsar nada.
+3. Debajo del vídeo debe verse un número de **lecturas/s** moviéndose.
+
+### Qué significa cada aviso
+
+| | | Qué haces |
+|-|-|-----------|
+| ✅ **ACCESO VÁLIDO** | Verde | Que pase |
+| ⛔ **YA HA ENTRADO** | Rojo | **No pasa.** Ese carnet ya se usó hoy |
+| ❌ **No reconocido** | Rojo | No es socio → a taquilla |
+| 🚫 **CARNET NO VÁLIDO** | Rojo | Carnet viejo o falso. Si la conoces, **valídala a mano** |
+
+### Si el QR no lee
+
+Escribe su **número de carnet o su DNI** en *Validación manual* → **Validar**.
+Funciona igual y queda registrado igual. **Nunca te quedes bloqueado.**
+
+### Si te equivocas
+
+En *Entradas registradas*, botón **Borrar** en su fila. Esa persona vuelve a
+poder entrar.
+
+### Si algo va mal
+
+- **La cámara no da imagen** → ciérrala y vuelve a abrirla.
+- **Un carnet concreto no entra** → **🔍 Leer ahora**, o valídalo a mano.
+- **No te deja elegir partido** → es normal, solo puedes fichar en el de hoy.
+- **No hay internet** → la aplicación no funciona. Avisa y usa lista en papel.
+
+---
+
+## Calendario del club: qué hacer y cuándo
+
+| Cuándo | Qué hacer | Apartado |
+|--------|-----------|----------|
+| **Pretemporada** | Crear el calendario y los precios | [4](#4-competiciones-el-calendario-y-los-precios) |
+| | Dar de alta o renovar a los socios | [5.1](#51-dar-de-alta-a-un-socio) · [5.7](#57-apuntar-la-cuota-de-una-temporada-nueva-renovación) |
+| | Imprimir y repartir los carnets | [7](#7-carnets-y-códigos-qr) |
+| **Antes de cada partido** | Fijar la jornada actual | [8.1](#81-antes-de-abrir-puertas-solo-admin-fija-la-jornada-actual) |
+| **Durante el partido** | Escanear en la puerta, vender en taquilla | [8](#8-el-día-del-partido-el-escáner) · [9](#9-taquilla) |
+| **Después de cada partido** | Cuadrar la caja (método de pago) | [10.3](#103-taquilla) |
+| | Cerrar la jornada | [8.6](#86-cerrar-la-jornada) |
+| | Hacer una copia de seguridad | [11](#11-copias-de-seguridad) |
+| **Durante la temporada** | Cobrar cuotas pendientes | [5.3](#53-marcar-quién-ha-pagado) |
+| | Añadir partidos o competiciones nuevas | [4.2](#42-añadir-partidos) |
+| **Fin de temporada** | Descargar la lista de socios a Excel | [5.10](#511-exportar-la-lista-a-excel) |
+| | Copia de seguridad y descargarla | [11](#11-copias-de-seguridad) |
+| **Temporada nueva** | Reiniciar los datos de partido | [11.1](#111-zona-peligrosa-los-dos-reinicios) |
+| | Apuntar la cuota de la temporada nueva de cada socio | [5.7](#57-apuntar-la-cuota-de-una-temporada-nueva-renovación) |
+| | Renumerar los carnets | [5.9](#510-renumerar-los-carnets-en-una-temporada-nueva) |
+| | Reimprimir y repartir los carnets nuevos | [7](#7-carnets-y-códigos-qr) |
+
+> ⚠️ **El orden del final importa:** primero renumerar, después imprimir. Si
+> imprimes antes, los carnets que repartas ya no valdrán.
+
+---
+
+*Manual de uso de la aplicación de gestión de abonados del Internacional Huesca.
+Si algo de lo que aquí se explica no se corresponde con lo que ves en pantalla,
+avisa a quien lleve el mantenimiento: probablemente la aplicación se ha
+actualizado y este documento se ha quedado atrás.*
