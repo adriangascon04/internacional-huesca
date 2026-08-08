@@ -630,6 +630,14 @@ canvas.chart-mini{max-height:240px}
       </div>
 
       <div class="card">
+        <h2>Cómo va la temporada</h2>
+        <p class="nota">Las tendencias comparan la segunda mitad de lo jugado con la primera:
+          responden a «¿esto sube o baja?», que es lo que no contesta una media. Aparecen a
+          partir del cuarto partido, antes el azar manda demasiado.</p>
+        <div class="grid" id="resumen-marcha-cards"></div>
+      </div>
+
+      <div class="card">
         <h2>Resumen por competición</h2>
         <div style="overflow-x:auto"><table><thead><tr><th>Competición</th><th>Partidos</th><th>Asistentes</th><th>Recaudación</th></tr></thead><tbody id="stats-competiciones"></tbody></table></div>
       </div>
@@ -670,6 +678,20 @@ canvas.chart-mini{max-height:240px}
       <div class="card">
         <h2>Cómo pagan los socios su cuota</h2>
         <div style="overflow-x:auto"><table><thead><tr><th>Método</th><th>Socios</th><th>Importe</th></tr></thead><tbody id="socios-metodo-tabla"></tbody></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Quién más aporta</h2>
+        <p class="nota">Los diez socios que más ponen esta temporada. Con el Socio Colaborador
+          esto deja de ser una lista donde todos pagan lo mismo.</p>
+        <div style="overflow-x:auto"><table><thead><tr><th>Nº</th><th>Socio</th><th>Abono</th><th>Aportación</th><th>Estado</th></tr></thead><tbody id="socios-top-tabla"></tbody></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Antigüedad de los socios</h2>
+        <p class="nota">Cuántas temporadas lleva cada uno. Dice si el club está creciendo con
+          gente nueva o sosteniéndose con los de siempre.</p>
+        <div style="overflow-x:auto"><table><thead><tr><th>Antigüedad</th><th>Socios</th><th>%</th></tr></thead><tbody id="socios-antiguedad-tabla"></tbody></table></div>
       </div>
 
       <div class="card">
@@ -718,6 +740,17 @@ canvas.chart-mini{max-height:240px}
         <h2>Cómo se cobra en la puerta</h2>
         <p class="nota">Para cuadrar la caja al terminar el partido: el efectivo es lo único que hay que contar a mano.</p>
         <div style="overflow-x:auto"><table><thead><tr><th>Método</th><th>Entradas</th><th>Importe</th></tr></thead><tbody id="taquilla-metodo-tabla"></tbody></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Partido a partido</h2>
+        <p class="nota">Cuánto pesa la taquilla frente a los abonados en cada encuentro.</p>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Partido</th><th>Abonados</th><th>Entradas</th><th>% taquilla</th><th>Recaudación</th><th>Precio medio</th></tr></thead>
+            <tbody id="taquilla-jornadas-tabla"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 

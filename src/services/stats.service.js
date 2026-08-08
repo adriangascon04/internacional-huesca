@@ -251,12 +251,50 @@ export function calcularAltasSocios({ socios = [] }) {
     cuotaMedia: f.socios ? Math.round((f.ingresos + f.pendiente) / f.socios) : 0,
   }));
 
+  // Quién sostiene económicamente al club. Con cuotas libres el reparto deja de
+  // ser plano y esta lista es lo que enseña de dónde sale el dinero de verdad.
+  const topAportantes = [...socios]
+    .map((s) => ({ socio: s, importe: importeAbonoDe(s), pagado: s.pagado === true }))
+    .filter((x) => x.importe > 0)
+    .sort((a, b) => b.importe - a.importe)
+    .slice(0, 10);
+
+  // Concentración: qué parte de las cuotas ponen el 10 % que más aporta. Si
+  // sale muy alto, el club depende de muy poca gente y conviene saberlo.
+  const importesOrdenados = socios.map(importeAbonoDe).sort((a, b) => b - a);
+  const totalCuotas = importesOrdenados.reduce((a, b) => a + b, 0);
+  const cuantosEnElDiez = Math.max(1, Math.ceil(importesOrdenados.length * 0.1));
+  const pctTop10 = totalCuotas
+    ? Math.round(
+        (importesOrdenados.slice(0, cuantosEnElDiez).reduce((a, b) => a + b, 0) /
+          totalCuotas) *
+          100,
+      )
+    : 0;
+
+  // Antigüedad: cuántos socios lleva cada nº de temporadas. Es la foto de si el
+  // club está creciendo con gente nueva o sosteniéndose con los de siempre.
+  const porAntiguedadMap = {};
+  socios.forEach((s) => {
+    const t = temporadaDe(s.alta);
+    const n = t ? temporadasEntre(t, TEMPORADA_ACTUAL).length : 0;
+    if (!n) return;
+    porAntiguedadMap[n] = (porAntiguedadMap[n] || 0) + 1;
+  });
+  const porAntiguedad = Object.entries(porAntiguedadMap)
+    .map(([temporadas, n]) => ({ temporadas: Number(temporadas), socios: n }))
+    .sort((a, b) => a.temporadas - b.temporadas);
+
   return {
     nuevosSocios,
     ingresos,
     pendientes,
     ingresosNoAsisten,
     porTipo,
+    topAportantes,
+    pctTop10,
+    porAntiguedad,
+    cuotaMedia: nuevosSocios ? Math.round((ingresos + pendientes) / nuevosSocios) : 0,
     porMetodoPago: agregarPorMetodo(
       socios
         .filter((s) => s.pagado)
@@ -346,6 +384,65 @@ export function calcularDemografia({ socios }) {
 //  la del apartado de altas. `ingresoAltas` se recibe ya calculado para poder
 //  repartir el ingreso total entre las dos vías sin duplicar el cálculo.
 // ============================================================================
+
+/**
+ * Cómo va la temporada: lo jugado, lo que queda y hacia dónde va la cosa.
+ *
+ * La proyección es una regla de tres deliberadamente simple —lo recaudado de
+ * media por partido jugado, multiplicado por los que faltan— y va etiquetada
+ * como estimación allá donde se enseñe. Un modelo más fino con ocho partidos de
+ * muestra sería precisión falsa.
+ *
+ * La tendencia compara la segunda mitad de lo jugado con la primera: responde a
+ * "¿esto sube o baja?", que es lo que se quiere saber a mitad de temporada y no
+ * contesta ninguna media.
+ *
+ * @param {Array} porJornada Filas de `calcularStats`.
+ */
+export function calcularTemporada({ porJornada = [] } = {}) {
+  const jugados = porJornada.filter((j) => j.nSocios || j.nTaquilla);
+  const porJugar = porJornada.length - jugados.length;
+
+  const recaudado = jugados.reduce((a, j) => a + (j.recaudacion || 0), 0);
+  const asistentes = jugados.reduce((a, j) => a + (j.totalAsistentes || 0), 0);
+  const mediaAsistentes = jugados.length ? Math.round(asistentes / jugados.length) : 0;
+  const mediaRecaudacion = jugados.length ? Math.round(recaudado / jugados.length) : 0;
+
+  const mitad = Math.floor(jugados.length / 2);
+  const media = (filas, campo) =>
+    filas.length ? filas.reduce((a, f) => a + (f[campo] || 0), 0) / filas.length : 0;
+  const primeros = jugados.slice(0, mitad);
+  const ultimos = jugados.slice(mitad);
+  const variacion = (campo) => {
+    if (jugados.length < 4) return null; // con menos, el ruido manda
+    const a = media(primeros, campo);
+    const b = media(ultimos, campo);
+    return a ? Math.round(((b - a) / a) * 100) : null;
+  };
+
+  // Partido con más gente en el campo (no el que más recaudó: no es lo mismo).
+  const lleno = jugados.length
+    ? jugados.reduce((a, j) => (j.totalAsistentes > a.totalAsistentes ? j : a))
+    : null;
+
+  return {
+    partidos: porJornada.length,
+    jugados: jugados.length,
+    porJugar,
+    pctTemporada: porJornada.length
+      ? Math.round((jugados.length / porJornada.length) * 100)
+      : 0,
+    asistentes,
+    mediaAsistentes,
+    mediaRecaudacion,
+    lleno,
+    tendenciaAsistencia: variacion('totalAsistentes'),
+    tendenciaRecaudacion: variacion('recaudacion'),
+    // Estimación, no promesa: lo que daría el resto de la temporada al ritmo
+    // que lleva.
+    proyeccionTaquilla: recaudado + mediaRecaudacion * porJugar,
+  };
+}
 
 /**
  * @param {object} p
